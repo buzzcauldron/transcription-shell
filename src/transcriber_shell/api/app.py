@@ -8,21 +8,50 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from transcriber_shell import __version__ as _package_version
 from transcriber_shell.config import Settings
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.pipeline.run import load_prompt_cfg_from_str, run_pipeline
+
+_API_DESCRIPTION = """
+**transcriber-shell** — manuscript transcription pipeline: Glyph Machina lineation → PageXML checks → LLM (Anthropic / OpenAI / Gemini) → protocol YAML validation.
+
+**Interactive use:** run **`transcriber-shell gui`** for the desktop interface (recommended).
+
+**HTTP:** `POST /v1/transcribe` with multipart `prompt` (YAML/JSON string) and `files` (images). Root `/` redirects to this documentation.
+
+**Not on HTTP:** offline lines XML — use the CLI or GUI with **Skip Glyph Machina** and a lines file.
+""".strip()
 
 
 def create_app(settings: Settings | None = None) -> Any:
     try:
         from fastapi import FastAPI, HTTPException, Request
         from starlette.datastructures import UploadFile
-        from starlette.responses import JSONResponse
+        from starlette.responses import JSONResponse, RedirectResponse
     except ImportError as e:
         raise RuntimeError("Install API extra: pip install 'transcriber-shell[api]'") from e
 
     s = settings or Settings()
-    app = FastAPI(title="transcriber-shell", version="0.1.0")
+    app = FastAPI(
+        title="transcriber-shell",
+        version=_package_version,
+        description=_API_DESCRIPTION,
+        swagger_ui_parameters={
+            "docExpansion": "list",
+            "tryItOutEnabled": True,
+            "displayRequestDuration": True,
+        },
+        openapi_tags=[
+            {"name": "ui", "description": "Browser-friendly entry points and docs."},
+            {"name": "v1", "description": "Transcription API (multipart form)."},
+        ],
+    )
+
+    @app.get("/", tags=["ui"], response_model=None)
+    async def index() -> Any:
+        """Avoid bare 404 at site root; send browsers to interactive API docs."""
+        return RedirectResponse(url="/docs", status_code=307)
 
     # API key auth must not use Depends() on the same route as File+Form — it breaks OpenAPI
     # schema generation (Pydantic "class not fully defined" on /openapi.json).
@@ -50,11 +79,14 @@ def create_app(settings: Settings | None = None) -> Any:
 
     @app.post(
         "/v1/transcribe",
+        tags=["v1"],
         summary="Transcribe one or more images",
         description=(
-            "Send **multipart/form-data** with fields: `prompt` (required, YAML or JSON string), "
-            "`files` (one or more image parts, same field name), optional `provider`, `model`, "
-            "`skip_gm`, `inline_yaml` (booleans as true/false strings)."
+            "Send **multipart/form-data** with fields: **`prompt`** (required, YAML or JSON string), "
+            "**`files`** (one or more image parts, same field name), optional **`provider`**, **`model`**, "
+            "**`inline_yaml`** (embed YAML text in the JSON response). "
+            "Boolean form fields use strings like `true` / `false`. "
+            "**`skip_gm`** is rejected here — use the CLI for offline lines XML."
         ),
     )
     async def transcribe_v1(request: Request) -> Any:
@@ -93,8 +125,11 @@ def create_app(settings: Settings | None = None) -> Any:
 
         prov_raw = provider if isinstance(provider, str) else None
         prov = (prov_raw or s.default_provider).lower()
-        if prov not in ("anthropic", "openai", "gemini"):
-            raise HTTPException(status_code=422, detail="provider must be anthropic, openai, or gemini")
+        if prov not in ("anthropic", "openai", "gemini", "ollama"):
+            raise HTTPException(
+                status_code=422,
+                detail="provider must be anthropic, openai, gemini, or ollama",
+            )
 
         model_override = model if isinstance(model, str) else None
 
@@ -144,8 +179,9 @@ def create_app(settings: Settings | None = None) -> Any:
             raise HTTPException(status_code=422, detail="no files processed")
         return JSONResponse(content=out)
 
-    @app.get("/health")
+    @app.get("/health", tags=["ui"])
     async def health() -> dict[str, str]:
+        """Liveness probe; no authentication required."""
         return {"status": "ok"}
 
     return app

@@ -18,3 +18,8 @@ def test_resolved_model_per_provider_without_override():
     s = Settings(default_model=None, anthropic_model="a", openai_model="b", gemini_model="g")
     assert s.resolved_model("anthropic") == "a"
     assert s.resolved_model("openai") == "b"
+
+
+def test_resolved_model_ollama():
+    s = Settings(default_model=None, ollama_model="llava-phi3")
+    assert s.resolved_model("ollama") == "llava-phi3"

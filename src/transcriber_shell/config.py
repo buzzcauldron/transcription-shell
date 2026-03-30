@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ProviderName = Literal["anthropic", "openai", "gemini"]
+ProviderName = Literal["anthropic", "openai", "gemini", "ollama"]
 
 
 class Settings(BaseSettings):
@@ -53,6 +53,16 @@ class Settings(BaseSettings):
     gemini_model: str = Field(
         default="gemini-2.0-flash",
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_GEMINI_MODEL", "GEMINI_MODEL"),
+    )
+    ollama_model: str = Field(
+        default="llava",
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_OLLAMA_MODEL", "OLLAMA_MODEL"),
+    )
+    ollama_base_url: str = Field(
+        default="http://127.0.0.1:11434",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_OLLAMA_BASE_URL", "OLLAMA_BASE_URL"
+        ),
     )
 
     gm_headless: bool = Field(
@@ -101,7 +111,7 @@ class Settings(BaseSettings):
     @field_validator("default_provider", mode="before")
     @classmethod
     def _normalize_default_provider(cls, v: object) -> str:
-        allowed = ("anthropic", "openai", "gemini")
+        allowed = ("anthropic", "openai", "gemini", "ollama")
         if v is None or (isinstance(v, str) and not str(v).strip()):
             return "anthropic"
         if not isinstance(v, str):
@@ -128,4 +138,6 @@ class Settings(BaseSettings):
             return self.openai_model
         if p == "gemini":
             return self.gemini_model
+        if p == "ollama":
+            return self.ollama_model
         return self.anthropic_model

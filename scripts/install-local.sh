@@ -18,6 +18,10 @@ if [ ! -f vendor/transcription-protocol/benchmark/validate_schema.py ]; then
 fi
 
 echo "==> Python venv (.venv)"
+if [ -d .venv ] && ! .venv/bin/python -c "import sys" 2>/dev/null; then
+  echo "Removing stale .venv (interpreter path invalid); recreating."
+  rm -rf .venv
+fi
 if [ ! -d .venv ]; then
   python3 -m venv .venv
 fi
@@ -36,5 +40,6 @@ if [ ! -f .env ] && [ -f .env.example ]; then
 fi
 
 echo "==> Done. Activate with: source .venv/bin/activate"
+echo "    GUI: transcriber-shell gui"
 echo "    CLI: transcriber-shell --help   (package name; repo folder is transcription-shell)"
 echo "    Or Docker: ./docker-run.sh / ./docker-run.sh shell"

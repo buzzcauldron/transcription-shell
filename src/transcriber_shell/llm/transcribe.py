@@ -53,6 +53,16 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> str:
             model=mo,
             settings=s,
         )
+    if provider == "ollama":
+        from transcriber_shell.llm.adapters.ollama import transcribe_ollama
+
+        return transcribe_ollama(
+            image_path=job.image_path,
+            system=system,
+            user_text=user_text,
+            model=mo,
+            settings=s,
+        )
     raise ValueError(f"unknown provider: {job.provider}")
 
 

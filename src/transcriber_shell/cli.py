@@ -121,6 +121,13 @@ def cmd_batch(args: argparse.Namespace) -> int:
     return 0 if ok_all else 1
 
 
+def cmd_gui(_args: argparse.Namespace) -> int:
+    from transcriber_shell.gui import main as gui_main
+
+    gui_main()
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -168,7 +175,7 @@ def main() -> None:
     run.add_argument(
         "--provider",
         default=None,
-        choices=["anthropic", "openai", "gemini"],
+        choices=["anthropic", "openai", "gemini", "ollama"],
         help="LLM provider (default: TRANSCRIBER_SHELL_DEFAULT_PROVIDER or anthropic)",
     )
     run.add_argument(
@@ -206,7 +213,7 @@ def main() -> None:
     batch.add_argument(
         "--provider",
         default=None,
-        choices=["anthropic", "openai", "gemini"],
+        choices=["anthropic", "openai", "gemini", "ollama"],
         help="LLM provider (default: TRANSCRIBER_SHELL_DEFAULT_PROVIDER or anthropic)",
     )
     batch.add_argument("--model", default=None, help="Override model id for every job")
@@ -227,6 +234,12 @@ def main() -> None:
         help="Write JSON report of all jobs",
     )
     batch.set_defaults(func=cmd_batch)
+
+    gui = sub.add_parser(
+        "gui",
+        help="Simple desktop UI (tkinter): choose image, prompt, run pipeline",
+    )
+    gui.set_defaults(func=cmd_gui)
 
     serve = sub.add_parser("serve", help="Start optional HTTP API (requires [api] extra)")
     serve.add_argument("--host", default=None, help="Bind host (default: env or 127.0.0.1)")

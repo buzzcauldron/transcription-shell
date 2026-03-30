@@ -1,37 +1,25 @@
-# Architecture
+# Architecture (living overview)
 
-```mermaid
-flowchart LR
-  subgraph in1 [Input]
-    IMG[Pre-cropped image]
-  end
-  subgraph gm [Glyph Machina]
-    B[Playwright browser]
-    UP[Upload and crop confirm]
-    IL[Identify Lines]
-    DL[Download Lines File]
-  end
-  subgraph xml [XML]
-    V1[lines_validate]
-    V2[Optional XSD]
-  end
-  subgraph llm [LLM]
-    PB[prompt_builder zones]
-    API[Anthropic or OpenAI or Gemini]
-  end
-  subgraph out [Output]
-    PXML[lines.xml]
-    YML[transcription.yaml]
-  end
-  IMG --> B
-  B --> UP --> IL --> DL --> PXML
-  PXML --> V1 --> V2
-  IMG --> PB
-  V1 --> PB
-  PB --> API --> YML
-```
+**transcriber-shell** orchestrates:
 
-- **transcriber_shell.glyph_machina** — Playwright-only; no public Glyph Machina HTTP API is used.
-- **transcriber_shell.xml_tools** — stdlib XML parse + optional `lxml` XSD.
-- **transcriber_shell.llm** — Imports `prompt_builder` and `validate_schema` from `vendor/transcription-protocol/benchmark/` at runtime (`protocol_paths.ensure_protocol_benchmark_on_path`).
-- **transcriber_shell.pipeline.run** — Sequences steps and writes `artifacts/<job_id>/`.
+1. **Lineation** — Browser automation against [Glyph Machina](https://glyphmachina.com/) (`transcriber_shell.glyph_machina`) to produce a lines XML for a pre-cropped page image, unless `--skip-gm` / GUI “Skip Glyph Machina” supplies existing XML.
+2. **XML gate** — Well-formed XML, `TextLine` checks, optional XSD (`transcriber_shell.xml_tools`).
+3. **LLM** — `prompt_builder` + provider adapters (`transcriber_shell.llm`) produce protocol-shaped YAML; models listed in `llm/model_catalog.py`.
+4. **Validation** — Vendored `validate_schema` from `vendor/transcription-protocol/benchmark/` (submodule required).
+5. **Outputs** — `artifacts/<job_id>/` (lines XML, transcription YAML, etc.).
+
+**Surfaces:**
+
+- **CLI** — `transcriber-shell run`, `batch`, `validate-*`, etc.
+- **GUI** — `transcriber-shell gui` (`transcriber_shell.gui`).
+- **HTTP API (optional)** — FastAPI under `transcriber_shell.api` (`pip install '.[api]'`), `serve` command.
+
+**Protocol code** lives in the submodule `vendor/transcription-protocol/`; runtime adds `benchmark/` to `sys.path` for `prompt_builder` and validators.
+
+For the **diagram** of the pipeline, see **[ARCHITECTURE.md](ARCHITECTURE.md)** (single source of truth for the mermaid chart).
+
+Other deep dives: [glyph-machina-automation.md](glyph-machina-automation.md).
+
+---
+
+**Doc workflow inspiration:** [Axel Edin (@axlolo)](https://github.com/axlolo). Adapted for transcriber-shell.
