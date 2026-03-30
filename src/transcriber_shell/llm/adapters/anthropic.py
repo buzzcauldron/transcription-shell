@@ -26,6 +26,7 @@ def transcribe_anthropic(
     image_path: Path,
     system: str,
     user_text: str,
+    model: str | None = None,
     settings: Settings | None = None,
 ) -> str:
     import anthropic
@@ -38,8 +39,9 @@ def transcribe_anthropic(
     b64 = base64.standard_b64encode(raw).decode("ascii")
     media = _mime_for_path(image_path)
 
+    model_id = model or s.resolved_model("anthropic")
     msg = client.messages.create(
-        model=s.anthropic_model,
+        model=model_id,
         max_tokens=32_000,
         system=system,
         messages=[

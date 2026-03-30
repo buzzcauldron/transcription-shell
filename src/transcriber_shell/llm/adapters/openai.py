@@ -24,6 +24,7 @@ def transcribe_openai(
     image_path: Path,
     system: str,
     user_text: str,
+    model: str | None = None,
     settings: Settings | None = None,
 ) -> str:
     from openai import OpenAI
@@ -37,8 +38,9 @@ def transcribe_openai(
     media = _mime_for_path(image_path)
     url = f"data:{media};base64,{b64}"
 
+    model_id = model or s.resolved_model("openai")
     r = client.chat.completions.create(
-        model=s.openai_model,
+        model=model_id,
         max_tokens=32_000,
         messages=[
             {"role": "system", "content": system},

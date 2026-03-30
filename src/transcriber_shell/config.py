@@ -5,8 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ProviderName = Literal["anthropic", "openai", "gemini"]
 
 
 class Settings(BaseSettings):
@@ -71,11 +73,59 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_ARTIFACTS_DIR", "ARTIFACTS_DIR"),
     )
 
+    default_provider: ProviderName = Field(
+        default="anthropic",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_DEFAULT_PROVIDER", "DEFAULT_PROVIDER"
+        ),
+    )
+    # When set, overrides anthropic_model / openai_model / gemini_model for the active provider.
+    default_model: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_MODEL", "DEFAULT_MODEL"),
+    )
+
+    api_host: str = Field(
+        default="127.0.0.1",
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_API_HOST", "API_HOST"),
+    )
+    api_port: int = Field(
+        default=8765,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_API_PORT", "API_PORT"),
+    )
+    api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_API_KEY", "API_KEY"),
+    )
+
+    @field_validator("default_provider", mode="before")
+    @classmethod
+    def _normalize_default_provider(cls, v: object) -> str:
+        allowed = ("anthropic", "openai", "gemini")
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return "anthropic"
+        if not isinstance(v, str):
+            raise ValueError("default_provider must be a string")
+        x = v.lower().strip()
+        if x not in allowed:
+            raise ValueError(f"default_provider must be one of {allowed}")
+        return x
+
     def resolved_protocol_root(self, package_root: Path | None = None) -> Path:
         if self.protocol_root is not None:
             return self.protocol_root.expanduser().resolve()
         base = package_root or Path(__file__).resolve().parents[2]
         return (base / "vendor" / "transcription-protocol").resolve()
 
-
-ProviderName = Literal["anthropic", "openai", "gemini"]
+    def resolved_model(self, provider: str) -> str:
+        """Model id for API calls. Precedence: default_model (env) > per-provider default."""
+        if self.default_model:
+            return self.default_model
+        p = provider.lower()
+        if p == "anthropic":
+            return self.anthropic_model
+        if p == "openai":
+            return self.openai_model
+        if p == "gemini":
+            return self.gemini_model
+        return self.anthropic_model

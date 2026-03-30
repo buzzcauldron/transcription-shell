@@ -137,9 +137,17 @@ def run_pipeline(
 
 def load_prompt_cfg(path: Path) -> dict:
     text = path.read_text(encoding="utf-8")
-    if path.suffix.lower() == ".json":
-        return json.loads(text)
-    data = yaml.safe_load(text)
+    return load_prompt_cfg_from_str(text, suffix=path.suffix.lower())
+
+
+def load_prompt_cfg_from_str(text: str, *, suffix: str = "") -> dict:
+    t = text.strip()
+    if suffix == ".json":
+        data = json.loads(t)
+    elif t.startswith("{"):
+        data = json.loads(t)
+    else:
+        data = yaml.safe_load(t)
     if not isinstance(data, dict):
-        raise ValueError("prompt file must be a JSON/YAML object")
+        raise ValueError("prompt must be a JSON/YAML object")
     return data

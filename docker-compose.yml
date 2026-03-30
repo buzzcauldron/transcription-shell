@@ -1,0 +1,52 @@
+# transcription-shell — Docker Compose (images: transcriber-shell:*)
+#
+# Recommended: ./docker-run.sh (sets image tag from ./VERSION, platform, volumes)
+#
+# Usage:
+#   cp .env.docker.example .env.docker
+#   # edit API keys in .env.docker
+#   docker compose --env-file .env.docker up --build api
+#
+# Interactive shell (dev):
+#   docker compose --env-file .env.docker run --rm shell
+#
+# "network_mode: host" is omitted so Docker Desktop on macOS/Windows works.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${TS_VERSION:-0.1.0}
+    image: transcriber-shell:${TS_VERSION:-latest}
+    container_name: transcriber-shell-api
+    ports:
+      - "${HOST_API_PORT:-8765}:8765"
+    env_file:
+      - .env.docker
+    environment:
+      TRANSCRIBER_SHELL_API_HOST: "0.0.0.0"
+      TRANSCRIBER_SHELL_API_PORT: "8765"
+    volumes:
+      - .:/workspace:rw
+    working_dir: /workspace
+
+  shell:
+    profiles:
+      - shell
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${TS_VERSION:-0.1.0}
+    image: transcriber-shell:${TS_VERSION:-latest}
+    container_name: transcriber-shell-shell
+    env_file:
+      - .env.docker
+    volumes:
+      - .:/workspace:rw
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    command: ["bash"]

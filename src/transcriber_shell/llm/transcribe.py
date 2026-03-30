@@ -22,23 +22,36 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> str:
     user_text = user_text + extra
 
     provider = job.provider.lower()
+    mo = job.model_override
     if provider == "anthropic":
         from transcriber_shell.llm.adapters.anthropic import transcribe_anthropic
 
         return transcribe_anthropic(
-            image_path=job.image_path, system=system, user_text=user_text, settings=s
+            image_path=job.image_path,
+            system=system,
+            user_text=user_text,
+            model=mo,
+            settings=s,
         )
     if provider == "openai":
         from transcriber_shell.llm.adapters.openai import transcribe_openai
 
         return transcribe_openai(
-            image_path=job.image_path, system=system, user_text=user_text, settings=s
+            image_path=job.image_path,
+            system=system,
+            user_text=user_text,
+            model=mo,
+            settings=s,
         )
     if provider == "gemini":
         from transcriber_shell.llm.adapters.gemini import transcribe_gemini
 
         return transcribe_gemini(
-            image_path=job.image_path, system=system, user_text=user_text, settings=s
+            image_path=job.image_path,
+            system=system,
+            user_text=user_text,
+            model=mo,
+            settings=s,
         )
     raise ValueError(f"unknown provider: {job.provider}")
 

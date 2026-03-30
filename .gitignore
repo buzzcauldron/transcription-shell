@@ -8,6 +8,7 @@ dist/
 build/
 *.egg-info/
 .env
+.env.docker
 output/
 artifacts/
 playwright-report/

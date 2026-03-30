@@ -12,6 +12,7 @@ def transcribe_gemini(
     image_path: Path,
     system: str,
     user_text: str,
+    model: str | None = None,
     settings: Settings | None = None,
 ) -> str:
     try:
@@ -32,8 +33,9 @@ def transcribe_gemini(
     else:
         mime = "image/jpeg"
 
-    model = genai.GenerativeModel(s.gemini_model, system_instruction=system)
-    r = model.generate_content(
+    model_id = model or s.resolved_model("gemini")
+    gen_model = genai.GenerativeModel(model_id, system_instruction=system)
+    r = gen_model.generate_content(
         [
             {"mime_type": mime, "data": raw},
             user_text,

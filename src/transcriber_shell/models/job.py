@@ -15,6 +15,8 @@ class TranscribeJob:
     image_path: Path
     prompt_cfg: dict[str, Any]
     provider: str = "anthropic"
+    # CLI --model overrides TRANSCRIBER_SHELL_MODEL and per-provider defaults.
+    model_override: str | None = None
     line_hint: str | None = None  # e.g. "Glyph Machina reports N=12 TextLine elements"
 
 
