@@ -1,0 +1,16 @@
+# Minimal example for transcriber-shell run --prompt
+# Matches keys used by benchmark/prompt_builder.build_zones (see transcription-protocol).
+
+targetLanguage: "lat-Latn"
+targetEra: "medieval"
+eraRange: "1150-1300"
+diplomaticProfile: "strict"
+diplomaticToggles: "{}"
+normalizationMode: "diplomatic"
+languageSet: "[]"
+scriptNotesOptional: "abbreviated legal Latin; align lineRange with PageXML TextLine count"
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "efficient"
+sourcePageId: "example-folio-1r"
+protocolVersion: "1.1.0"

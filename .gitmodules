@@ -1,0 +1,3 @@
+[submodule "vendor/transcription-protocol"]
+	path = vendor/transcription-protocol
+	url = https://github.com/buzzcauldron/transcription-protocol.git
