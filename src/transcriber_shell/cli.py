@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from transcriber_shell.config import Settings
@@ -15,8 +16,24 @@ from transcriber_shell.pipeline.batch import (
     write_batch_report,
 )
 from transcriber_shell.pipeline.run import load_prompt_cfg, run_pipeline
+from transcriber_shell.xml_tools.lines_compare import compare_lines_xml, format_comparison_report
 from transcriber_shell.xml_tools.lines_validate import validate_lines_xml
 from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
+
+
+def cmd_compare_lines_xml(args: argparse.Namespace) -> int:
+    try:
+        result = compare_lines_xml(
+            args.reference,
+            args.hypothesis,
+            centroid_match_px=args.centroid_match_px,
+        )
+    except (OSError, ET.ParseError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    text = format_comparison_report(result, as_json=args.json)
+    print(text, end="")
+    return 0
 
 
 def cmd_validate_xml(args: argparse.Namespace) -> int:
@@ -52,6 +69,10 @@ def _resolve_provider(cli_provider: str | None, settings: Settings) -> str:
 
 def cmd_run(args: argparse.Namespace) -> int:
     settings = Settings()
+    if getattr(args, "lineation_backend", None):
+        settings = settings.model_copy(
+            update={"lineation_backend": args.lineation_backend}
+        )
     cfg = load_prompt_cfg(Path(args.prompt))
     provider = _resolve_provider(args.provider, settings)
     job = TranscribeJob(
@@ -87,6 +108,10 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_batch(args: argparse.Namespace) -> int:
     settings = Settings()
+    if getattr(args, "lineation_backend", None):
+        settings = settings.model_copy(
+            update={"lineation_backend": args.lineation_backend}
+        )
     images = discover_images(args.path)
     if not images:
         print("No images found (supported: .jpg, .jpeg, .png, .webp, …)", file=sys.stderr)
@@ -150,6 +175,35 @@ def main() -> None:
     ap = argparse.ArgumentParser(prog="transcriber-shell")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
+    cmp = sub.add_parser(
+        "compare-lines-xml",
+        help="Compare hypothesis lines XML to reference (e.g. Glyph Machina = ground truth)",
+    )
+    cmp.add_argument(
+        "--reference",
+        "-r",
+        required=True,
+        help="Reference PageXML (e.g. Glyph Machina download)",
+    )
+    cmp.add_argument(
+        "--hypothesis",
+        "-y",
+        required=True,
+        help="Hypothesis PageXML (e.g. local mask / Kraken)",
+    )
+    cmp.add_argument(
+        "--centroid-match-px",
+        type=float,
+        default=120.0,
+        help="Max centroid distance to pair lines (default: 120)",
+    )
+    cmp.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON report",
+    )
+    cmp.set_defaults(func=cmd_compare_lines_xml)
+
     vx = sub.add_parser("validate-xml", help="Check PageXML / lines file (optional XSD)")
     vx.add_argument("file")
     vx.add_argument(
@@ -164,7 +218,10 @@ def main() -> None:
     vy.add_argument("file")
     vy.set_defaults(func=cmd_validate_yaml)
 
-    run = sub.add_parser("run", help="Full pipeline: Glyph Machina → LLM → validate")
+    run = sub.add_parser(
+        "run",
+        help="Full pipeline: lineation (mask / Kraken / Glyph Machina) → LLM → validate",
+    )
     run.add_argument("--job-id", required=True)
     run.add_argument("--image", required=True, help="Pre-cropped image path")
     run.add_argument(
@@ -186,7 +243,14 @@ def main() -> None:
     run.add_argument(
         "--skip-gm",
         action="store_true",
-        help="Skip browser automation; use --lines-xml from disk",
+        help="Skip automated lineation; use --lines-xml from disk",
+    )
+    run.add_argument(
+        "--lineation-backend",
+        dest="lineation_backend",
+        default=None,
+        choices=["mask", "kraken", "glyph_machina"],
+        help="Lineation source (default: env or mask). Ignored with --skip-gm.",
     )
     run.add_argument("--lines-xml", help="Existing lines XML when using --skip-gm")
     run.add_argument("--xsd", help="Optional XSD for lines XML")
@@ -218,6 +282,13 @@ def main() -> None:
     )
     batch.add_argument("--model", default=None, help="Override model id for every job")
     batch.add_argument("--skip-gm", action="store_true")
+    batch.add_argument(
+        "--lineation-backend",
+        dest="lineation_backend",
+        default=None,
+        choices=["mask", "kraken", "glyph_machina"],
+        help="Lineation source when not using --skip-gm (default: env or mask)",
+    )
     batch.add_argument(
         "--lines-xml",
         help="Single lines XML (only when batch has exactly one image)",

@@ -32,7 +32,7 @@ echo "==> pip install (api + dev + optional extras)"
 pip install -U pip
 pip install -e ".[api,gemini,xml-xsd,dev]"
 
-echo "==> Playwright Chromium (Glyph Machina automation)"
+echo "==> Playwright Chromium (optional: glyph_machina lineation backend)"
 playwright install chromium
 
 if [ ! -f .env ] && [ -f .env.example ]; then
@@ -40,6 +40,7 @@ if [ ! -f .env ] && [ -f .env.example ]; then
 fi
 
 echo "==> Done. Activate with: source .venv/bin/activate"
+echo "    Local setup guide: docs/local-setup.md"
 echo "    GUI: transcriber-shell gui"
 echo "    CLI: transcriber-shell --help   (package name; repo folder is transcription-shell)"
 echo "    Or Docker: ./docker-run.sh / ./docker-run.sh shell"

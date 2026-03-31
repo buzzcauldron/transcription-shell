@@ -31,7 +31,7 @@ Write-Host "==> pip install (api + dev + optional extras)"
 python -m pip install -U pip
 pip install -e ".[api,gemini,xml-xsd,dev]"
 
-Write-Host "==> Playwright Chromium (Glyph Machina automation)"
+Write-Host "==> Playwright Chromium (optional: glyph_machina lineation backend)"
 playwright install chromium
 
 if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
@@ -39,5 +39,6 @@ if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
 }
 
 Write-Host "==> Done. Activate with: .\.venv\Scripts\Activate.ps1"
+Write-Host "    Local setup guide: docs/local-setup.md"
 Write-Host "    GUI: transcriber-shell gui"
 Write-Host "    CLI: transcriber-shell --help"

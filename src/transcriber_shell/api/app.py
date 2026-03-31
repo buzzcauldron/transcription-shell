@@ -14,13 +14,13 @@ from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.pipeline.run import load_prompt_cfg_from_str, run_pipeline
 
 _API_DESCRIPTION = """
-**transcriber-shell** — manuscript transcription pipeline: Glyph Machina lineation → PageXML checks → LLM (Anthropic / OpenAI / Gemini) → protocol YAML validation.
+**transcriber-shell** — manuscript transcription pipeline: lineation (mask / Kraken / Glyph Machina) → PageXML checks → LLM (Anthropic / OpenAI / Gemini) → protocol YAML validation.
 
 **Interactive use:** run **`transcriber-shell gui`** for the desktop interface (recommended).
 
 **HTTP:** `POST /v1/transcribe` with multipart `prompt` (YAML/JSON string) and `files` (images). Root `/` redirects to this documentation.
 
-**Not on HTTP:** offline lines XML — use the CLI or GUI with **Skip Glyph Machina** and a lines file.
+**Not on HTTP:** offline lines XML — use the CLI or GUI with **skip automated lineation** and a lines file.
 """.strip()
 
 

@@ -48,7 +48,7 @@ def resolve_lines_xml_for_image(
     lines_xml_dir: Path | None,
     n_images: int,
 ) -> Path | None:
-    """Return path to lines XML when skip_gm; otherwise None (Glyph Machina fetches per job)."""
+    """Return path to lines XML when skip_gm; otherwise None (lineation backend fetches per job)."""
     if not skip_gm:
         return None
     if lines_xml_dir is not None:

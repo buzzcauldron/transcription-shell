@@ -85,6 +85,7 @@ class TranscriberGui:
         self._efficient_mode = tk.BooleanVar(value=False)
         self._model_custom = tk.StringVar(value="")
         self._skip_gm = tk.BooleanVar(value=False)
+        self._lineation_backend = tk.StringVar(value=self._settings.lineation_backend)
         self._status = tk.StringVar(value="Ready.")
 
         self._build_ui()
@@ -125,14 +126,14 @@ class TranscriberGui:
         ttk.Label(outer, text="Transcriber shell", style="Title.TLabel").pack(anchor=tk.W)
         ttk.Label(
             outer,
-            text="Glyph Machina lineation · PageXML gate · protocol LLM transcription",
+            text="Lineation (mask / Kraken / Glyph Machina) · PageXML gate · protocol LLM transcription",
             style="Sub.TLabel",
         ).pack(anchor=tk.W, pady=(0, 4))
         ttk.Label(
             outer,
             text=(
                 "Recommended order: add page images and prompt → pick provider and model → "
-                "if using Skip Glyph Machina, set lines XML (folder of <stem>.xml when batch) → "
+                "if skipping automated lineation, set lines XML (folder of <stem>.xml when batch) → "
                 "Run transcription, then Open artifacts folder."
             ),
             style="Muted.TLabel",
@@ -356,9 +357,27 @@ class TranscriberGui:
         am_inner.columnconfigure(0, weight=1)
         am_inner.pack(fill=tk.BOTH, expand=True)
 
+        lb_row = ttk.Frame(outer, style="Main.TFrame")
+        lb_row.pack(anchor=tk.W, pady=(8, 2))
+        ttk.Label(lb_row, text="Lineation backend", width=18, anchor=tk.W).pack(side=tk.LEFT)
+        self._lineation_combo = ttk.Combobox(
+            lb_row,
+            textvariable=self._lineation_backend,
+            values=("mask", "kraken", "glyph_machina"),
+            state="readonly",
+            width=22,
+        )
+        self._lineation_combo.pack(side=tk.LEFT)
+        ttk.Label(
+            outer,
+            text="Used when not skipping lineation (mask: configure .env; Kraken: KRAKEN_MODEL_PATH; Glyph Machina: Playwright).",
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(0, 2))
+
         skip = ttk.Checkbutton(
             outer,
-            text="Skip Glyph Machina — use existing lines XML (offline)",
+            text="Skip automated lineation — use existing lines XML (offline)",
             variable=self._skip_gm,
             command=self._toggle_skip_gm,
         )
@@ -426,6 +445,7 @@ class TranscriberGui:
         n = len(self._dedupe_sorted_images())
         skip = self._skip_gm.get()
         if not skip:
+            self._lineation_combo.configure(state="readonly")
             self._lines_entry.configure(state="disabled")
             self._lines_btn.configure(state="disabled")
             self._lines_dir_entry.configure(state="disabled")
@@ -434,6 +454,7 @@ class TranscriberGui:
             self._job_entry.configure(state="normal")
             self._job_hint.configure(text="")
             return
+        self._lineation_combo.configure(state="disabled")
         if n <= 1:
             self._lines_entry.configure(state="normal")
             self._lines_btn.configure(state="normal")
@@ -449,7 +470,7 @@ class TranscriberGui:
             self._lines_dir_entry.configure(state="normal")
             self._lines_dir_btn.configure(state="normal")
             self._lines_help.configure(
-                text="Batch + skip GM: choose Lines XML dir with one <image_stem>.xml per page."
+                text="Batch + skip lineation: choose Lines XML dir with one <image_stem>.xml per page."
             )
         if n <= 1:
             self._job_entry.configure(state="normal")
@@ -706,7 +727,7 @@ class TranscriberGui:
                 if not has_file and not has_dir:
                     messagebox.showwarning(
                         "Lines XML",
-                        "When skipping Glyph Machina with one image, choose a lines XML file "
+                        "When skipping lineation with one image, choose a lines XML file "
                         "or a folder containing <stem>.xml.",
                     )
                     return
@@ -720,7 +741,7 @@ class TranscriberGui:
                 if not lx_dir or not Path(lx_dir).is_dir():
                     messagebox.showwarning(
                         "Lines XML folder",
-                        "When skipping Glyph Machina with multiple images, choose a folder of "
+                        "When skipping lineation with multiple images, choose a folder of "
                         "<stem>.xml files (one per page).",
                     )
                     return
@@ -742,6 +763,10 @@ class TranscriberGui:
                     cfg["runMode"] = "efficient"
                 with patch.dict(os.environ, env_overrides, clear=False):
                     s = Settings()
+                    if not skip:
+                        s = s.model_copy(
+                            update={"lineation_backend": self._lineation_backend.get()}
+                        )
                     if n == 1:
                         img = images[0]
                         job = TranscribeJob(

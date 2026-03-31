@@ -1,4 +1,4 @@
-"""Orchestrate: optional Glyph Machina → XML validate → LLM transcribe → YAML validate."""
+"""Orchestrate: lineation (mask / Kraken / Glyph Machina) → XML validate → LLM → YAML validate."""
 
 from __future__ import annotations
 
@@ -7,8 +7,10 @@ from pathlib import Path
 
 import yaml
 
-from transcriber_shell.config import Settings
+from transcriber_shell.config import LineationBackend, Settings
 from transcriber_shell.glyph_machina.workflow import GlyphMachinaError, fetch_lines_xml
+from transcriber_shell.kraken_lineation import KrakenLineationError, fetch_lines_xml_kraken
+from transcriber_shell.mask_lineation import MaskLineationError, fetch_lines_xml_mask
 from transcriber_shell.llm.transcribe import run_transcribe, strip_yaml_fence
 from transcriber_shell.llm.validate_output import validate_transcript_file
 from transcriber_shell.models.job import PipelineResult, TranscribeJob
@@ -24,8 +26,11 @@ def run_pipeline(
     xsd_path: Path | None = None,
     require_text_line: bool = True,
     settings: Settings | None = None,
+    lineation_backend: LineationBackend | None = None,
 ) -> PipelineResult:
     s = settings or Settings()
+    if lineation_backend is not None:
+        s = s.model_copy(update={"lineation_backend": lineation_backend})
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -46,8 +51,14 @@ def run_pipeline(
         lines_out = lines_xml_path.resolve()
     else:
         try:
-            lines_out = fetch_lines_xml(job.image_path, job.job_id, settings=s)
-        except GlyphMachinaError as e:
+            backend = s.lineation_backend
+            if backend == "mask":
+                lines_out = fetch_lines_xml_mask(job.image_path, job.job_id, settings=s)
+            elif backend == "kraken":
+                lines_out = fetch_lines_xml_kraken(job.image_path, job.job_id, settings=s)
+            else:
+                lines_out = fetch_lines_xml(job.image_path, job.job_id, settings=s)
+        except (MaskLineationError, KrakenLineationError, GlyphMachinaError) as e:
             errors.append(str(e))
             return PipelineResult(
                 job.job_id,

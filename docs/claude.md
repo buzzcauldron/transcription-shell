@@ -1,6 +1,6 @@
 # Session context (router)
 
-**transcriber-shell** — manuscript transcription pipeline: Glyph Machina lineation, PageXML checks, LLM transcription (Anthropic / OpenAI / Gemini / Ollama), optional HTTP API and desktop GUI.
+**transcriber-shell** — manuscript transcription pipeline: lineation (mask / Kraken / Glyph Machina), PageXML checks, LLM transcription (Anthropic / OpenAI / Gemini / Ollama), optional HTTP API and desktop GUI.
 
 The **GUI** (`transcriber-shell gui`) repeats a short **recommended workflow** under the title and points here for deeper context.
 
@@ -8,6 +8,7 @@ Use this file as the **entry point** when starting a new agent session. Jump to 
 
 | Doc | When to open |
 |-----|----------------|
+| [local-setup.md](local-setup.md) | Clone, venv, `.env`, lineation backends, smoke tests, troubleshooting |
 | [architecture.md](architecture.md) | System shape, modules, data flow, how pieces connect |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Mermaid diagram of the pipeline (canonical diagram) |
 | [claude_openai_reference.md](claude_openai_reference.md) | OpenAI models, env vars, vision chat path in this repo |
