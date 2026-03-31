@@ -26,3 +26,56 @@ Data: Using stylesheets: index-F_v7nmCS.css
 [2026-03-31T14:52:05.592Z] [CANVAS] saveNow: Saving 5 nodes to folder root - statuses: [glyph-machina:no-status, xml-tools:no-status, llm:no-status, pipeline:no-status, api:no-status]
 [2026-03-31T14:52:05.595Z] [CANVAS] [FileStatusSync] File watchers disposed
 [2026-03-31T14:52:05.688Z] [EXTENSION] Blueprint workflow changed (suppressed - internal save): /Users/halxiii/Projects/transcription-shell/.tdad/workflows/root.workflow.json
+
+================================================================================
+TDAD Session Started: 2026-03-31T15:05:01.025Z
+================================================================================
+[2026-03-31T15:05:01.173Z] [EXTENSION] 🚀 TDAD extension is now ACTIVATED! Version with comprehensive logging
+[2026-03-31T15:05:01.174Z] [EXTENSION] 📁 Log file location: /Users/halxiii/Projects/transcription-shell/.tdad/logs/tdad-2026-03-31.log
+[2026-03-31T15:05:01.174Z] [EXTENSION] 📊 Workspace folders: /Users/halxiii/Projects/transcription-shell
+[2026-03-31T15:05:01.174Z] [EXTENSION] Creating WorkflowController...
+[2026-03-31T15:05:01.174Z] [EXTENSION] MVP: Using simple JSON storage (.tdad/workflows/workflow.json)
+[2026-03-31T15:05:01.174Z] [EXTENSION] TDAD Extension activated successfully
+[2026-03-31T15:05:01.174Z] [EXTENSION] Registering commands...
+[2026-03-31T15:05:01.244Z] [EXTENSION] TDAD structure already initialized
+[2026-03-31T15:05:01.244Z] [EXTENSION] Auto-opening TDAD Canvas...
+[2026-03-31T15:05:01.245Z] [CANVAS] Sprint 13: Agent Orchestrator initialized
+[2026-03-31T15:05:01.246Z] [CANVAS] [FileStatusSync] File watchers initialized
+[2026-03-31T15:05:01.246Z] [CANVAS] [FileStatusSync] Synced 0 nodes
+[2026-03-31T15:05:01.247Z] [EXTENSION] FeedbackManager: Session 60
+[2026-03-31T15:05:01.397Z] [CANVAS] WEBVIEW
+Data: Using stylesheets: index-F_v7nmCS.css
+[2026-03-31T15:05:01.398Z] [CANVAS] MVP: Canvas initialized with simple JSON storage
+[2026-03-31T15:05:02.425Z] [CANVAS] [FitView] isLoading=true, nodes.length=0, folderId=null
+[2026-03-31T15:05:02.525Z] [CANVAS] [FileStatusSync] Synced 0 nodes
+[2026-03-31T15:05:02.554Z] [CANVAS] [FitView] isLoading=false, nodes.length=5, folderId=null
+[2026-03-31T15:05:02.554Z] [CANVAS] [FitView] All nodes at (0,0)? false
+[2026-03-31T15:05:02.656Z] [CANVAS] [FitView] Calling fitView with 5 nodes
+
+================================================================================
+TDAD Session Started: 2026-03-31T15:52:34.271Z
+================================================================================
+[2026-03-31T15:52:34.610Z] [EXTENSION] 🚀 TDAD extension is now ACTIVATED! Version with comprehensive logging
+[2026-03-31T15:52:34.611Z] [EXTENSION] 📁 Log file location: /Users/halxiii/Projects/transcription-shell/.tdad/logs/tdad-2026-03-31.log
+[2026-03-31T15:52:34.611Z] [EXTENSION] 📊 Workspace folders: /Users/halxiii/Projects/transcription-shell
+[2026-03-31T15:52:34.611Z] [EXTENSION] Creating WorkflowController...
+[2026-03-31T15:52:34.611Z] [EXTENSION] MVP: Using simple JSON storage (.tdad/workflows/workflow.json)
+[2026-03-31T15:52:34.612Z] [EXTENSION] TDAD Extension activated successfully
+[2026-03-31T15:52:34.612Z] [EXTENSION] Registering commands...
+[2026-03-31T15:52:34.668Z] [EXTENSION] FeedbackManager: Session 61
+[2026-03-31T15:52:34.704Z] [EXTENSION] TDAD structure already initialized
+[2026-03-31T15:52:34.717Z] [EXTENSION] Auto-opening TDAD Canvas...
+[2026-03-31T15:52:34.719Z] [CANVAS] Sprint 13: Agent Orchestrator initialized
+[2026-03-31T15:52:34.719Z] [CANVAS] [FileStatusSync] File watchers initialized
+[2026-03-31T15:52:34.720Z] [CANVAS] [FileStatusSync] Synced 0 nodes
+[2026-03-31T15:52:35.054Z] [CANVAS] WEBVIEW
+Data: Using stylesheets: index-F_v7nmCS.css
+[2026-03-31T15:52:35.055Z] [CANVAS] MVP: Canvas initialized with simple JSON storage
+[2026-03-31T15:52:35.935Z] [CANVAS] [FitView] isLoading=true, nodes.length=0, folderId=null
+[2026-03-31T15:52:36.036Z] [CANVAS] [FileStatusSync] Synced 0 nodes
+[2026-03-31T15:52:36.073Z] [CANVAS] [FitView] isLoading=false, nodes.length=5, folderId=null
+[2026-03-31T15:52:36.074Z] [CANVAS] [FitView] All nodes at (0,0)? false
+[2026-03-31T15:52:36.175Z] [CANVAS] [FitView] Calling fitView with 5 nodes
+[2026-03-31T16:24:11.827Z] [CANVAS] saveNow: Saving 5 nodes to folder root - statuses: [glyph-machina:no-status, xml-tools:no-status, llm:no-status, pipeline:no-status, api:no-status]
+[2026-03-31T16:24:11.830Z] [CANVAS] [FileStatusSync] File watchers disposed
+[2026-03-31T16:24:11.933Z] [EXTENSION] Blueprint workflow changed (suppressed - internal save): /Users/halxiii/Projects/transcription-shell/.tdad/workflows/root.workflow.json

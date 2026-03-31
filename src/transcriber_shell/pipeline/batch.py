@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from transcriber_shell.config import Settings
+from transcriber_shell.llm.validate_output import validate_transcript_file
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.pipeline.run import run_pipeline
 
@@ -83,6 +84,7 @@ def run_batch(
     lines_xml_dir: Path | None,
     xsd_path: Path | None,
     require_text_line: bool,
+    skip_successful: bool = False,
     settings: Settings | None = None,
 ) -> list[dict[str, Any]]:
     """Run pipeline for each image; return report rows (dicts)."""
@@ -91,6 +93,23 @@ def run_batch(
     rows: list[dict[str, Any]] = []
     for image in images:
         job_id = sanitize_job_id(image.stem)
+        if skip_successful and has_successful_transcription(job_id, settings=s):
+            rows.append(
+                {
+                    "job_id": job_id,
+                    "image": str(image),
+                    "ok": True,
+                    "skipped": True,
+                    "errors": [],
+                    "warnings": ["Skipped: existing valid transcription.yaml found."],
+                    "text_line_count": 0,
+                    "lines_xml": None,
+                    "transcription_yaml": str(
+                        (s.artifacts_dir / job_id / "transcription.yaml").resolve()
+                    ),
+                }
+            )
+            continue
         lx: Path | None = None
         try:
             if skip_gm:
@@ -144,6 +163,16 @@ def run_batch(
         }
         rows.append(row)
     return rows
+
+
+def has_successful_transcription(job_id: str, *, settings: Settings | None = None) -> bool:
+    """True when artifacts/<job_id>/transcription.yaml exists and validates cleanly."""
+    s = settings or Settings()
+    p = (s.artifacts_dir / job_id / "transcription.yaml").resolve()
+    if not p.is_file() or p.stat().st_size == 0:
+        return False
+    ok, _errs, _warns = validate_transcript_file(p, settings=s)
+    return ok
 
 
 def write_batch_report(path: Path, rows: list[dict[str, Any]]) -> None:
