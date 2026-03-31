@@ -10,6 +10,7 @@ import pytest
 from PIL import Image
 
 from transcriber_shell.config import Settings
+from transcriber_shell.llm.transcribe import TranscribeResult
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.pipeline.run import run_pipeline
 
@@ -48,7 +49,7 @@ def test_run_pipeline_mask_backend_mocked(
     with (
         patch(
             "transcriber_shell.pipeline.run.run_transcribe",
-            return_value="transcriptionOutput: {}\n",
+            return_value=TranscribeResult("transcriptionOutput: {}\n", None),
         ),
         patch(
             "transcriber_shell.pipeline.run.validate_transcript_file",
@@ -90,7 +91,7 @@ def test_run_pipeline_kraken_backend_mocked(
     with (
         patch(
             "transcriber_shell.pipeline.run.run_transcribe",
-            return_value="transcriptionOutput: {}\n",
+            return_value=TranscribeResult("transcriptionOutput: {}\n", None),
         ),
         patch(
             "transcriber_shell.pipeline.run.validate_transcript_file",
@@ -127,7 +128,7 @@ def test_run_pipeline_glyph_machina_backend_mocked(
     with (
         patch(
             "transcriber_shell.pipeline.run.run_transcribe",
-            return_value="transcriptionOutput: {}\n",
+            return_value=TranscribeResult("transcriptionOutput: {}\n", None),
         ),
         patch(
             "transcriber_shell.pipeline.run.validate_transcript_file",

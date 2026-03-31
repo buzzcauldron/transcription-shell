@@ -9,6 +9,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from transcriber_shell.config import Settings
+from transcriber_shell.llm.transcribe import TranscribeResult
 
 
 def transcribe_ollama(
@@ -18,7 +19,7 @@ def transcribe_ollama(
     user_text: str,
     model: str | None = None,
     settings: Settings | None = None,
-) -> str:
+) -> TranscribeResult:
     s = settings or Settings()
     base = str(s.ollama_base_url).rstrip("/")
     model_id = model or s.resolved_model("ollama")
@@ -62,7 +63,19 @@ def transcribe_ollama(
     msg = data.get("message") or {}
     content = msg.get("content")
     if isinstance(content, str) and content.strip():
-        return content.strip()
+        text = content.strip()
+        usage: dict[str, int] | None = None
+        pe = data.get("prompt_eval_count")
+        ev = data.get("eval_count")
+        if pe is not None or ev is not None:
+            usage = {}
+            if pe is not None:
+                usage["input_tokens"] = int(pe)
+            if ev is not None:
+                usage["output_tokens"] = int(ev)
+            if pe is not None and ev is not None:
+                usage["total_tokens"] = int(pe) + int(ev)
+        return TranscribeResult(text, usage)
     raise RuntimeError(
         f"Ollama returned no assistant text (model={model_id!r}). "
         f"Response was: {data!r}. Try a vision-capable model (e.g. llava)."

@@ -38,7 +38,7 @@ After training, tune **`TRANSCRIBER_SHELL_MASK_THRESHOLD`** and **`TRANSCRIBER_S
 
    Or set **`LATIN_DOCUMENTS_ROOT`** (optional) to an existing checkout; see [`.env.example`](../.env.example).
 
-2. **Train** with **`latin_lineation_mvp`** (see its README) or your own code on `data/*.jpg` + `data/*.xml`. Outputs must match [mask-lineation-plugin.md](mask-lineation-plugin.md): **`(L, H, W)`** float masks.
+2. **Train** with **`latin_lineation_mvp`** (see its README), the convenience wrapper **`python scripts/train_local_mask_lineation.py`** (resolves `LATIN_DOCUMENTS_DATA` / `LATIN_DOCUMENTS_ROOT` like the shell script), or your own code on `data/*.jpg` + `data/*.xml`. Outputs must match [mask-lineation-plugin.md](mask-lineation-plugin.md): **`(L, H, W)`** float masks.
 
 3. **Point transcriber-shell** at **`latin_lineation_mvp.infer:predict_masks`** (or your module) and the **`.pt`** checkpoint path.
 

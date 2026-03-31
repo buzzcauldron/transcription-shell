@@ -1,5 +1,9 @@
 # Session context (router)
 
+<!-- transcriber-shell-sync:pyproject.version -->
+**Version 0.1.0** · Python 3.11+ — canonical metadata in [`pyproject.toml`](../pyproject.toml). After a pull or version bump, run `python scripts/sync_repo_docs.py`.
+<!-- transcriber-shell-sync:end:pyproject.version -->
+
 **transcriber-shell** — manuscript transcription pipeline: lineation (mask / Kraken / Glyph Machina), PageXML checks, LLM transcription (Anthropic / OpenAI / Gemini / Ollama), optional HTTP API and desktop GUI.
 
 The **GUI** (`transcriber-shell gui`) repeats a short **recommended workflow** under the title and points here for deeper context.
@@ -9,6 +13,8 @@ Use this file as the **entry point** when starting a new agent session. Jump to 
 | Doc | When to open |
 |-----|----------------|
 | [local-setup.md](local-setup.md) | Clone, venv, `.env`, lineation backends, smoke tests, troubleshooting |
+| [recovery-batch.md](recovery-batch.md) | After a failed batch: fix keys, `--skip-gm` + lines XML, retry GM only for failed pages |
+| [gui-cleanup-and-rerun.md](gui-cleanup-and-rerun.md) | Delete `artifacts/` outputs in Finder, adjust skip-successful, rerun Transcribe in the GUI |
 | [architecture.md](architecture.md) | Pipeline **Mermaid** diagram + prose: stages, surfaces (CLI / GUI / API), links to code |
 | [claude_openai_reference.md](claude_openai_reference.md) | OpenAI models, env vars, vision chat path in this repo |
 | [claude_anthropic_reference.md](claude_anthropic_reference.md) | Anthropic (Claude) env vars, streaming adapter, timeouts/retries, common failures |

@@ -8,10 +8,17 @@ import re
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from transcriber_shell.config import Settings
-from transcriber_shell.llm.validate_output import validate_transcript_file
+from transcriber_shell.llm.validate_output import (
+    load_transcription_root,
+    load_yaml_or_json_path,
+    validate_transcript_file,
+)
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.pipeline.run import run_pipeline
+from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path
 
 IMAGE_SUFFIXES = frozenset(
     {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
@@ -39,6 +46,19 @@ def discover_images(path_or_glob: str) -> list[Path]:
         ]
         return sorted(out)
     return []
+
+
+def transcription_segment_count(path: Path) -> int:
+    """Best-effort count of protocol ``segments`` in an existing transcription YAML/JSON file."""
+    try:
+        data = load_yaml_or_json_path(path)
+    except (OSError, ValueError, yaml.YAMLError):
+        return 0
+    root = load_transcription_root(data)
+    if not isinstance(root, dict):
+        return 0
+    segs = root.get("segments")
+    return len(segs) if isinstance(segs, list) else 0
 
 
 def resolve_lines_xml_for_image(
@@ -84,6 +104,7 @@ def run_batch(
     lines_xml_dir: Path | None,
     xsd_path: Path | None,
     require_text_line: bool,
+    skip_lines_xml_validation: bool = False,
     skip_successful: bool = False,
     settings: Settings | None = None,
 ) -> list[dict[str, Any]]:
@@ -93,7 +114,11 @@ def run_batch(
     rows: list[dict[str, Any]] = []
     for image in images:
         job_id = sanitize_job_id(image.stem)
-        if skip_successful and has_successful_transcription(job_id, settings=s):
+        if skip_successful and has_successful_transcription(
+            job_id, image, settings=s
+        ):
+            ty_path = transcription_yaml_path(s.artifacts_dir, job_id, image)
+            seg_n = transcription_segment_count(ty_path)
             rows.append(
                 {
                     "job_id": job_id,
@@ -101,12 +126,15 @@ def run_batch(
                     "ok": True,
                     "skipped": True,
                     "errors": [],
-                    "warnings": ["Skipped: existing valid transcription.yaml found."],
-                    "text_line_count": 0,
+                    "warnings": [
+                        "Skipped: existing valid transcription file "
+                        f"({image.stem}_transcription.yaml) found."
+                    ],
+                    # PageXML TextLine count was not recomputed; GUI/CLI show segment count separately.
+                    "text_line_count": None,
+                    "transcription_segment_count": seg_n,
                     "lines_xml": None,
-                    "transcription_yaml": str(
-                        (s.artifacts_dir / job_id / "transcription.yaml").resolve()
-                    ),
+                    "transcription_yaml": str(ty_path.resolve()),
                 }
             )
             continue
@@ -147,6 +175,7 @@ def run_batch(
             lines_xml_path=lx,
             xsd_path=xsd_path,
             require_text_line=require_text_line,
+            skip_lines_xml_validation=skip_lines_xml_validation,
             settings=s,
         )
         row: dict[str, Any] = {
@@ -160,15 +189,21 @@ def run_batch(
             "transcription_yaml": str(res.transcription_yaml_path)
             if res.transcription_yaml_path
             else None,
+            "llm_usage": res.llm_usage,
         }
         rows.append(row)
     return rows
 
 
-def has_successful_transcription(job_id: str, *, settings: Settings | None = None) -> bool:
-    """True when artifacts/<job_id>/transcription.yaml exists and validates cleanly."""
+def has_successful_transcription(
+    job_id: str,
+    image_path: Path,
+    *,
+    settings: Settings | None = None,
+) -> bool:
+    """True when artifacts/<job_id>/<image_stem>_transcription.yaml exists and validates cleanly."""
     s = settings or Settings()
-    p = (s.artifacts_dir / job_id / "transcription.yaml").resolve()
+    p = transcription_yaml_path(s.artifacts_dir, job_id, image_path)
     if not p.is_file() or p.stat().st_size == 0:
         return False
     ok, _errs, _warns = validate_transcript_file(p, settings=s)

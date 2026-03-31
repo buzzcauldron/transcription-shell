@@ -11,7 +11,7 @@ flowchart TD
   D --> E
   E --> F{Optional PAGE XSD}
   F --> G[LLM transcription]
-  G --> H[transcription.yaml]
+  G --> H[<image_stem>_transcription.yaml]
   H --> I[Protocol YAML validation]
   I --> J[artifacts / job_id /]
 ```

@@ -10,6 +10,7 @@ import anthropic
 from transcriber_shell.config import Settings
 from transcriber_shell.llm.adapters import anthropic as anthropic_adapter
 from transcriber_shell.llm.errors import LLMProviderError
+from transcriber_shell.llm.transcribe import TranscribeResult
 
 _PATCH_ANTHROPIC_CLIENT = "transcriber_shell.llm.adapters.anthropic.anthropic.Anthropic"
 
@@ -27,6 +28,12 @@ def test_transcribe_success(tmp_path: Path) -> None:
     img.write_bytes(b"\x89PNG\r\n\x1a\n")
     stream_obj = MagicMock()
     stream_obj.get_final_text.return_value = "yaml: ok"
+    _u = MagicMock()
+    _u.input_tokens = 1
+    _u.output_tokens = 1
+    _fm = MagicMock()
+    _fm.usage = _u
+    stream_obj.get_final_message.return_value = _fm
     cm = MagicMock()
     cm.__enter__.return_value = stream_obj
     cm.__exit__.return_value = None
@@ -39,7 +46,9 @@ def test_transcribe_success(tmp_path: Path) -> None:
             user_text="user",
             settings=Settings(anthropic_api_key="sk-test", anthropic_max_retries=0),
         )
-    assert out == "yaml: ok"
+    assert isinstance(out, TranscribeResult)
+    assert out.text == "yaml: ok"
+    assert out.usage == {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
     client_inst.messages.stream.assert_called_once()
 
 
@@ -67,6 +76,12 @@ def test_rate_limit_retries_then_succeeds(tmp_path: Path) -> None:
     img.write_bytes(b"\x89PNG\r\n\x1a\n")
     stream_ok = MagicMock()
     stream_ok.get_final_text.return_value = "ok"
+    _u = MagicMock()
+    _u.input_tokens = 1
+    _u.output_tokens = 1
+    _fm = MagicMock()
+    _fm.usage = _u
+    stream_ok.get_final_message.return_value = _fm
     cm_ok = MagicMock()
     cm_ok.__enter__.return_value = stream_ok
     cm_ok.__exit__.return_value = None
@@ -91,7 +106,8 @@ def test_rate_limit_retries_then_succeeds(tmp_path: Path) -> None:
                     anthropic_max_retries=2,
                 ),
             )
-    assert out == "ok"
+    assert isinstance(out, TranscribeResult)
+    assert out.text == "ok"
     assert MockCl.return_value.messages.stream.call_count == 2
 
 

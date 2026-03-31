@@ -28,3 +28,5 @@ class PipelineResult:
     text_line_count: int
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # Populated when the LLM step runs; keys may include input_tokens, output_tokens, total_tokens.
+    llm_usage: dict[str, int] | None = None

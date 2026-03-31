@@ -86,7 +86,9 @@ def load_pred_masks(
     else:
         raise MaskLineationError(
             "mask lineation requires TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE "
-            "and/or TRANSCRIBER_SHELL_MASK_PRED_NPY_PATH"
+            "and/or TRANSCRIBER_SHELL_MASK_PRED_NPY_PATH (see docs/mask-lineation-plugin.md). "
+            "For browser lineation without masks, set TRANSCRIBER_SHELL_LINEATION_BACKEND=glyph_machina "
+            "(default) or kraken with TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH."
         )
 
     pred = np.asarray(pred)

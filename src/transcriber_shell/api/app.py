@@ -215,6 +215,7 @@ def create_app(settings: Settings | None = None) -> Any:
                 "transcription_yaml_path": str(res.transcription_yaml_path)
                 if res.transcription_yaml_path
                 else None,
+                "llm_usage": res.llm_usage,
             }
             if inline_yaml and res.transcription_yaml_path and res.transcription_yaml_path.is_file():
                 item["transcription_yaml"] = res.transcription_yaml_path.read_text(encoding="utf-8")

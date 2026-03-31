@@ -1,8 +1,12 @@
 # transcription-shell
 
+<!-- transcriber-shell-sync:pyproject.version -->
+**Version 0.1.0** · Python 3.11+ — canonical metadata in [`pyproject.toml`](pyproject.toml). After a pull or version bump, run `python scripts/sync_repo_docs.py`.
+<!-- transcriber-shell-sync:end:pyproject.version -->
+
 **Python 3.11+** package **`transcriber-shell`** (`transcriber_shell`), built with **[Hatchling](https://hatch.pypa.io/)** from [`pyproject.toml`](pyproject.toml). Install from a **git checkout** using the **installer scripts** ([`scripts/install-local.sh`](scripts/install-local.sh) / [`scripts/install-local.ps1`](scripts/install-local.ps1)), **manual venv + pip**, or **Docker** — see [Installation](#installation) and [PACKAGING.md](PACKAGING.md).
 
-**Simple mental model:** pre-cropped image → **lines XML** (default: Glyph Machina in the browser) → **LLM** with a protocol prompt → **`transcription.yaml`**. Start with **`transcriber-shell gui`** or **`transcriber-shell run --job-id … --image … --prompt …`**. Optional pieces (mask/Kraken, HTTP API, batch, extra validators) are documented in **[docs/simple-workflow.md](docs/simple-workflow.md)**; details below are for reference.
+**Simple mental model:** pre-cropped image → **lines XML** (default: Glyph Machina in the browser) → **LLM** with a protocol prompt → **`<image_stem>_transcription.yaml`** (e.g. `page_transcription.yaml` for `page.jpg`). Start with **`transcriber-shell gui`** or **`transcriber-shell run --job-id … --image … --prompt …`**. Optional pieces (mask/Kraken, HTTP API, batch, extra validators) are documented in **[docs/simple-workflow.md](docs/simple-workflow.md)**; details below are for reference.
 
 Pipeline glue for **manuscript transcription** that combines:
 
@@ -10,7 +14,7 @@ Pipeline glue for **manuscript transcription** that combines:
    - **`glyph_machina` (default)** — **[Glyph Machina](https://glyphmachina.com/)** in the browser (Playwright). See [docs/glyph-machina-automation.md](docs/glyph-machina-automation.md).
    - **`mask`** — per-line masks → PageXML baselines (`TextLine` / `Baseline`). Supply **`TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE`** (`pkg.mod:function`) and/or **`TRANSCRIBER_SHELL_MASK_PRED_NPY_PATH`** (path with `{stem}` / `{job_id}`). Lineation methods and training context align with **[ideasrule/latin_documents](https://github.com/ideasrule/latin_documents)** (credit also in generated XML metadata).
    - **`kraken`** — local **[Kraken](https://github.com/mittagessen/kraken)** BLLA + PageXML (`pip install 'transcriber-shell[kraken]'`, set **`TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH`**).
-2. **XML checks** — well-formed XML + `TextLine` counts; optional **XSD** validation with `lxml` (`pip install 'transcriber-shell[xml-xsd]'`).
+2. **XML checks** — well-formed XML + `TextLine` counts; optional **XSD** validation with `lxml` (`pip install 'transcriber-shell[xml-xsd]'`). What **`text_line_count`** in CLI/GUI logs means (and why it differs across jobs): **[docs/log-lines-xml-text-line-count.md](docs/log-lines-xml-text-line-count.md)**.
 3. **LLM APIs** (Anthropic / OpenAI / optional Gemini) using prompts from the **[Academic Handwriting Transcription Protocol](https://github.com/buzzcauldron/transcription-protocol)**.
 4. **YAML validation** via vendored `validate_schema.py` from that protocol.
 
@@ -184,12 +188,12 @@ Continuous integration runs the same suite on Python 3.11 and 3.12 (see `.github
 - `pyproject.toml` — Python project metadata and extras (Hatchling build backend)
 - `src/transcriber_shell/` — Python package (installs as `transcriber-shell` on PyPI); `gui.py` — desktop UI
 - `vendor/transcription-protocol/` — git submodule (protocol specs + validators)
-- `artifacts/<job_id>/` — lines XML and `transcription.yaml` outputs
+- `artifacts/<job_id>/` — lines XML and `<image_stem>_transcription.yaml` outputs
 - `Dockerfile`, `docker-compose.yml`, `docker-run.sh`, `build-docker.sh` — container install (see [README-DOCKER.md](README-DOCKER.md))
 - `docker/entrypoint.sh` — editable install when `/workspace` is mounted
 - `scripts/install-local.sh`, `scripts/install-local.ps1` — local venv installers (Unix / Windows)
-- `VERSION` — Docker image tag (keep aligned with `pyproject.toml` version)
+- `VERSION` — Docker image tag; keep in sync with `pyproject.toml` via `python scripts/sync_repo_docs.py` (updates markdown too) or `python scripts/check_version.py --sync` (VERSION only)
 
 ## License
 
-MIT — see [LICENSE](LICENSE). The Academic Transcription Protocol remains under its own license in the submodule.
+**CC BY 4.0** (Creative Commons Attribution 4.0 International) — see [LICENSE](LICENSE). The Academic Transcription Protocol remains under its own license in the submodule.
