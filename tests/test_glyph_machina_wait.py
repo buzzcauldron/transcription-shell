@@ -8,6 +8,7 @@ import pytest
 
 from transcriber_shell.glyph_machina.workflow import (
     GlyphMachinaError,
+    _is_retryable_gm_error,
     _wait_for_download_control,
 )
 
@@ -30,6 +31,18 @@ def test_wait_for_download_control_hidden_enabled_after_grace() -> None:
     loc.is_visible.return_value = False
 
     _wait_for_download_control(page, loc, timeout_ms=5000, hidden_grace_s=0.02)
+
+
+def test_is_retryable_gm_error() -> None:
+    assert _is_retryable_gm_error(
+        GlyphMachinaError("Glyph Machina UI timed out after 600000 ms (x)")
+    )
+    assert _is_retryable_gm_error(
+        GlyphMachinaError("download control (#downloadLinesBtn) did not become ready in time")
+    )
+    assert not _is_retryable_gm_error(
+        GlyphMachinaError("Glyph Machina download saved nothing usable at /tmp/x")
+    )
 
 
 def test_wait_for_download_control_timeout() -> None:

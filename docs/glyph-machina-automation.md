@@ -20,8 +20,9 @@
 ### When live automation fails (timeouts / hidden download button)
 
 - The site is a **SPA**: `#downloadLinesBtn` may exist in the DOM **before** line detection finishes (still **disabled**), or stay **CSS-hidden** while enabled. The workflow waits for **enabled**, then either **visible** or a short **grace period** for hidden-but-ready, then **`click(force=True)`** to start the download.
-- **`TRANSCRIBER_SHELL_GM_POST_IDENTIFY_WAIT_MS`** (default `2000`): extra pause after **Identify Lines** so processing can start before we attach to the download control. Increase for large or slow images (e.g. `8000`).
-- **`TRANSCRIBER_SHELL_GM_TIMEOUT_MS`**: overall Playwright timeouts for navigation and the download step.
+- **`TRANSCRIBER_SHELL_GM_POST_IDENTIFY_WAIT_MS`** (default `15000`): extra pause after **Identify Lines** so processing can start before we attach to the download control.
+- **`TRANSCRIBER_SHELL_GM_TIMEOUT_MS`** (default `600000`): Playwright timeouts for navigation, waits, and download (10 minutes).
+- On **timeout-style** failures, the pipeline **retries once** automatically after a short pause (transient SPA/network slowness).
 - **`TRANSCRIBER_SHELL_GM_HEADLESS=false`**: some flows behave better in a visible browser; use a **persistent profile** if the site expects a session.
 
 ## Pre-cropped images

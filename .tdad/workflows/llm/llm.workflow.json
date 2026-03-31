@@ -27,7 +27,7 @@
       "id": "persist-transcription-yaml-artifact",
       "workflowId": "llm",
       "title": "Persist transcription YAML artifact",
-      "description": "strip_yaml_fence; write artifacts/<job_id>/transcription.yaml; optional yaml.safe_load safe_dump. Failure: invalid YAML content adds error string.",
+      "description": "strip_yaml_fence; write artifacts/<job_id>/<image_stem>_transcription.yaml; optional yaml.safe_load safe_dump. Failure: invalid YAML content adds error string.",
       "nodeType": "feature",
       "fileName": "persist-transcription-yaml-artifact",
       "position": { "x": 100, "y": 380 },

@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Lineation (mask / Kraken / Glyph Machina) + PageXML checks + LLM transcription against the Academic Transcription Protocol"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = "CC-BY-4.0"
 authors = [{ name = "transcriber-shell contributors" }]
 dependencies = [
   "pydantic>=2.0",

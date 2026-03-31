@@ -41,6 +41,11 @@ _POSITION_ALIASES: dict[str, str] = {
     "marginalia_bottom": "margin_bottom",
     "marginalia": "margin_left",
     "margin": "margin_left",
+    # Models sometimes invent labels outside OUTPUT_SCHEMA; map to closest protocol bucket.
+    "title": "header",
+    "subtitle": "header",
+    "attestation_block": "footer",
+    "attestation": "footer",
 }
 _VALID_PROTOCOL_VERSIONS = frozenset({"1.0.0", "1.1.0", "v1.0", "v1.1"})
 _DEFAULT_PROTOCOL_VERSION = "1.1.0"

@@ -34,6 +34,9 @@ jobs:
       - name: Check VERSION matches pyproject.toml
         run: python scripts/check_version.py
 
+      - name: Check synced markdown + VERSION vs pyproject.toml
+        run: python scripts/sync_repo_docs.py --check
+
       - name: Install package and test deps
         run: |
           python -m pip install --upgrade pip

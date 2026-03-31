@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import NamedTuple
 
 from transcriber_shell.config import Settings
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.protocol_paths import ensure_prompt_builder_on_path
 
 
-def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> str:
+class TranscribeResult(NamedTuple):
+    """LLM response text and optional token usage (provider-dependent)."""
+
+    text: str
+    usage: dict[str, int] | None
+
+
+def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> TranscribeResult:
     ensure_prompt_builder_on_path(settings)
     from prompt_builder import build_zones
 

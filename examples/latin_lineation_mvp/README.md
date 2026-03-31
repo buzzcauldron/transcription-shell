@@ -13,7 +13,14 @@ Requires **PyTorch** (CPU or CUDA).
 
 ## Train
 
-Clone [ideasrule/latin_documents](https://github.com/ideasrule/latin_documents) (`data/` with paired `.jpg` + `.xml`), then:
+Clone [ideasrule/latin_documents](https://github.com/ideasrule/latin_documents) (`data/` with paired `.jpg` + `.xml`), then either call **`latin-lineation-train`** directly or use the repo wrapper from the **transcription-shell** root (resolves `LATIN_DOCUMENTS_DATA` / `LATIN_DOCUMENTS_ROOT`):
+
+```bash
+cd /path/to/transcription-shell
+python scripts/train_local_mask_lineation.py --epochs 30 --out ./line_mask_unet.pt --device cuda
+```
+
+Equivalent explicit data dir:
 
 ```bash
 latin-lineation-train --data-dir /path/to/latin_documents/data --epochs 30 --out ./line_mask_unet.pt --device cuda

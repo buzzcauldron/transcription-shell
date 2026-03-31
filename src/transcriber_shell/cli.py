@@ -12,10 +12,12 @@ from transcriber_shell.llm.validate_output import validate_transcript_file
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.pipeline.batch import (
     discover_images,
+    has_successful_transcription,
     run_batch,
     write_batch_report,
 )
 from transcriber_shell.pipeline.run import load_prompt_cfg, run_pipeline
+from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path
 from transcriber_shell.xml_tools.lines_compare import compare_lines_xml, format_comparison_report
 from transcriber_shell.xml_tools.lines_validate import validate_lines_xml
 from transcriber_shell.xml_tools.validate_gt_pagexml import validate_gt_pagexml
@@ -101,6 +103,13 @@ def _require_text_line_from_cli(args: argparse.Namespace, settings: Settings) ->
     return settings.xml_require_text_line
 
 
+def _skip_lines_xml_validation_from_cli(args: argparse.Namespace, settings: Settings) -> bool:
+    """--skip-lines-xml-validation forces True; else use settings.skip_lines_xml_validation."""
+    if getattr(args, "skip_lines_xml_validation", False):
+        return True
+    return settings.skip_lines_xml_validation
+
+
 def _pipeline_settings(args: argparse.Namespace) -> Settings:
     """Apply optional CLI overrides for LLM proxy and Glyph Machina browser profile."""
     s = Settings()
@@ -112,6 +121,8 @@ def _pipeline_settings(args: argparse.Namespace) -> Settings:
         updates["gm_persistent_profile"] = True
     if getattr(args, "gm_user_data_dir", None):
         updates["gm_user_data_dir"] = Path(args.gm_user_data_dir).expanduser()
+    if getattr(args, "continue_on_lineation_failure", False):
+        updates["continue_on_lineation_failure"] = True
     if updates:
         return s.model_copy(update=updates)
     return s
@@ -152,6 +163,17 @@ def cmd_run(args: argparse.Namespace) -> int:
         provider=provider,
         model_override=args.model,
     )
+    if args.skip_successful and has_successful_transcription(
+        job.job_id, job.image_path, settings=settings
+    ):
+        out = transcription_yaml_path(
+            settings.artifacts_dir, job.job_id, job.image_path
+        )
+        print(
+            f"skipped job_id={job.job_id} reason=existing_valid_transcription "
+            f"path={out}"
+        )
+        return 0
     lines_xml = _expand_resolve_cli_path(args.lines_xml)
     xsd = _resolve_xsd_path(args.xsd, settings)
     res = run_pipeline(
@@ -160,6 +182,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         lines_xml_path=lines_xml,
         xsd_path=xsd,
         require_text_line=_require_text_line_from_cli(args, settings),
+        skip_lines_xml_validation=_skip_lines_xml_validation_from_cli(args, settings),
         settings=settings,
     )
     for w in res.warnings:
@@ -201,6 +224,8 @@ def cmd_batch(args: argparse.Namespace) -> int:
         lines_xml_dir=lines_xml_dir,
         xsd_path=xsd,
         require_text_line=_require_text_line_from_cli(args, settings),
+        skip_lines_xml_validation=_skip_lines_xml_validation_from_cli(args, settings),
+        skip_successful=args.skip_successful,
         settings=settings,
     )
     if args.batch_report:
@@ -347,6 +372,24 @@ def main() -> None:
         action="store_true",
         help="Do not fail XML step when TextLine count is 0",
     )
+    run.add_argument(
+        "--skip-successful",
+        action="store_true",
+        help="Skip run when artifacts/<job_id>/<image_stem>_transcription.yaml already validates",
+    )
+    run.add_argument(
+        "--skip-lines-xml-validation",
+        action="store_true",
+        help="Skip lines XML checks and optional PAGE XSD; still run LLM (env: TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION)",
+    )
+    run.add_argument(
+        "--continue-on-lineation-failure",
+        action="store_true",
+        help=(
+            "If automated lineation fails, continue to LLM without lines XML "
+            "(env: TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE)"
+        ),
+    )
     _add_pipeline_network_args(run)
     run.set_defaults(func=cmd_run)
 
@@ -391,6 +434,24 @@ def main() -> None:
         help="Optional XSD for lines XML (overrides TRANSCRIBER_SHELL_LINES_XML_XSD if set)",
     )
     batch.add_argument("--no-require-text-line", action="store_true")
+    batch.add_argument(
+        "--skip-successful",
+        action="store_true",
+        help="Skip images with existing valid artifacts/<job_id>/<image_stem>_transcription.yaml",
+    )
+    batch.add_argument(
+        "--skip-lines-xml-validation",
+        action="store_true",
+        help="Skip lines XML checks and optional PAGE XSD; still run LLM (env: TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION)",
+    )
+    batch.add_argument(
+        "--continue-on-lineation-failure",
+        action="store_true",
+        help=(
+            "If automated lineation fails, continue to LLM without lines XML "
+            "(env: TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE)"
+        ),
+    )
     batch.add_argument(
         "--batch-report",
         metavar="PATH",

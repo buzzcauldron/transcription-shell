@@ -23,6 +23,8 @@ Or clone once with: `git clone --recurse-submodules <url>`.
 
 If `vendor/transcription-protocol/benchmark/validate_schema.py` is missing, `validate-yaml` and the full pipeline will fail until the submodule is initialized.
 
+After **`git pull`**, if [`pyproject.toml`](../pyproject.toml) gained a new `[project].version`, run **`python scripts/sync_repo_docs.py`** so the repo [`VERSION`](../VERSION) file and version blurbs in `README.md`, `PACKAGING.md`, and [`claude.md`](claude.md) stay aligned (CI enforces this).
+
 ### Optional: latin_documents training data
 
 Line-segmentation **training** uses external datasets (this app only **loads** trained weights). To use **[ideasrule/latin_documents `data/`](https://github.com/ideasrule/latin_documents/tree/master/data)** (paired images + PageXML), run `./scripts/clone-latin-documents.sh` and read **[latin-documents-training-data.md](latin-documents-training-data.md)**.
@@ -146,7 +148,8 @@ For a reproducible environment without managing Playwright/GPU on the host: **[R
 | Mask: “requires … INFERENCE_CALLABLE” | Set `MASK_INFERENCE_CALLABLE` and install the plugin, or set `MASK_PRED_NPY_PATH` |
 | Kraken import error | `pip install -e ".[kraken]"` |
 | Glyph Machina timeout / UI failure | `TRANSCRIBER_SHELL_GM_TIMEOUT_MS`, network, site availability; try `--lineation-backend` alternatives |
-| Transcription fails with auth errors | Keys in `.env` or use Ollama |
+| Transcription fails with auth errors | Keys in `.env` or use Ollama; run `python scripts/check_anthropic_key.py` for Anthropic |
+| Mixed batch failures (some XML ok, some GM timeout, LLM auth) | [recovery-batch.md](recovery-batch.md) |
 | Playwright / Chromium missing | `playwright install chromium` |
 | GUI drag-and-drop missing / “Install tkinterdnd2…” | `pip install tkinterdnd2` or reinstall the project; use the same interpreter as `pip` (`python -m pip install -e .`). On Linux, install **tkinter** (`python3-tk`) if `import tkinter` fails |
 

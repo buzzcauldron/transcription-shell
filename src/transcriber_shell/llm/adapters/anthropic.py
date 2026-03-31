@@ -13,6 +13,7 @@ from anthropic._exceptions import OverloadedError, ServiceUnavailableError
 from transcriber_shell.config import Settings
 from transcriber_shell.llm.errors import LLMProviderError
 from transcriber_shell.llm.http_client import llm_httpx_client
+from transcriber_shell.llm.transcribe import TranscribeResult
 
 # Not exported from anthropic package root in some versions; subclass of APIStatusError.
 _RETRYABLE_STATUS = frozenset({429, 503, 529})
@@ -154,6 +155,24 @@ def _sleep_backoff(attempt: int) -> None:
     time.sleep(base + random.uniform(0.0, 1.0))
 
 
+def _usage_from_anthropic_message(msg: object) -> dict[str, int] | None:
+    u = getattr(msg, "usage", None)
+    if u is None:
+        return None
+    inp = getattr(u, "input_tokens", None)
+    out = getattr(u, "output_tokens", None)
+    if inp is None and out is None:
+        return None
+    d: dict[str, int] = {}
+    if inp is not None:
+        d["input_tokens"] = int(inp)
+    if out is not None:
+        d["output_tokens"] = int(out)
+    if inp is not None and out is not None:
+        d["total_tokens"] = int(inp) + int(out)
+    return d or None
+
+
 def transcribe_anthropic(
     *,
     image_path: Path,
@@ -161,7 +180,7 @@ def transcribe_anthropic(
     user_text: str,
     model: str | None = None,
     settings: Settings | None = None,
-) -> str:
+) -> TranscribeResult:
     s = settings or Settings()
     if not s.anthropic_api_key:
         raise RuntimeError(
@@ -191,7 +210,9 @@ def transcribe_anthropic(
                 system=system,
                 messages=[user_message],
             ) as stream:
-                return stream.get_final_text()
+                text = stream.get_final_text()
+                usage = _usage_from_anthropic_message(stream.get_final_message())
+                return TranscribeResult(text, usage)
         except anthropic.APITimeoutError as e:
             raise LLMProviderError(_format_anthropic_error(e)) from e
         except anthropic.APIConnectionError as e:

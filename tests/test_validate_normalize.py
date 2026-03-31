@@ -26,6 +26,12 @@ def test_normalize_marginalia_aliases() -> None:
     assert _normalize_position_value("margin") == "margin_left"
 
 
+def test_normalize_title_and_attestation_aliases() -> None:
+    assert _normalize_position_value("title") == "header"
+    assert _normalize_position_value("attestation_block") == "footer"
+    assert _normalize_position_value("Attestation_Block") == "footer"
+
+
 def test_normalize_transcription_yaml_data_mutates_segments() -> None:
     data = {
         "transcriptionOutput": {
