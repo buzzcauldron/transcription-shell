@@ -96,6 +96,9 @@ GPU (CUDA): set `MASK_DEVICE` or `KRAKEN_DEVICE` to `cuda:0` when your stack sup
 source .venv/bin/activate
 pytest
 transcriber-shell validate-xml path/to/lines.xml --require-text-line
+
+# Human PAGE ground truth vs image (dimensions + baselines)
+# transcriber-shell validate-gt-pagexml path/to/page.xml path/to/page.png
 ```
 
 Artifacts default to **`artifacts/<job_id>/`** (`TRANSCRIBER_SHELL_ARTIFACTS_DIR`).

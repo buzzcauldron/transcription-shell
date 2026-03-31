@@ -35,7 +35,14 @@ transcriber-shell = "transcriber_shell.cli:main"
 transcriber-shell-gui = "transcriber_shell.gui:main"
 
 [tool.hatch.build.targets.sdist]
-include = ["src/transcriber_shell", "README.md", "LICENSE", "docs"]
+include = [
+  "src/transcriber_shell",
+  "README.md",
+  "LICENSE",
+  "docs",
+  "ground_truth",
+  "fixtures",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

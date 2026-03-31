@@ -16,6 +16,8 @@ Downstream **baseline → rectified line image** tooling from the same research 
 
 To **train** a mask model on that project’s public page data (`data/` — paired `.jpg` + PageXML), use the optional **[examples/latin_lineation_mvp](examples/latin_lineation_mvp/README.md)** package (`latin-lineation-train`, then `latin_lineation_mvp.infer:predict_masks`), or see **[docs/latin-documents-training-data.md](docs/latin-documents-training-data.md)** and **`scripts/clone-latin-documents.sh`**. **`scripts/benchmark_gm_parity.py`** scores local `lines.xml` against a Glyph Machina reference.
 
+**Human ground truth** (PAGE XML comparable to GM for metrics): **[docs/ground-truth-human-annotation.md](docs/ground-truth-human-annotation.md)**, calibration workflow **[docs/ground-truth-calibration.md](docs/ground-truth-calibration.md)**, folder layout **[ground_truth/README.md](ground_truth/README.md)**. Validate with **`transcriber-shell validate-gt-pagexml page.xml page.png`**.
+
 ## Installation
 
 Pick one path; all assume a clone of this repository.

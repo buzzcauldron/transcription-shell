@@ -18,6 +18,7 @@ from transcriber_shell.pipeline.batch import (
 from transcriber_shell.pipeline.run import load_prompt_cfg, run_pipeline
 from transcriber_shell.xml_tools.lines_compare import compare_lines_xml, format_comparison_report
 from transcriber_shell.xml_tools.lines_validate import validate_lines_xml
+from transcriber_shell.xml_tools.validate_gt_pagexml import validate_gt_pagexml
 from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
 
 
@@ -34,6 +35,16 @@ def cmd_compare_lines_xml(args: argparse.Namespace) -> int:
     text = format_comparison_report(result, as_json=args.json)
     print(text, end="")
     return 0
+
+
+def cmd_validate_gt_pagexml_cli(args: argparse.Namespace) -> int:
+    ok, lines = validate_gt_pagexml(args.xml, args.image)
+    for line in lines:
+        if line.startswith("error:"):
+            print(line, file=sys.stderr)
+        else:
+            print(line)
+    return 0 if ok else 1
 
 
 def cmd_validate_xml(args: argparse.Namespace) -> int:
@@ -213,6 +224,14 @@ def main() -> None:
     )
     vx.add_argument("--xsd", metavar="PATH", help="Optional PAGE XML XSD path (needs lxml)")
     vx.set_defaults(func=cmd_validate_xml)
+
+    vg = sub.add_parser(
+        "validate-gt-pagexml",
+        help="Validate human PAGE XML vs image size and baselines (ground truth QA)",
+    )
+    vg.add_argument("xml", type=Path, help="PAGE XML file")
+    vg.add_argument("image", type=Path, help="Matching image file")
+    vg.set_defaults(func=cmd_validate_gt_pagexml_cli)
 
     vy = sub.add_parser("validate-yaml", help="Validate transcriptionOutput YAML/JSON")
     vy.add_argument("file")
