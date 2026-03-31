@@ -1,0 +1,96 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "glyph-machina",
+      "workflowId": "root",
+      "title": "Glyph Machina",
+      "description": "Playwright automation on glyphmachina.com: upload pre-cropped image, crop confirm, Identify Lines, download lines XML to artifacts.",
+      "nodeType": "folder",
+      "folderPath": "glyph-machina",
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "dependencies": [],
+      "children": [
+        "upload-pre-cropped-page-image",
+        "confirm-crop-image-action",
+        "run-identify-lines-step",
+        "save-downloaded-lines-xml"
+      ]
+    },
+    {
+      "id": "xml-tools",
+      "workflowId": "root",
+      "title": "XML tools",
+      "description": "PageXML-oriented lines file checks: TextLine rules via stdlib XML; optional PAGE XSD with lxml extra.",
+      "nodeType": "folder",
+      "folderPath": "xml-tools",
+      "position": {
+        "x": 340,
+        "y": 100
+      },
+      "dependencies": [],
+      "children": [
+        "validate-lines-xml-textline-rules",
+        "validate-lines-xml-with-optional-xsd"
+      ]
+    },
+    {
+      "id": "llm",
+      "workflowId": "root",
+      "title": "LLM transcription",
+      "description": "Vendored protocol prompt_builder, provider adapters (Anthropic, OpenAI, Gemini), YAML output and schema validation.",
+      "nodeType": "folder",
+      "folderPath": "llm",
+      "position": {
+        "x": 580,
+        "y": 100
+      },
+      "dependencies": [],
+      "children": [
+        "compose-protocol-prompt-zones",
+        "transcribe-image-with-llm-provider",
+        "persist-transcription-yaml-artifact",
+        "validate-transcript-file-protocol-schema"
+      ]
+    },
+    {
+      "id": "pipeline",
+      "workflowId": "root",
+      "title": "Pipeline and batch",
+      "description": "Single-job orchestration in run_pipeline; batch image discovery and sequential runs; artifacts under artifacts/<job_id>/.",
+      "nodeType": "folder",
+      "folderPath": "pipeline",
+      "position": {
+        "x": 100,
+        "y": 320
+      },
+      "dependencies": [],
+      "children": [
+        "discover-batch-images-from-path",
+        "run-sequential-batch-transcribe"
+      ]
+    },
+    {
+      "id": "api",
+      "workflowId": "root",
+      "title": "HTTP API",
+      "description": "Optional FastAPI: multipart /v1/transcribe, Bearer auth middleware for /v1/*, /health.",
+      "nodeType": "folder",
+      "folderPath": "api",
+      "position": {
+        "x": 340,
+        "y": 320
+      },
+      "dependencies": [],
+      "children": [
+        "authorize-v1-with-bearer-middleware",
+        "post-v1-transcribe-multipart",
+        "get-health-status"
+      ]
+    }
+  ],
+  "edges": []
+}

@@ -15,7 +15,14 @@
 ## Brittleness
 
 - Selectors target button labels such as **Crop Image**, **Identify Lines**, and **Download Lines File**. Any redesign of the site may require code updates.
-- CI should **not** rely on live glyphmachina.com; use `--skip-gm` with a saved lines XML for tests.
+- CI should **not** rely on live glyphmachina.com; use `--skip-gm` with a saved lines XML for tests. **`tests/test_lineation_backends.py` mocks `fetch_lines_xml`** — it does not drive Chromium; only manual runs or `scripts/gm_smoke_test.py` hit the real UI.
+
+### When live automation fails (timeouts / hidden download button)
+
+- The site is a **SPA**: `#downloadLinesBtn` may exist in the DOM **before** line detection finishes (still **disabled**), or stay **CSS-hidden** while enabled. The workflow waits for **enabled**, then either **visible** or a short **grace period** for hidden-but-ready, then **`click(force=True)`** to start the download.
+- **`TRANSCRIBER_SHELL_GM_POST_IDENTIFY_WAIT_MS`** (default `2000`): extra pause after **Identify Lines** so processing can start before we attach to the download control. Increase for large or slow images (e.g. `8000`).
+- **`TRANSCRIBER_SHELL_GM_TIMEOUT_MS`**: overall Playwright timeouts for navigation and the download step.
+- **`TRANSCRIBER_SHELL_GM_HEADLESS=false`**: some flows behave better in a visible browser; use a **persistent profile** if the site expects a session.
 
 ## Pre-cropped images
 

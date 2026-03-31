@@ -1,3 +1,8 @@
+"""Batch and single-image pipeline entrypoints.
+
+The usual flow is `run_pipeline`: one image + prompt → artifacts. See `docs/simple-workflow.md`.
+"""
+
 from transcriber_shell.pipeline.batch import discover_images, run_batch, write_batch_report
 from transcriber_shell.pipeline.run import (
     load_prompt_cfg,

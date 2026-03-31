@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "upload-pre-cropped-page-image",
+      "workflowId": "glyph-machina",
+      "title": "Upload pre-cropped page image",
+      "description": "Navigate to Glyph Machina base URL, wait for file input, set_input_files with the page image path. Failure: Playwright timeout or missing input raises GlyphMachinaError.",
+      "nodeType": "feature",
+      "fileName": "upload-pre-cropped-page-image",
+      "position": { "x": 100, "y": 100 },
+      "dependencies": [],
+      "testLayers": ["ui"]
+    },
+    {
+      "id": "confirm-crop-image-action",
+      "workflowId": "glyph-machina",
+      "title": "Confirm crop image",
+      "description": "When Crop Image button is present, click it so pre-cropped uploads fill the frame. Success: dialog advances. Failure: timeout.",
+      "nodeType": "feature",
+      "fileName": "confirm-crop-image-action",
+      "position": { "x": 100, "y": 220 },
+      "dependencies": ["upload-pre-cropped-page-image"],
+      "testLayers": ["ui"]
+    },
+    {
+      "id": "run-identify-lines-step",
+      "workflowId": "glyph-machina",
+      "title": "Run Identify Lines",
+      "description": "Click the Identify Lines button; wait until the flow exposes Download Lines File. Failure: PlaywrightTimeout wrapped as GlyphMachinaError.",
+      "nodeType": "feature",
+      "fileName": "run-identify-lines-step",
+      "position": { "x": 100, "y": 340 },
+      "dependencies": ["confirm-crop-image-action"],
+      "testLayers": ["ui"]
+    },
+    {
+      "id": "save-downloaded-lines-xml",
+      "workflowId": "glyph-machina",
+      "title": "Download and save lines XML",
+      "description": "Click Download Lines File, expect_download, save_as under artifacts/<job_id>/ with non-empty file. Success: Path to lines.xml. Failure: empty file or missing download.",
+      "nodeType": "feature",
+      "fileName": "save-downloaded-lines-xml",
+      "position": { "x": 100, "y": 460 },
+      "dependencies": ["run-identify-lines-step"],
+      "testLayers": ["ui"]
+    }
+  ],
+  "edges": [
+    { "id": "upload-to-crop", "source": "upload-pre-cropped-page-image", "target": "confirm-crop-image-action" },
+    { "id": "crop-to-identify", "source": "confirm-crop-image-action", "target": "run-identify-lines-step" },
+    { "id": "identify-to-download", "source": "run-identify-lines-step", "target": "save-downloaded-lines-xml" }
+  ]
+}

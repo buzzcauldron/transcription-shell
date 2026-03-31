@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "authorize-v1-with-bearer-middleware",
+      "workflowId": "api",
+      "title": "Authorize /v1 requests with Bearer token",
+      "description": "HTTP middleware: for paths starting with /v1/ when api_key is set, require Authorization: Bearer matching settings. Success: call_next. Failure: 401 JSON missing or invalid token.",
+      "nodeType": "feature",
+      "fileName": "authorize-v1-with-bearer-middleware",
+      "position": { "x": 100, "y": 100 },
+      "dependencies": [],
+      "testLayers": ["api"]
+    },
+    {
+      "id": "post-v1-transcribe-multipart",
+      "workflowId": "api",
+      "title": "POST /v1/transcribe multipart",
+      "description": "POST /v1/transcribe with multipart form: prompt (YAML/JSON string), files (images), optional provider, model, inline_yaml. Runs run_pipeline per file with temp image path. skip_gm rejected with 422. Success: JSON list of job results. Failure: 422 for invalid prompt, provider, or no files.",
+      "nodeType": "feature",
+      "fileName": "post-v1-transcribe-multipart",
+      "position": { "x": 100, "y": 260 },
+      "dependencies": [],
+      "testLayers": ["api"]
+    },
+    {
+      "id": "get-health-status",
+      "workflowId": "api",
+      "title": "GET /health",
+      "description": "GET /health returns {\"status\": \"ok\"} without authentication.",
+      "nodeType": "feature",
+      "fileName": "get-health-status",
+      "position": { "x": 100, "y": 420 },
+      "dependencies": [],
+      "testLayers": ["api"]
+    }
+  ],
+  "edges": []
+}

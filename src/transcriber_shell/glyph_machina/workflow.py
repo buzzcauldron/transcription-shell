@@ -6,8 +6,12 @@ Selectors target the public UI as of 2026; the site may change — see docs/glyp
 from __future__ import annotations
 
 import hashlib
+import re
+import time
 from pathlib import Path
 
+from playwright.sync_api import Locator
+from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from transcriber_shell.config import Settings
@@ -22,6 +26,47 @@ def _checksum_image(path: Path) -> str:
     h = hashlib.sha256()
     h.update(path.read_bytes())
     return h.hexdigest()[:16]
+
+
+def _wait_for_download_control(
+    page: Page,
+    dloc: Locator,
+    *,
+    timeout_ms: int,
+    hidden_grace_s: float = 6.0,
+) -> None:
+    """Wait until download is safe to trigger.
+
+    The GM SPA may mount ``#downloadLinesBtn`` before line detection finishes (disabled), or keep it
+    enabled but CSS-hidden — waiting only for *visible* or only for *attached* both fail in the wild.
+    We poll until the control is enabled, then either visible or ``hidden_grace_s`` after first enabled.
+    """
+    deadline = time.monotonic() + timeout_ms / 1000.0
+    enabled_at: float | None = None
+    while time.monotonic() < deadline:
+        try:
+            en = dloc.is_enabled()
+            vis = dloc.is_visible()
+        except Exception:
+            # Detached nodes or transient DOM errors while the SPA updates.
+            page.wait_for_timeout(400)
+            continue
+        if not en:
+            enabled_at = None
+            page.wait_for_timeout(400)
+            continue
+        if enabled_at is None:
+            enabled_at = time.monotonic()
+        if vis:
+            return
+        if time.monotonic() - enabled_at >= hidden_grace_s:
+            return
+        page.wait_for_timeout(350)
+    raise GlyphMachinaError(
+        "Glyph Machina: download control (#downloadLinesBtn) did not become ready in time "
+        f"({timeout_ms} ms). Increase TRANSCRIBER_SHELL_GM_TIMEOUT_MS or "
+        "TRANSCRIBER_SHELL_GM_POST_IDENTIFY_WAIT_MS, or use Skip automated lineation with a lines XML file."
+    )
 
 
 def fetch_lines_xml(
@@ -47,12 +92,13 @@ def fetch_lines_xml(
     meta.write_text(f"{_checksum_image(image_path)}  {image_path.name}\n", encoding="utf-8")
 
     timeout = s.gm_timeout_ms
+    post_identify = int(s.gm_post_identify_wait_ms)
 
     with playwright_glyph_context(s) as context:
         page = context.new_page()
         page.set_default_timeout(timeout)
         try:
-            page.goto(s.gm_base_url, wait_until="domcontentloaded")
+            page.goto(s.gm_base_url, wait_until="load", timeout=timeout)
 
             file_input = page.locator('input[type="file"]').first
             file_input.wait_for(state="attached", timeout=timeout)
@@ -68,12 +114,29 @@ def fetch_lines_xml(
             identify.wait_for(state="visible", timeout=timeout)
             identify.click()
 
-            # Wait until line step offers download (text may be link or button)
-            download_trigger = page.get_by_text("Download Lines File", exact=True)
-            download_trigger.wait_for(state="visible", timeout=timeout)
+            if post_identify > 0:
+                page.wait_for_timeout(post_identify)
+
+            # Do not use locator.count() == 0 immediately — the button may appear only after Identify.
+            download_btn = page.locator("#downloadLinesBtn")
+            try:
+                download_btn.wait_for(state="attached", timeout=timeout)
+            except PlaywrightTimeout:
+                download_btn = page.get_by_role(
+                    "button", name=re.compile(r"Download Lines File", re.IGNORECASE)
+                )
+                download_btn.wait_for(state="attached", timeout=timeout)
+
+            dloc = download_btn.first
+            _wait_for_download_control(page, dloc, timeout_ms=timeout)
+
+            try:
+                dloc.scroll_into_view_if_needed(timeout=min(30_000, timeout))
+            except PlaywrightTimeout:
+                pass
 
             with page.expect_download(timeout=timeout) as dl_info:
-                download_trigger.click()
+                dloc.click(force=True)
             download = dl_info.value
             suggested = download.suggested_filename or f"{job_id}-lines.xml"
             out_path = out_dir / suggested
@@ -90,5 +153,6 @@ def fetch_lines_xml(
         except PlaywrightTimeout as e:
             raise GlyphMachinaError(
                 f"Glyph Machina UI timed out after {timeout} ms ({e}). "
-                "Increase TRANSCRIBER_SHELL_GM_TIMEOUT_MS, check network, or use Skip Glyph Machina with existing XML."
+                "Increase TRANSCRIBER_SHELL_GM_TIMEOUT_MS, TRANSCRIBER_SHELL_GM_POST_IDENTIFY_WAIT_MS, "
+                "check network, or use Skip automated lineation with existing XML."
             ) from e

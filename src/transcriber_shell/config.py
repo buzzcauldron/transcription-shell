@@ -110,6 +110,19 @@ class Settings(BaseSettings):
         default="https://glyphmachina.com/",
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_GM_BASE_URL", "GM_BASE_URL"),
     )
+    gm_post_identify_wait_ms: int = Field(
+        default=2_000,
+        ge=0,
+        le=600_000,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_GM_POST_IDENTIFY_WAIT_MS",
+            "GM_POST_IDENTIFY_WAIT_MS",
+        ),
+        description=(
+            "Pause after Identify Lines before waiting on the download control — gives the SPA time "
+            "to run line detection before #downloadLinesBtn becomes actionable."
+        ),
+    )
     gm_persistent_profile: bool = Field(
         default=False,
         validation_alias=AliasChoices(
@@ -131,11 +144,11 @@ class Settings(BaseSettings):
     )
 
     lineation_backend: LineationBackend = Field(
-        default="mask",
+        default="glyph_machina",
         validation_alias=AliasChoices(
             "TRANSCRIBER_SHELL_LINEATION_BACKEND", "LINEATION_BACKEND"
         ),
-        description="mask: local masks→PageXML; kraken: Kraken BLLA; glyph_machina: browser",
+        description="glyph_machina: browser; mask: local masks→PageXML; kraken: Kraken BLLA",
     )
     lineation_credit_repo_url: str = Field(
         default="https://github.com/ideasrule/latin_documents",

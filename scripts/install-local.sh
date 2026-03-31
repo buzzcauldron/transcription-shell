@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Local install: venv, editable install, Playwright Chromium, protocol submodule.
-# Similar role to visual-page-editor/scripts/install-desktop.sh (non-Docker path).
+# Local install: venv, editable install (core deps include tkinterdnd2), Playwright Chromium, protocol submodule.
+# Chromium is required for the default lineation backend (glyph_machina). Similar role to visual-page-editor/scripts/install-desktop.sh.
 
 set -euo pipefail
 
@@ -28,12 +28,18 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 
-echo "==> pip install (api + dev + optional extras)"
+echo "==> pip install (api + dev + optional extras; core package includes tkinterdnd2 for GUI drag-and-drop)"
 pip install -U pip
 pip install -e ".[api,gemini,xml-xsd,dev]"
 
-echo "==> Playwright Chromium (optional: glyph_machina lineation backend)"
-playwright install chromium
+echo "==> Playwright Chromium (default lineation: Glyph Machina)"
+python -m playwright install chromium
+
+echo "==> GUI sanity (tkinter + tkinterdnd2)"
+if ! python -c "import tkinter; import tkinterdnd2" 2>/dev/null; then
+  echo "Warning: tkinter or tkinterdnd2 import failed after pip install." >&2
+  echo "  On Debian/Ubuntu, install system tkinter: sudo apt install python3-tk" >&2
+fi
 
 if [ ! -f .env ] && [ -f .env.example ]; then
   echo "Tip: copy .env.example to .env and add API keys."

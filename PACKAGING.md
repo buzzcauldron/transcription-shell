@@ -12,6 +12,8 @@ This project is **install-from-source** today. The **git/project directory** is 
 | **Version** | Single source: [`pyproject.toml`](pyproject.toml) `version` and repo [`VERSION`](VERSION) for Docker tags (keep in sync when releasing) |
 | **CI** | [`.github/workflows/ci.yml`](.github/workflows/ci.yml): checks out `vendor/transcription-protocol` (recursive submodules), runs [`scripts/check_version.py`](scripts/check_version.py), tests, `python -m build` + `twine check` on sdist/wheel. On **push to `main`**, a **Docker** job builds [`Dockerfile`](Dockerfile) with `APP_VERSION` from `VERSION`. |
 
+**GUI drag-and-drop:** [`tkinterdnd2`](https://pypi.org/project/tkinterdnd2/) is a **core** dependency in [`pyproject.toml`](pyproject.toml). Sdists and wheels declare `Requires-Dist: tkinterdnd2>=0.3.0`, so any `pip install transcriber-shell` (or editable install) pulls it with the rest of the runtime stack. You still need a working **tkinter** on the host (e.g. `python3-tk` on Debian/Ubuntu). For a **frozen** binary (PyInstaller and similar), include Tcl/Tk assets for `tkinterdnd2`, for example `--collect-all tkinterdnd2` alongside your GUI entry point.
+
 ---
 
 **Doc workflow inspiration:** [Axel Edin (@axlolo)](https://github.com/axlolo). Adapted for transcriber-shell.

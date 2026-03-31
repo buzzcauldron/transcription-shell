@@ -2,12 +2,14 @@
 
 **Python 3.11+** package **`transcriber-shell`** (`transcriber_shell`), built with **[Hatchling](https://hatch.pypa.io/)** from [`pyproject.toml`](pyproject.toml). Install from a **git checkout** using the **installer scripts** ([`scripts/install-local.sh`](scripts/install-local.sh) / [`scripts/install-local.ps1`](scripts/install-local.ps1)), **manual venv + pip**, or **Docker** — see [Installation](#installation) and [PACKAGING.md](PACKAGING.md).
 
+**Simple mental model:** pre-cropped image → **lines XML** (default: Glyph Machina in the browser) → **LLM** with a protocol prompt → **`transcription.yaml`**. Start with **`transcriber-shell gui`** or **`transcriber-shell run --job-id … --image … --prompt …`**. Optional pieces (mask/Kraken, HTTP API, batch, extra validators) are documented in **[docs/simple-workflow.md](docs/simple-workflow.md)**; details below are for reference.
+
 Pipeline glue for **manuscript transcription** that combines:
 
 1. **Lineation** (choose via `TRANSCRIBER_SHELL_LINEATION_BACKEND` or `--lineation-backend`):
-   - **`mask` (default)** — per-line masks → PageXML baselines (`TextLine` / `Baseline`). Supply **`TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE`** (`pkg.mod:function`) and/or **`TRANSCRIBER_SHELL_MASK_PRED_NPY_PATH`** (path with `{stem}` / `{job_id}`). Lineation methods and training context align with **[ideasrule/latin_documents](https://github.com/ideasrule/latin_documents)** (credit also in generated XML metadata).
+   - **`glyph_machina` (default)** — **[Glyph Machina](https://glyphmachina.com/)** in the browser (Playwright). See [docs/glyph-machina-automation.md](docs/glyph-machina-automation.md).
+   - **`mask`** — per-line masks → PageXML baselines (`TextLine` / `Baseline`). Supply **`TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE`** (`pkg.mod:function`) and/or **`TRANSCRIBER_SHELL_MASK_PRED_NPY_PATH`** (path with `{stem}` / `{job_id}`). Lineation methods and training context align with **[ideasrule/latin_documents](https://github.com/ideasrule/latin_documents)** (credit also in generated XML metadata).
    - **`kraken`** — local **[Kraken](https://github.com/mittagessen/kraken)** BLLA + PageXML (`pip install 'transcriber-shell[kraken]'`, set **`TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH`**).
-   - **`glyph_machina`** — **[Glyph Machina](https://glyphmachina.com/)** in the browser (Playwright). See [docs/glyph-machina-automation.md](docs/glyph-machina-automation.md).
 2. **XML checks** — well-formed XML + `TextLine` counts; optional **XSD** validation with `lxml` (`pip install 'transcriber-shell[xml-xsd]'`).
 3. **LLM APIs** (Anthropic / OpenAI / optional Gemini) using prompts from the **[Academic Handwriting Transcription Protocol](https://github.com/buzzcauldron/transcription-protocol)**.
 4. **YAML validation** via vendored `validate_schema.py` from that protocol.
@@ -61,7 +63,7 @@ source .venv/bin/activate   # Windows: .\.venv\Scripts\Activate.ps1
 pip install -U pip
 pip install -e ".[api,dev,gemini,xml-xsd]"
 
-playwright install chromium   # required for Glyph Machina automation
+python -m playwright install chromium   # required for default Glyph Machina lineation; use venv’s Python
 ```
 
 ### Option C — Docker
@@ -124,12 +126,12 @@ transcriber-shell compare-lines-xml -r gm-lines.xml -y local-lines.xml
 # Validate transcription YAML (needs submodule)
 transcriber-shell validate-yaml path/to/out.yaml
 
-# Full run: lineation → XML gate → LLM → schema validate (default backend: mask; configure .env)
+# Full run: lineation → XML gate → LLM → schema validate (default backend: glyph_machina; configure .env)
 transcriber-shell run --job-id demo1 --image ./crop.jpg --prompt ./fixtures/prompt.example.yaml --provider anthropic
 
-# Use Kraken or Glyph Machina instead of mask
+# Use mask or Kraken instead of Glyph Machina
+# transcriber-shell run ... --lineation-backend mask
 # transcriber-shell run ... --lineation-backend kraken
-# transcriber-shell run ... --lineation-backend glyph_machina
 
 # Optional: override model for this run
 transcriber-shell run --job-id demo1 --image ./crop.jpg --prompt ./fixtures/prompt.example.yaml --model claude-sonnet-4-20250514

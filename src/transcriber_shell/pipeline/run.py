@@ -1,4 +1,8 @@
-"""Orchestrate: lineation (mask / Kraken / Glyph Machina) → XML validate → LLM → YAML validate."""
+"""Orchestrate: lines XML → validate → LLM → YAML validate.
+
+Core path: fetch lines (or use --skip-gm + existing XML) → validate_lines_xml → run_transcribe →
+normalize + validate_transcript_file. Other backends (mask, kraken) are pluggable line sources only.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +17,10 @@ from transcriber_shell.kraken_lineation import KrakenLineationError, fetch_lines
 from transcriber_shell.llm.errors import LLMProviderError
 from transcriber_shell.mask_lineation import MaskLineationError, fetch_lines_xml_mask
 from transcriber_shell.llm.transcribe import run_transcribe, strip_yaml_fence
-from transcriber_shell.llm.validate_output import validate_transcript_file
+from transcriber_shell.llm.validate_output import (
+    normalize_transcription_yaml_data,
+    validate_transcript_file,
+)
 from transcriber_shell.models.job import PipelineResult, TranscribeJob
 from transcriber_shell.xml_tools.lines_validate import validate_lines_xml
 from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
@@ -143,6 +150,7 @@ def run_pipeline(
     try:
         data = yaml.safe_load(raw)
         if isinstance(data, dict):
+            normalize_transcription_yaml_data(data)
             out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
     except yaml.YAMLError as e:
         errors.append(

@@ -28,6 +28,7 @@ except ImportError:
 
 from transcriber_shell.config import Settings
 from transcriber_shell.env_persist import merge_dotenv
+from transcriber_shell.gui_state import load_gui_state, save_gui_state
 from transcriber_shell.gui_discovery import format_discovery_report
 from transcriber_shell.llm.model_catalog import (
     default_model_for_provider,
@@ -112,14 +113,18 @@ class TranscriberGui:
         self._gm_user_data_dir = tk.StringVar(value=str(self._settings.gm_user_data_dir))
         self._status = tk.StringVar(value="Ready.")
         self._banner_dismiss_after: str | None = None
+        self._loading_gui_state = False
+        self._save_gui_state_after: str | None = None
 
         self._hydrate_keys_from_settings()
         self._build_ui()
         self._poll_queue()
 
+        self._restore_gui_state()
         default_prompt = _repo_fixtures_prompt()
-        if default_prompt:
+        if default_prompt and not self._prompt_path.get().strip():
             self._prompt_path.set(str(default_prompt))
+        self._install_gui_state_persistence()
 
     def _build_ui(self) -> None:
         style = ttk.Style()
@@ -179,21 +184,15 @@ class TranscriberGui:
         ttk.Label(outer, text="Transcriber shell", style="Title.TLabel").pack(anchor=tk.W)
         ttk.Label(
             outer,
-            text="Lineation (mask / Kraken / Glyph Machina) · PageXML gate · protocol LLM transcription",
+            text="Image → lines XML (default: Glyph Machina) → LLM → transcription.yaml under artifacts/",
             style="Sub.TLabel",
         ).pack(anchor=tk.W, pady=(0, 4))
         ttk.Label(
             outer,
             text=(
-                "Set provider/model, images, prompt, and lineation backend (or skip to lines XML), "
-                "then Transcribe."
+                "Add images and a prompt, set provider/model if needed, then Transcribe. "
+                "See docs/simple-workflow.md for the short path; docs/claude.md for repo context."
             ),
-            style="Muted.TLabel",
-            wraplength=540,
-        ).pack(anchor=tk.W, pady=(0, 2))
-        ttk.Label(
-            outer,
-            text="Session and architecture context: see docs/claude.md in the repository checkout.",
             style="Muted.TLabel",
             wraplength=540,
         ).pack(anchor=tk.W, pady=(0, 8))
@@ -265,8 +264,21 @@ class TranscriberGui:
             wraplength=480,
         ).pack(anchor=tk.W, pady=(4, 0))
 
-        net = ttk.LabelFrame(outer, text="Network & Glyph Machina browser", padding=(10, 8))
+        net = ttk.LabelFrame(
+            outer,
+            text="Network (LLM APIs) & Chromium profile (Glyph Machina lineation only)",
+            padding=(10, 8),
+        )
         net.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(
+            net,
+            text=(
+                "HTTP proxy below applies to cloud LLM calls (Anthropic/OpenAI/Gemini). "
+                "Chromium profile applies only when lineation backend is Glyph Machina and skip is off."
+            ),
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(0, 6))
         ttk.Checkbutton(
             net,
             text="Route LLM API calls through HTTP proxy",
@@ -298,24 +310,26 @@ class TranscriberGui:
             style="Muted.TLabel",
             wraplength=500,
         ).pack(anchor=tk.W, pady=(6, 0))
-        ttk.Checkbutton(
+        self._gm_profile_check = ttk.Checkbutton(
             net,
-            text="Persistent Chromium profile for Glyph Machina (keep site login/cookies between runs)",
+            text="Persistent Chromium profile for Glyph Machina lineation (keep site login/cookies between runs)",
             variable=self._gm_persistent_profile,
-        ).pack(anchor=tk.W, pady=(8, 0))
+        )
+        self._gm_profile_check.pack(anchor=tk.W, pady=(8, 0))
         gmdf = ttk.Frame(net, style="Main.TFrame")
         gmdf.pack(fill=tk.X, pady=(4, 0))
         ttk.Label(gmdf, text="Profile dir", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        ttk.Entry(gmdf, textvariable=self._gm_user_data_dir).pack(
-            side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8)
-        )
-        ttk.Button(gmdf, text="Browse…", command=self._browse_gm_profile_dir).pack(side=tk.RIGHT)
-        ttk.Label(
+        self._gm_user_data_entry = ttk.Entry(gmdf, textvariable=self._gm_user_data_dir)
+        self._gm_user_data_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
+        self._gm_profile_browse_btn = ttk.Button(gmdf, text="Browse…", command=self._browse_gm_profile_dir)
+        self._gm_profile_browse_btn.pack(side=tk.RIGHT)
+        self._gm_profile_hint = ttk.Label(
             net,
-            text="Only used when Glyph Machina runs (Skip GM off). Avoid parallel runs sharing one profile dir.",
+            text="",
             style="Muted.TLabel",
             wraplength=500,
-        ).pack(anchor=tk.W, pady=(4, 0))
+        )
+        self._gm_profile_hint.pack(anchor=tk.W, pady=(4, 0))
 
         def _key_var_trace(*_a: object) -> None:
             self._sanitize_key_stringvars_on_write()
@@ -446,17 +460,19 @@ class TranscriberGui:
         self._lineation_combo = ttk.Combobox(
             lb_row,
             textvariable=self._lineation_backend,
-            values=("mask", "kraken", "glyph_machina"),
+            values=("glyph_machina", "mask", "kraken"),
             state="readonly",
             width=22,
         )
         self._lineation_combo.pack(side=tk.LEFT)
-        ttk.Label(
+        self._lineation_combo.bind("<<ComboboxSelected>>", self._on_lineation_backend_changed)
+        self._lineation_backend_hint = ttk.Label(
             lineation_src,
-            text="Used when not skipping lineation (mask: .env; Kraken: model path; Glyph Machina: Playwright).",
+            text="",
             style="Muted.TLabel",
-            wraplength=500,
-        ).pack(anchor=tk.W, pady=(0, 6))
+            wraplength=520,
+        )
+        self._lineation_backend_hint.pack(anchor=tk.W, pady=(0, 6))
         ttk.Checkbutton(
             lineation_src,
             text="Skip automated lineation — use existing lines XML from disk (no browser)",
@@ -682,6 +698,7 @@ class TranscriberGui:
         n = len(self._image_paths)
         self._image_count_label.configure(text=f"{n} image(s)")
         self._sync_lines_xml_ui()
+        self._schedule_gui_state_save()
 
     def _sync_lines_xml_ui(self) -> None:
         n = len(self._dedupe_sorted_images())
@@ -695,6 +712,8 @@ class TranscriberGui:
             self._lines_help.configure(text="")
             self._job_entry.configure(state="normal")
             self._job_hint.configure(text="")
+            self._refresh_lineation_hints()
+            self._sync_gm_profile_controls()
             return
         self._lineation_combo.configure(state="disabled")
         if n <= 1:
@@ -720,6 +739,61 @@ class TranscriberGui:
         else:
             self._job_entry.configure(state="disabled")
             self._job_hint.configure(text="Batch uses each filename as job id.")
+        self._refresh_lineation_hints()
+        self._sync_gm_profile_controls()
+
+    def _refresh_lineation_hints(self) -> None:
+        if self._skip_gm.get():
+            self._lineation_backend_hint.configure(
+                text="Lineation backend is ignored for this run — supply lines XML below."
+            )
+            return
+        b = self._lineation_backend.get().strip().lower()
+        if b == "mask":
+            self._lineation_backend_hint.configure(
+                text=(
+                    "Mask: set TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE (and optional weights) in .env — "
+                    "see docs/mask-lineation-plugin.md."
+                )
+            )
+        elif b == "kraken":
+            self._lineation_backend_hint.configure(
+                text=(
+                    "Kraken: set TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH; "
+                    "pip install 'transcriber-shell[kraken]' for BLLA lineation."
+                )
+            )
+        else:
+            self._lineation_backend_hint.configure(
+                text=(
+                    "Glyph Machina: requires Playwright Chromium. Optional profile below for site login; "
+                    "see docs/glyph-machina-automation.md. Use TRANSCRIBER_SHELL_GM_HEADLESS=false to log in once."
+                )
+            )
+
+    def _sync_gm_profile_controls(self) -> None:
+        skip = self._skip_gm.get()
+        backend = self._lineation_backend.get().strip().lower()
+        gm_ok = not skip and backend == "glyph_machina"
+        st = "normal" if gm_ok else "disabled"
+        self._gm_profile_check.configure(state=st)
+        self._gm_user_data_entry.configure(state=st)
+        self._gm_profile_browse_btn.configure(state=st)
+        if gm_ok:
+            self._gm_profile_hint.configure(
+                text="Avoid parallel runs sharing one profile directory."
+            )
+        else:
+            self._gm_profile_hint.configure(
+                text=(
+                    "Only when lineation backend is Glyph Machina and automated lineation is on. "
+                    "Not used for mask or Kraken lineation."
+                )
+            )
+
+    def _on_lineation_backend_changed(self, _event: object | None = None) -> None:
+        self._refresh_lineation_hints()
+        self._sync_gm_profile_controls()
 
     def _setup_image_drop_target(self) -> None:
         if DND_FILES is None:
@@ -890,6 +964,7 @@ class TranscriberGui:
                 "true" if self._gm_persistent_profile.get() else "false"
             ),
             "TRANSCRIBER_SHELL_GM_USER_DATA_DIR": self._gm_user_data_dir.get().strip(),
+            "TRANSCRIBER_SHELL_LINEATION_BACKEND": self._lineation_backend.get().strip(),
         }
 
     def _save_keys_to_dotenv(self) -> None:
@@ -900,7 +975,8 @@ class TranscriberGui:
             self._gui_notify(f"Save keys failed: {e}", "error", auto_dismiss_ms=0)
             return
         self._gui_notify(
-            f"Save keys: Saved provider keys and network/browser settings to:\n{path}\n\nDo not commit .env.",
+            f"Save keys: Saved provider keys, network, lineation backend, and browser settings to:\n{path}\n\n"
+            "Do not commit .env.",
             "info",
         )
 
@@ -986,6 +1062,7 @@ class TranscriberGui:
         )
         if gd := self._gm_user_data_dir.get().strip():
             out["TRANSCRIBER_SHELL_GM_USER_DATA_DIR"] = gd
+        out["TRANSCRIBER_SHELL_LINEATION_BACKEND"] = self._lineation_backend.get().strip()
         return out
 
     def _discover(self) -> None:
@@ -1342,6 +1419,177 @@ class TranscriberGui:
             webbrowser.open(url)
         except Exception:
             self._gui_notify(f"API docs: Open in browser:\n{url}", "info")
+
+    def _gui_state_dict(self) -> dict[str, object]:
+        return {
+            "provider": self._provider.get().strip(),
+            "model_selected": self._model_selected.get(),
+            "model_custom": self._model_custom.get(),
+            "free_only": self._free_only.get(),
+            "efficient_mode": self._efficient_mode.get(),
+            "skip_gm": self._skip_gm.get(),
+            "lineation_backend": self._lineation_backend.get().strip(),
+            "prompt_path": self._prompt_path.get().strip(),
+            "lines_xml_path": self._lines_xml_path.get().strip(),
+            "lines_xml_dir": self._lines_xml_dir.get().strip(),
+            "job_id": self._job_id.get().strip(),
+            "xsd_path": self._xsd_path.get().strip(),
+            "require_text_line": self._require_text_line.get(),
+            "mask_keys": self._mask_keys.get(),
+            "ollama_base_url": self._ollama_base_url.get().strip(),
+            "llm_use_proxy": self._llm_use_proxy.get(),
+            "llm_http_proxy": self._llm_http_proxy.get().strip(),
+            "gm_persistent_profile": self._gm_persistent_profile.get(),
+            "gm_user_data_dir": self._gm_user_data_dir.get().strip(),
+            "persist_keys_after_run": self._persist_keys_after_run.get(),
+            "image_paths": [str(p) for p in self._dedupe_sorted_images()],
+        }
+
+    def _schedule_gui_state_save(self) -> None:
+        if self._loading_gui_state:
+            return
+        if self._save_gui_state_after is not None:
+            try:
+                self.root.after_cancel(self._save_gui_state_after)
+            except (tk.TclError, ValueError):
+                pass
+        self._save_gui_state_after = self.root.after(450, self._flush_gui_state_save)
+
+    def _flush_gui_state_save(self) -> None:
+        self._save_gui_state_after = None
+        if self._loading_gui_state:
+            return
+        try:
+            save_gui_state(self._gui_state_dict())
+        except OSError:
+            pass
+
+    def _restore_model_selection_after_load(self, model_selected: str, model_custom: str) -> None:
+        self._refresh_model_combos()
+        mc = model_custom.strip()
+        if mc:
+            self._model_custom.set(mc)
+            self._sync_model_credentials_state()
+            return
+        ms = model_selected.strip()
+        if not ms or ms.startswith("(none"):
+            self._sync_model_credentials_state()
+            return
+        vals = tuple(self._cb_model["values"])
+        if ms in vals:
+            self._model_selected.set(ms)
+        else:
+            self._model_custom.set(ms)
+        self._sync_model_credentials_state()
+
+    def _restore_gui_state(self) -> None:
+        data = load_gui_state()
+        if not data:
+            return
+        self._loading_gui_state = True
+        try:
+            pr = str(data.get("provider", "")).strip().lower()
+            if pr in ("anthropic", "openai", "gemini", "ollama"):
+                self._provider.set(pr)
+            if "free_only" in data:
+                self._free_only.set(bool(data["free_only"]))
+            if "efficient_mode" in data:
+                self._efficient_mode.set(bool(data["efficient_mode"]))
+            if "skip_gm" in data:
+                self._skip_gm.set(bool(data["skip_gm"]))
+            lb = str(data.get("lineation_backend", "")).strip().lower()
+            if lb in ("mask", "kraken", "glyph_machina"):
+                self._lineation_backend.set(lb)
+            for key, var in (
+                ("prompt_path", self._prompt_path),
+                ("lines_xml_path", self._lines_xml_path),
+                ("lines_xml_dir", self._lines_xml_dir),
+                ("job_id", self._job_id),
+                ("xsd_path", self._xsd_path),
+            ):
+                if key in data and data[key] is not None:
+                    var.set(str(data[key]))
+            if "require_text_line" in data:
+                self._require_text_line.set(bool(data["require_text_line"]))
+            if "mask_keys" in data:
+                self._mask_keys.set(bool(data["mask_keys"]))
+                self._toggle_key_visibility()
+            ou = data.get("ollama_base_url")
+            if isinstance(ou, str) and ou.strip():
+                self._ollama_base_url.set(ou.strip())
+            if "llm_use_proxy" in data:
+                self._llm_use_proxy.set(bool(data["llm_use_proxy"]))
+            lpx = data.get("llm_http_proxy")
+            if isinstance(lpx, str):
+                self._llm_http_proxy.set(lpx)
+            if "gm_persistent_profile" in data:
+                self._gm_persistent_profile.set(bool(data["gm_persistent_profile"]))
+            gud = data.get("gm_user_data_dir")
+            if isinstance(gud, str):
+                self._gm_user_data_dir.set(gud)
+            if "persist_keys_after_run" in data:
+                self._persist_keys_after_run.set(bool(data["persist_keys_after_run"]))
+            imgs = data.get("image_paths")
+            if isinstance(imgs, list):
+                paths: list[Path] = []
+                for x in imgs:
+                    if not isinstance(x, str):
+                        continue
+                    p = Path(x).expanduser()
+                    if p.is_file():
+                        paths.append(p)
+                self._image_paths = paths
+                self._refresh_image_list()
+            ms = str(data.get("model_selected", "") or "")
+            mc = str(data.get("model_custom", "") or "")
+            self._restore_model_selection_after_load(ms, mc)
+        finally:
+            self._loading_gui_state = False
+        self._sync_lines_xml_ui()
+
+    def _install_gui_state_persistence(self) -> None:
+        def _on_state_var(_a: str, _b: str, _c: str) -> None:
+            self._schedule_gui_state_save()
+
+        for v in (
+            self._provider,
+            self._model_selected,
+            self._model_custom,
+            self._free_only,
+            self._efficient_mode,
+            self._skip_gm,
+            self._lineation_backend,
+            self._prompt_path,
+            self._lines_xml_path,
+            self._lines_xml_dir,
+            self._job_id,
+            self._xsd_path,
+            self._require_text_line,
+            self._mask_keys,
+            self._ollama_base_url,
+            self._llm_use_proxy,
+            self._llm_http_proxy,
+            self._gm_persistent_profile,
+            self._gm_user_data_dir,
+            self._persist_keys_after_run,
+        ):
+            v.trace_add("write", _on_state_var)
+
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close_request)
+
+    def _on_close_request(self) -> None:
+        if self._save_gui_state_after is not None:
+            try:
+                self.root.after_cancel(self._save_gui_state_after)
+            except (tk.TclError, ValueError):
+                pass
+            self._save_gui_state_after = None
+        self._loading_gui_state = False
+        try:
+            save_gui_state(self._gui_state_dict())
+        except OSError:
+            pass
+        self.root.destroy()
 
     def run(self) -> None:
         self.root.mainloop()

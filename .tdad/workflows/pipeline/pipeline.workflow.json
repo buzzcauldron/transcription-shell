@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "discover-batch-images-from-path",
+      "workflowId": "pipeline",
+      "title": "Discover batch images from glob or directory",
+      "description": "discover_images: glob or directory listing filtered by image suffixes. Success: list of Paths. Failure: empty list when user expected files.",
+      "nodeType": "feature",
+      "fileName": "discover-batch-images-from-path",
+      "position": { "x": 100, "y": 100 },
+      "dependencies": [],
+      "testLayers": ["api"]
+    },
+    {
+      "id": "run-sequential-batch-transcribe",
+      "workflowId": "pipeline",
+      "title": "Run sequential batch transcribe",
+      "description": "For each discovered image, build TranscribeJob; when skip_gm, resolve_lines_xml_for_image for --lines-xml or --lines-xml-dir; run_pipeline per image; write_batch_report. Success: per-image results. Failure: resolve or pipeline errors per job.",
+      "nodeType": "feature",
+      "fileName": "run-sequential-batch-transcribe",
+      "position": { "x": 100, "y": 260 },
+      "dependencies": ["discover-batch-images-from-path"],
+      "testLayers": ["api"]
+    }
+  ],
+  "edges": [
+    {
+      "id": "discover-to-batch",
+      "source": "discover-batch-images-from-path",
+      "target": "run-sequential-batch-transcribe"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
-# Local install (Windows): venv, editable install, Playwright Chromium, protocol submodule.
-# Same role as scripts/install-local.sh — run from PowerShell in the repo root:
+# Local install (Windows): venv, editable install (core deps include tkinterdnd2), Playwright Chromium, protocol submodule.
+# Chromium is required for the default lineation backend (glyph_machina). Same role as scripts/install-local.sh — run from PowerShell in the repo root:
 #   .\scripts\install-local.ps1
 #Requires -Version 5.1
 $ErrorActionPreference = "Stop"
@@ -27,12 +27,18 @@ if (-not (Test-Path ".venv")) {
 }
 & .\.venv\Scripts\Activate.ps1
 
-Write-Host "==> pip install (api + dev + optional extras)"
+Write-Host "==> pip install (api + dev + optional extras; core package includes tkinterdnd2 for GUI drag-and-drop)"
 python -m pip install -U pip
 pip install -e ".[api,gemini,xml-xsd,dev]"
 
-Write-Host "==> Playwright Chromium (optional: glyph_machina lineation backend)"
-playwright install chromium
+Write-Host "==> Playwright Chromium (default lineation: Glyph Machina)"
+python -m playwright install chromium
+
+Write-Host "==> GUI sanity (tkinter + tkinterdnd2)"
+python -c "import tkinter; import tkinterdnd2" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "tkinter or tkinterdnd2 import failed after pip install. Ensure Python was installed with Tcl/Tk (official python.org installers include it)."
+}
 
 if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
     Write-Host "Tip: copy .env.example to .env and add API keys."

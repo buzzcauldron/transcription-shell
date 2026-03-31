@@ -1,0 +1,66 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "compose-protocol-prompt-zones",
+      "workflowId": "llm",
+      "title": "Compose protocol prompt zones",
+      "description": "ensure_prompt_builder_on_path then import prompt_builder.build_zones from vendored benchmark; merge line_hint into user text when present. Failure: FileNotFoundError if submodule missing.",
+      "nodeType": "feature",
+      "fileName": "compose-protocol-prompt-zones",
+      "position": { "x": 100, "y": 100 },
+      "dependencies": ["validate-lines-xml-textline-rules"],
+      "testLayers": ["api"]
+    },
+    {
+      "id": "transcribe-image-with-llm-provider",
+      "workflowId": "llm",
+      "title": "Transcribe with configured LLM provider",
+      "description": "Dispatch to anthropic, openai, or gemini adapter with image_path, system, user_text, model override. Success: raw model string. Failure: provider API or ValueError for unknown provider.",
+      "nodeType": "feature",
+      "fileName": "transcribe-image-with-llm-provider",
+      "position": { "x": 100, "y": 240 },
+      "dependencies": ["compose-protocol-prompt-zones"],
+      "testLayers": ["api"]
+    },
+    {
+      "id": "persist-transcription-yaml-artifact",
+      "workflowId": "llm",
+      "title": "Persist transcription YAML artifact",
+      "description": "strip_yaml_fence; write artifacts/<job_id>/transcription.yaml; optional yaml.safe_load safe_dump. Failure: invalid YAML content adds error string.",
+      "nodeType": "feature",
+      "fileName": "persist-transcription-yaml-artifact",
+      "position": { "x": 100, "y": 380 },
+      "dependencies": ["transcribe-image-with-llm-provider"],
+      "testLayers": ["api"]
+    },
+    {
+      "id": "validate-transcript-file-protocol-schema",
+      "workflowId": "llm",
+      "title": "Validate transcript YAML against protocol schema",
+      "description": "validate_transcript_file using vendored validate_schema; collect errors and warnings. Success: val_ok. Failure: schema errors appended to pipeline result.",
+      "nodeType": "feature",
+      "fileName": "validate-transcript-file-protocol-schema",
+      "position": { "x": 100, "y": 520 },
+      "dependencies": ["persist-transcription-yaml-artifact"],
+      "testLayers": ["api"]
+    }
+  ],
+  "edges": [
+    {
+      "id": "prompt-to-transcribe",
+      "source": "compose-protocol-prompt-zones",
+      "target": "transcribe-image-with-llm-provider"
+    },
+    {
+      "id": "transcribe-to-persist",
+      "source": "transcribe-image-with-llm-provider",
+      "target": "persist-transcription-yaml-artifact"
+    },
+    {
+      "id": "persist-to-validate",
+      "source": "persist-transcription-yaml-artifact",
+      "target": "validate-transcript-file-protocol-schema"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+
+================================================================================
+TDAD Session Started: 2026-03-30T16:14:38.172Z
+================================================================================
+[2026-03-30T16:14:38.474Z] [EXTENSION] 🚀 TDAD extension is now ACTIVATED! Version with comprehensive logging
+[2026-03-30T16:14:38.474Z] [EXTENSION] 📁 Log file location: /Users/halxiii/Projects/transcription-shell/.tdad/logs/tdad-2026-03-30.log
+[2026-03-30T16:14:38.474Z] [EXTENSION] 📊 Workspace folders: /Users/halxiii/Projects/transcription-shell
+[2026-03-30T16:14:38.474Z] [EXTENSION] Creating WorkflowController...
+[2026-03-30T16:14:38.474Z] [EXTENSION] MVP: Using simple JSON storage (.tdad/workflows/workflow.json)
+[2026-03-30T16:14:38.474Z] [EXTENSION] TDAD Extension activated successfully
+[2026-03-30T16:14:38.474Z] [EXTENSION] Registering commands...
+[2026-03-30T16:14:38.521Z] [EXTENSION] TDAD structure already initialized
+[2026-03-30T16:14:38.521Z] [EXTENSION] Auto-opening TDAD Canvas...
+[2026-03-30T16:14:38.522Z] [CANVAS] Created directory: /Users/halxiii/Projects/transcription-shell/.tdad/workflows
+[2026-03-30T16:14:38.522Z] [CANVAS] Sprint 13: Agent Orchestrator initialized
+[2026-03-30T16:14:38.523Z] [CANVAS] [FileStatusSync] File watchers initialized
+[2026-03-30T16:14:38.524Z] [CANVAS] [FileStatusSync] Synced 0 nodes
+[2026-03-30T16:14:38.527Z] [EXTENSION] FeedbackManager: Session 58
+[2026-03-30T16:14:38.624Z] [CANVAS] WEBVIEW
+Data: Using stylesheets: index-F_v7nmCS.css
+[2026-03-30T16:14:38.625Z] [CANVAS] MVP: Canvas initialized with simple JSON storage
+[2026-03-30T16:14:39.972Z] [CANVAS] [FitView] isLoading=true, nodes.length=0, folderId=null
+[2026-03-30T16:14:40.072Z] [CANVAS] [FileStatusSync] Synced 0 nodes
+[2026-03-30T16:14:40.110Z] [CANVAS] [FitView] isLoading=false, nodes.length=0, folderId=null
+[2026-03-30T16:14:46.038Z] [CANVAS] saveNow: Saving 0 nodes to folder root - statuses: []
+[2026-03-30T16:14:46.040Z] [CANVAS] [FileStatusSync] File watchers disposed
+[2026-03-30T16:14:46.129Z] [EXTENSION] Blueprint workflow created: /Users/halxiii/Projects/transcription-shell/.tdad/workflows/root.workflow.json
+[2026-03-30T16:14:46.130Z] [EXTENSION] Scaffolded 1 files from blueprint
+[2026-03-30T16:17:06.712Z] [EXTENSION] Blueprint workflow changed: /Users/halxiii/Projects/transcription-shell/.tdad/workflows/root.workflow.json
+[2026-03-30T16:17:06.713Z] [EXTENSION] Scaffolded 1 new files from blueprint update
+[2026-03-31T13:10:59.390Z] [EXTENSION] Blueprint workflow created: /Users/halxiii/Projects/transcription-shell/.tdad/workflows/root.workflow.json
+[2026-03-31T13:10:59.396Z] [EXTENSION] Scaffolded 1 files from blueprint

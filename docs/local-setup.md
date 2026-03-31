@@ -2,6 +2,8 @@
 
 End state: from a **git checkout** you can lineate a pre-cropped page, validate lines XML, run full transcription with an LLM, and optionally compare local line XML to a Glyph Machina export—without missing submodules, dependencies, or environment variables.
 
+For the **short happy path** (what to install first, what to ignore), see **[simple-workflow.md](simple-workflow.md)**.
+
 ## Prerequisites
 
 - **Python 3.11+** (see [`pyproject.toml`](../pyproject.toml)).
@@ -45,7 +47,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned   # once, if needed
 .\.venv\Scripts\Activate.ps1
 ```
 
-The script creates `.venv`, installs editable **`[api,gemini,xml-xsd,dev]`**, runs **`playwright install chromium`** (for the **glyph_machina** lineation backend), and attempts submodule init.
+The script creates `.venv`, installs editable **`[api,gemini,xml-xsd,dev]`** (the core package already pulls **tkinterdnd2** for GUI drag-and-drop), runs **`python -m playwright install chromium`** (required for the default **glyph_machina** lineation backend), checks **tkinter** + **tkinterdnd2** imports with a hint if the OS lacks Tcl/Tk, and attempts submodule init.
 
 ### Manual install
 
@@ -54,7 +56,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -e ".[api,dev,gemini,xml-xsd]"
-playwright install chromium
+python -m playwright install chromium
 ```
 
 Add extras only when needed:
@@ -83,10 +85,10 @@ Set `TRANSCRIBER_SHELL_LINEATION_BACKEND` or pass `--lineation-backend` on the C
 
 | Backend | When to use | Essentials |
 |--------|-------------|------------|
-| **`mask`** (default) | Local or private model | Set `TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE` and/or `TRANSCRIBER_SHELL_MASK_PRED_NPY_PATH`. See [mask-lineation-plugin.md](mask-lineation-plugin.md). Optional: `TRANSCRIBER_SHELL_MASK_WEIGHTS_PATH`. |
+| **`glyph_machina`** (default) | No local ML | Playwright + network; see [glyph-machina-automation.md](glyph-machina-automation.md). |
+| **`mask`** | Local or private model | Set `TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE` and/or `TRANSCRIBER_SHELL_MASK_PRED_NPY_PATH`. See [mask-lineation-plugin.md](mask-lineation-plugin.md). Optional: `TRANSCRIBER_SHELL_MASK_WEIGHTS_PATH`. |
 | **`mask` + stub** | Wiring / CI smoke only | `pip install -e "examples/latin_lineation_stub"` then `TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE=latin_lineation_stub.infer:predict_masks` (synthetic lines, not real segmentation). |
 | **`kraken`** | Kraken BLLA | `pip install -e ".[kraken]"`, set `TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH` to a `.mlmodel`, tune `KRAKEN_DEVICE` / thresholds. |
-| **`glyph_machina`** | No local ML | Playwright + network; see [glyph-machina-automation.md](glyph-machina-automation.md). |
 
 GPU (CUDA): set `MASK_DEVICE` or `KRAKEN_DEVICE` to `cuda:0` when your stack supports it.
 
@@ -129,7 +131,7 @@ Tune **`--centroid-match-px`** if line pairing is poor. See [`xml_tools/lines_co
 
 ## 8. GUI and HTTP API
 
-- **GUI:** `transcriber-shell gui` — keys in UI or `.env`; pick **lineation backend** when not skipping automated lineation.
+- **GUI:** `transcriber-shell gui` — keys in UI or `.env`; pick **lineation backend** when not skipping automated lineation. Drag-and-drop onto the file list uses **tkinterdnd2**, installed as a core dependency with `pip install -e .` (see [PACKAGING.md](../PACKAGING.md)); you still need **tkinter** (system `python3-tk` / equivalent on Linux).
 - **API:** `transcriber-shell serve` (requires `[api]` extra). Lineation uses the same `.env` as the CLI; the HTTP route does not support `skip_gm`—use the CLI for offline lines XML.
 
 ## 9. Docker
@@ -146,6 +148,7 @@ For a reproducible environment without managing Playwright/GPU on the host: **[R
 | Glyph Machina timeout / UI failure | `TRANSCRIBER_SHELL_GM_TIMEOUT_MS`, network, site availability; try `--lineation-backend` alternatives |
 | Transcription fails with auth errors | Keys in `.env` or use Ollama |
 | Playwright / Chromium missing | `playwright install chromium` |
+| GUI drag-and-drop missing / “Install tkinterdnd2…” | `pip install tkinterdnd2` or reinstall the project; use the same interpreter as `pip` (`python -m pip install -e .`). On Linux, install **tkinter** (`python3-tk`) if `import tkinter` fails |
 
 ## Workflow overview
 

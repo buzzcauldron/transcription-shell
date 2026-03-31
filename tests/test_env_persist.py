@@ -68,3 +68,18 @@ def test_merge_dotenv_clearing_only_managed_keys_truncates_existing_file(tmp_pat
         },
     )
     assert p.read_text(encoding="utf-8") == ""
+
+
+def test_merge_dotenv_writes_lineation_backend(tmp_path: Path) -> None:
+    p = tmp_path / ".env"
+    merge_dotenv(
+        p,
+        {
+            "ANTHROPIC_API_KEY": "",
+            "OPENAI_API_KEY": "",
+            "GOOGLE_API_KEY": "",
+            "TRANSCRIBER_SHELL_OLLAMA_BASE_URL": "",
+            "TRANSCRIBER_SHELL_LINEATION_BACKEND": "kraken",
+        },
+    )
+    assert "TRANSCRIBER_SHELL_LINEATION_BACKEND=kraken" in p.read_text(encoding="utf-8")

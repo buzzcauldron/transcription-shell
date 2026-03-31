@@ -18,7 +18,7 @@ MAX_UPLOAD_BYTES_PER_IMAGE = 40 * 1024 * 1024  # 40 MiB — enough for high-res 
 MAX_PROMPT_FIELD_CHARS = 2_000_000  # YAML/JSON prompt string in the form field
 
 _API_DESCRIPTION = """
-**transcriber-shell** — manuscript transcription pipeline: lineation (mask / Kraken / Glyph Machina) → PageXML checks → LLM (Anthropic / OpenAI / Gemini) → protocol YAML validation.
+**transcriber-shell** — manuscript transcription pipeline: lineation (Glyph Machina default · mask · Kraken) → PageXML checks → LLM (Anthropic / OpenAI / Gemini) → protocol YAML validation.
 
 **Interactive use:** run **`transcriber-shell gui`** for the desktop interface (recommended).
 

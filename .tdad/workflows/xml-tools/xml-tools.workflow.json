@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "validate-lines-xml-textline-rules",
+      "workflowId": "xml-tools",
+      "title": "Validate lines.xml TextLine rules",
+      "description": "Parse lines.xml with stdlib; enforce TextLine-related rules and optional require_text_line. Input: path from Glyph Machina or skip_gm. Success: ok with stats. Failure: error messages prefixed with error:.",
+      "nodeType": "feature",
+      "fileName": "validate-lines-xml-textline-rules",
+      "position": { "x": 100, "y": 100 },
+      "dependencies": ["save-downloaded-lines-xml"],
+      "testLayers": ["api"]
+    },
+    {
+      "id": "validate-lines-xml-with-optional-xsd",
+      "workflowId": "xml-tools",
+      "title": "Optional PAGE XSD validation",
+      "description": "When xsd_path is set, validate lines.xml with lxml against XSD. Success: no errors. Failure: XSD error strings; skipped if xml-xsd extra not installed per implementation.",
+      "nodeType": "feature",
+      "fileName": "validate-lines-xml-with-optional-xsd",
+      "position": { "x": 100, "y": 240 },
+      "dependencies": ["validate-lines-xml-textline-rules"],
+      "testLayers": ["api"]
+    }
+  ],
+  "edges": [
+    {
+      "id": "textline-to-xsd",
+      "source": "validate-lines-xml-textline-rules",
+      "target": "validate-lines-xml-with-optional-xsd"
+    }
+  ]
+}

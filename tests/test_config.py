@@ -35,6 +35,15 @@ def test_lines_xml_xsd_and_require_text_line_defaults():
     assert s.xml_require_text_line is True
 
 
+def test_default_lineation_backend_is_glyph_machina():
+    env = os.environ.copy()
+    env.pop("TRANSCRIBER_SHELL_LINEATION_BACKEND", None)
+    env.pop("LINEATION_BACKEND", None)
+    with patch.dict(os.environ, env, clear=True):
+        s = Settings()
+    assert s.lineation_backend == "glyph_machina"
+
+
 def test_lines_xml_xsd_expands_tilde_from_env():
     with patch.dict(os.environ, {"TRANSCRIBER_SHELL_LINES_XML_XSD": "~/schemas/page.xsd"}, clear=False):
         s = Settings()

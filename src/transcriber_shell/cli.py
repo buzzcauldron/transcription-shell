@@ -242,7 +242,14 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(prog="transcriber-shell")
+    ap = argparse.ArgumentParser(
+        prog="transcriber-shell",
+        description=(
+            "Manuscript transcription: lines XML (Glyph Machina by default) → LLM → protocol YAML. "
+            "Start with: transcriber-shell gui   or   transcriber-shell run --job-id ID --image PATH --prompt PATH"
+        ),
+        epilog="Minimal path: docs/simple-workflow.md  ·  Full setup: docs/local-setup.md",
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     cmp = sub.add_parser(
@@ -298,7 +305,7 @@ def main() -> None:
 
     run = sub.add_parser(
         "run",
-        help="Full pipeline: lineation (mask / Kraken / Glyph Machina) → LLM → validate",
+        help="Full pipeline: lineation (Glyph Machina default · mask · Kraken) → LLM → validate",
     )
     run.add_argument("--job-id", required=True)
     run.add_argument("--image", required=True, help="Pre-cropped image path")
@@ -328,7 +335,7 @@ def main() -> None:
         dest="lineation_backend",
         default=None,
         choices=["mask", "kraken", "glyph_machina"],
-        help="Lineation source (default: env or mask). Ignored with --skip-gm.",
+        help="Lineation source (default: env or glyph_machina). Ignored with --skip-gm.",
     )
     run.add_argument("--lines-xml", help="Existing lines XML when using --skip-gm")
     run.add_argument(
@@ -369,7 +376,7 @@ def main() -> None:
         dest="lineation_backend",
         default=None,
         choices=["mask", "kraken", "glyph_machina"],
-        help="Lineation source when not using --skip-gm (default: env or mask)",
+        help="Lineation source when not using --skip-gm (default: env or glyph_machina)",
     )
     batch.add_argument(
         "--lines-xml",
@@ -394,7 +401,7 @@ def main() -> None:
 
     gui = sub.add_parser(
         "gui",
-        help="Simple desktop UI (tkinter): choose image, prompt, run pipeline",
+        help="Desktop UI (tkinter): images, prompt, lineation backend (Glyph Machina default · mask/Kraken) or skip to lines XML",
     )
     gui.set_defaults(func=cmd_gui)
 
