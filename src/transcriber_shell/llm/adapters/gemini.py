@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import os
+import random
+import time
 from pathlib import Path
 from unittest.mock import patch
 
 from transcriber_shell.config import Settings
+from transcriber_shell.llm.transcribe import TranscribeResult
+
+
+def _sleep_backoff(attempt: int) -> None:
+    base = min(32.0, 2.0**attempt)
+    time.sleep(base + random.uniform(0.0, 1.0))
 
 
 def transcribe_gemini(
@@ -16,7 +24,7 @@ def transcribe_gemini(
     user_text: str,
     model: str | None = None,
     settings: Settings | None = None,
-) -> str:
+) -> TranscribeResult:
     try:
         import google.generativeai as genai
     except ImportError as e:
@@ -48,11 +56,45 @@ def transcribe_gemini(
     if s.llm_use_proxy and proxy:
         env_extra["HTTP_PROXY"] = proxy
         env_extra["HTTPS_PROXY"] = proxy
-    with patch.dict(os.environ, env_extra, clear=False):
-        r = gen_model.generate_content(
-            [
-                {"mime_type": mime, "data": raw},
-                user_text,
-            ]
-        )
-    return (r.text or "").strip()
+
+    max_attempts = 1 + max(0, s.gemini_max_retries)
+    for attempt in range(max_attempts):
+        try:
+            with patch.dict(os.environ, env_extra, clear=False):
+                r = gen_model.generate_content(
+                    [
+                        {"mime_type": mime, "data": raw},
+                        user_text,
+                    ],
+                    request_options={"timeout": s.gemini_timeout_seconds},
+                )
+            text = (r.text or "").strip()
+            usage: dict[str, int] | None = None
+            um = getattr(r, "usage_metadata", None)
+            if um is not None:
+                pt = getattr(um, "prompt_token_count", None)
+                ct = getattr(um, "candidates_token_count", None)
+                tt = getattr(um, "total_token_count", None)
+                usage = {}
+                if pt is not None:
+                    usage["input_tokens"] = int(pt)
+                if ct is not None:
+                    usage["output_tokens"] = int(ct)
+                if tt is not None:
+                    usage["total_tokens"] = int(tt)
+                elif pt is not None and ct is not None:
+                    usage["total_tokens"] = int(pt) + int(ct)
+                if not usage:
+                    usage = None
+            return TranscribeResult(text, usage)
+        except Exception as exc:
+            try:
+                from google.api_core.exceptions import ResourceExhausted
+
+                if isinstance(exc, ResourceExhausted) and attempt + 1 < max_attempts:
+                    _sleep_backoff(attempt)
+                    continue
+            except ImportError:
+                pass
+            raise
+    raise RuntimeError("Gemini: internal retry loop exited unexpectedly")

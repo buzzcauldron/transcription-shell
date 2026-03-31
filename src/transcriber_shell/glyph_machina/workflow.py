@@ -5,6 +5,7 @@ Selectors target the public UI as of 2026; the site may change — see docs/glyp
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import re
 import time
@@ -22,6 +23,18 @@ class GlyphMachinaError(RuntimeError):
     pass
 
 
+def _is_retryable_gm_error(exc: BaseException) -> bool:
+    """One retry helps transient SPA/network slowness; not for missing files or bad downloads."""
+    msg = str(exc).lower()
+    if "timed out" in msg or "did not become ready" in msg:
+        return True
+    if "timeout" in msg and "glyph machina" in msg:
+        return True
+    if "network" in msg and "timeout" in msg:
+        return True
+    return False
+
+
 def _checksum_image(path: Path) -> str:
     h = hashlib.sha256()
     h.update(path.read_bytes())
@@ -33,7 +46,7 @@ def _wait_for_download_control(
     dloc: Locator,
     *,
     timeout_ms: int,
-    hidden_grace_s: float = 6.0,
+    hidden_grace_s: float = 10.0,
 ) -> None:
     """Wait until download is safe to trigger.
 
@@ -64,46 +77,37 @@ def _wait_for_download_control(
         page.wait_for_timeout(350)
     raise GlyphMachinaError(
         "Glyph Machina: download control (#downloadLinesBtn) did not become ready in time "
-        f"({timeout_ms} ms). Increase TRANSCRIBER_SHELL_GM_TIMEOUT_MS or "
-        "TRANSCRIBER_SHELL_GM_POST_IDENTIFY_WAIT_MS, or use Skip automated lineation with a lines XML file."
+        f"({timeout_ms} ms). Increase TRANSCRIBER_SHELL_GM_IDENTIFY_TIMEOUT_MS "
+        "(or TRANSCRIBER_SHELL_GM_POST_IDENTIFY_WAIT_MS for the initial grace period), "
+        "or use Skip automated lineation with a lines XML file."
     )
 
 
-def fetch_lines_xml(
+def _fetch_lines_xml_attempt(
     image_path: Path,
     job_id: str,
-    settings: Settings | None = None,
+    *,
+    settings: Settings,
+    out_dir: Path,
 ) -> Path:
-    """Upload ``image_path``, run Identify Lines, save downloaded lines XML under artifacts.
-
-    Returns path to saved XML. Raises GlyphMachinaError on UI or timeout failures.
-    """
-    s = settings or Settings()
-    image_path = image_path.expanduser().resolve()
-    if not image_path.is_file():
-        raise GlyphMachinaError(
-            f"Image path is missing or not a file: {image_path}. "
-            "Choose a pre-cropped page image (jpg/png/webp/tiff, etc.)."
-        )
-
-    out_dir = (s.artifacts_dir / job_id).resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
-    meta = out_dir / "source_image.sha256"
-    meta.write_text(f"{_checksum_image(image_path)}  {image_path.name}\n", encoding="utf-8")
-
-    timeout = s.gm_timeout_ms
+    """Single browser session: upload → Identify → download XML."""
+    s = settings
+    nav_timeout = s.gm_navigate_timeout_ms
+    identify_timeout = s.gm_identify_timeout_ms
     post_identify = int(s.gm_post_identify_wait_ms)
 
     with playwright_glyph_context(s) as context:
         page = context.new_page()
-        page.set_default_timeout(timeout)
+        page.set_default_timeout(nav_timeout)
         try:
-            page.goto(s.gm_base_url, wait_until="load", timeout=timeout)
+            # "load" waits for all resources; Glyph Machina is a SPA and may never satisfy it on slow
+            # networks. domcontentloaded is enough to interact (file input + buttons).
+            page.goto(s.gm_base_url, wait_until="domcontentloaded", timeout=nav_timeout)
 
             file_input = page.locator('input[type="file"]').first
-            file_input.wait_for(state="attached", timeout=timeout)
+            file_input.wait_for(state="attached", timeout=nav_timeout)
             file_input.set_input_files(str(image_path))
-            page.wait_for_timeout(800)
+            page.wait_for_timeout(1_200)
 
             # Accept crop: pre-cropped images should fill the frame; button label on site is "Crop Image"
             crop = page.get_by_role("button", name="Crop Image")
@@ -111,7 +115,7 @@ def fetch_lines_xml(
                 crop.first.click()
 
             identify = page.get_by_role("button", name="Identify Lines")
-            identify.wait_for(state="visible", timeout=timeout)
+            identify.wait_for(state="visible", timeout=nav_timeout)
             identify.click()
 
             if post_identify > 0:
@@ -120,22 +124,22 @@ def fetch_lines_xml(
             # Do not use locator.count() == 0 immediately — the button may appear only after Identify.
             download_btn = page.locator("#downloadLinesBtn")
             try:
-                download_btn.wait_for(state="attached", timeout=timeout)
+                download_btn.wait_for(state="attached", timeout=identify_timeout)
             except PlaywrightTimeout:
                 download_btn = page.get_by_role(
                     "button", name=re.compile(r"Download Lines File", re.IGNORECASE)
                 )
-                download_btn.wait_for(state="attached", timeout=timeout)
+                download_btn.wait_for(state="attached", timeout=identify_timeout)
 
             dloc = download_btn.first
-            _wait_for_download_control(page, dloc, timeout_ms=timeout)
+            _wait_for_download_control(page, dloc, timeout_ms=identify_timeout)
 
             try:
-                dloc.scroll_into_view_if_needed(timeout=min(30_000, timeout))
+                dloc.scroll_into_view_if_needed(timeout=min(30_000, identify_timeout))
             except PlaywrightTimeout:
                 pass
 
-            with page.expect_download(timeout=timeout) as dl_info:
+            with page.expect_download(timeout=identify_timeout) as dl_info:
                 dloc.click(force=True)
             download = dl_info.value
             suggested = download.suggested_filename or f"{job_id}-lines.xml"
@@ -152,7 +156,48 @@ def fetch_lines_xml(
 
         except PlaywrightTimeout as e:
             raise GlyphMachinaError(
-                f"Glyph Machina UI timed out after {timeout} ms ({e}). "
-                "Increase TRANSCRIBER_SHELL_GM_TIMEOUT_MS, TRANSCRIBER_SHELL_GM_POST_IDENTIFY_WAIT_MS, "
-                "check network, or use Skip automated lineation with existing XML."
+                f"Glyph Machina UI timed out ({e}). "
+                f"Navigation budget: {nav_timeout} ms (TRANSCRIBER_SHELL_GM_NAVIGATE_TIMEOUT_MS). "
+                f"Identify/download budget: {identify_timeout} ms (TRANSCRIBER_SHELL_GM_IDENTIFY_TIMEOUT_MS). "
+                "Check network or use Skip automated lineation with existing XML."
             ) from e
+        except OSError as e:
+            if getattr(e, "errno", None) == errno.ETIMEDOUT or isinstance(e, TimeoutError):
+                raise GlyphMachinaError(
+                    f"Glyph Machina: network-level timeout (errno {getattr(e, 'errno', '?')}): {e}. "
+                    "Check connectivity to glyphmachina.com or use Skip automated lineation with existing XML."
+                ) from e
+            raise
+
+
+def fetch_lines_xml(
+    image_path: Path,
+    job_id: str,
+    settings: Settings | None = None,
+) -> Path:
+    """Upload ``image_path``, run Identify Lines, save downloaded lines XML under artifacts.
+
+    Retries once on timeout-style failures (slow SPA / network). Raises GlyphMachinaError otherwise.
+    """
+    s = settings or Settings()
+    image_path = image_path.expanduser().resolve()
+    if not image_path.is_file():
+        raise GlyphMachinaError(
+            f"Image path is missing or not a file: {image_path}. "
+            "Choose a pre-cropped page image (jpg/png/webp/tiff, etc.)."
+        )
+
+    out_dir = (s.artifacts_dir / job_id).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    meta = out_dir / "source_image.sha256"
+    meta.write_text(f"{_checksum_image(image_path)}  {image_path.name}\n", encoding="utf-8")
+
+    for attempt in range(2):
+        try:
+            return _fetch_lines_xml_attempt(image_path, job_id, settings=s, out_dir=out_dir)
+        except GlyphMachinaError as e:
+            if attempt == 0 and _is_retryable_gm_error(e):
+                time.sleep(15.0)
+                continue
+            raise
+    raise RuntimeError("Glyph Machina: internal retry loop exited unexpectedly")

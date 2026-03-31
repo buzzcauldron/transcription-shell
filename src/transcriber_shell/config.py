@@ -84,6 +84,36 @@ class Settings(BaseSettings):
         description="Extra attempts after the first for 429/503/529 (rate limit / overloaded).",
     )
 
+    openai_timeout_seconds: float = Field(
+        default=600.0,
+        ge=30.0,
+        le=3_600.0,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_OPENAI_TIMEOUT_S"),
+        description="HTTP timeout (seconds) for OpenAI API calls.",
+    )
+    openai_max_retries: int = Field(
+        default=2,
+        ge=0,
+        le=8,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_OPENAI_MAX_RETRIES"),
+        description="Extra attempts after the first for 429/503 (rate limit / service unavailable).",
+    )
+
+    gemini_timeout_seconds: float = Field(
+        default=600.0,
+        ge=30.0,
+        le=3_600.0,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_GEMINI_TIMEOUT_S"),
+        description="Request timeout (seconds) for Gemini generate_content calls.",
+    )
+    gemini_max_retries: int = Field(
+        default=1,
+        ge=0,
+        le=8,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_GEMINI_MAX_RETRIES"),
+        description="Extra attempts after the first for ResourceExhausted (quota/rate-limit).",
+    )
+
     llm_use_proxy: bool = Field(
         default=False,
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_LLM_USE_PROXY"),
@@ -103,15 +133,43 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_GM_HEADLESS", "GM_HEADLESS"),
     )
     gm_timeout_ms: int = Field(
-        default=120_000,
+        default=600_000,
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_GM_TIMEOUT_MS", "GM_TIMEOUT_MS"),
+        description=(
+            "Overall Glyph Machina session budget (ms). Default 10 minutes. "
+            "gm_navigate_timeout_ms + gm_identify_timeout_ms should not exceed this."
+        ),
+    )
+    gm_navigate_timeout_ms: int = Field(
+        default=60_000,
+        ge=5_000,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_GM_NAVIGATE_TIMEOUT_MS",
+            "GM_NAVIGATE_TIMEOUT_MS",
+        ),
+        description=(
+            "Playwright timeout for navigation + file-input phases (goto, wait_for, button click). "
+            "Default 60 seconds. Increase on very slow networks."
+        ),
+    )
+    gm_identify_timeout_ms: int = Field(
+        default=540_000,
+        ge=30_000,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_GM_IDENTIFY_TIMEOUT_MS",
+            "GM_IDENTIFY_TIMEOUT_MS",
+        ),
+        description=(
+            "Playwright timeout for the Identify Lines + download phases. "
+            "Default 9 minutes. Increase for slow or complex manuscripts."
+        ),
     )
     gm_base_url: str = Field(
         default="https://glyphmachina.com/",
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_GM_BASE_URL", "GM_BASE_URL"),
     )
     gm_post_identify_wait_ms: int = Field(
-        default=2_000,
+        default=5_000,
         ge=0,
         le=600_000,
         validation_alias=AliasChoices(
@@ -119,8 +177,9 @@ class Settings(BaseSettings):
             "GM_POST_IDENTIFY_WAIT_MS",
         ),
         description=(
-            "Pause after Identify Lines before waiting on the download control — gives the SPA time "
-            "to run line detection before #downloadLinesBtn becomes actionable."
+            "Initial grace period (ms) after clicking Identify Lines before _wait_for_download_control "
+            "polling begins — not the total wait for detection. Default 5 seconds; "
+            "the polling loop handles the rest up to gm_identify_timeout_ms."
         ),
     )
     gm_persistent_profile: bool = Field(
@@ -141,6 +200,16 @@ class Settings(BaseSettings):
             "TRANSCRIBER_SHELL_GM_BROWSER_PROFILE",
         ),
         description="Playwright persistent context directory (cookies, local site data).",
+    )
+    gm_auto_install_browser: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_GM_AUTO_INSTALL_BROWSER",
+        ),
+        description=(
+            "If true, run `python -m playwright install chromium` once per process before the first "
+            "Playwright session (idempotent when Chromium is already installed; set false for air-gapped hosts)."
+        ),
     )
 
     lineation_backend: LineationBackend = Field(
@@ -291,6 +360,23 @@ class Settings(BaseSettings):
             "TRANSCRIBER_SHELL_XML_REQUIRE_TEXT_LINE",
         ),
         description="If false, lines XML may have zero TextLine elements (CLI: --no-require-text-line).",
+    )
+    skip_lines_xml_validation: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION",
+        ),
+        description="If true, skip lines XML checks and optional PAGE XSD; still run LLM (CLI: --skip-lines-xml-validation).",
+    )
+    continue_on_lineation_failure: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE",
+        ),
+        description=(
+            "If true, when automated lineation fails (Glyph Machina, mask, Kraken, timeouts), "
+            "continue to LLM transcription without lines XML instead of failing the run (CLI: --continue-on-lineation-failure)."
+        ),
     )
 
     default_provider: ProviderName = Field(

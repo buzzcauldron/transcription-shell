@@ -38,11 +38,42 @@ from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.pipeline.batch import (
     IMAGE_SUFFIXES,
     discover_images,
+    has_successful_transcription,
     run_batch,
 )
 from transcriber_shell.pipeline.run import load_prompt_cfg, run_pipeline
+from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path
 
 _NONE_LABEL = "(none — use .env default)"
+
+
+def _merge_llm_usage(
+    acc: dict[str, int] | None, new: dict[str, int] | None
+) -> dict[str, int] | None:
+    """Sum token fields across batch jobs."""
+    if not new:
+        return acc
+    if not acc:
+        return dict(new)
+    out = dict(acc)
+    for k in ("input_tokens", "output_tokens", "total_tokens"):
+        if k in new:
+            out[k] = out.get(k, 0) + int(new[k])
+    return out
+
+
+def _format_llm_usage_line(u: dict[str, int] | None) -> str:
+    if not u:
+        return "LLM tokens: —"
+    parts: list[str] = []
+    if "input_tokens" in u:
+        parts.append(f"in {u['input_tokens']}")
+    if "output_tokens" in u:
+        parts.append(f"out {u['output_tokens']}")
+    if "total_tokens" in u:
+        parts.append(f"total {u['total_tokens']}")
+    return "LLM tokens: " + " · ".join(parts) if parts else "LLM tokens: —"
+
 
 # Bounded log line queue: avoids unbounded memory if a worker logs very heavily.
 _GUI_LOG_QUEUE_MAXSIZE = 4_000
@@ -106,12 +137,25 @@ class TranscriberGui:
             value=str(self._settings.lines_xml_xsd) if self._settings.lines_xml_xsd else ""
         )
         self._require_text_line = tk.BooleanVar(value=self._settings.xml_require_text_line)
+        self._skip_lines_xml_validation = tk.BooleanVar(
+            value=self._settings.skip_lines_xml_validation
+        )
+        self._continue_on_lineation_failure = tk.BooleanVar(
+            value=self._settings.continue_on_lineation_failure
+        )
         self._persist_keys_after_run = tk.BooleanVar(value=False)
+        self._skip_successful = tk.BooleanVar(value=False)
         self._llm_use_proxy = tk.BooleanVar(value=self._settings.llm_use_proxy)
         self._llm_http_proxy = tk.StringVar(value=(self._settings.llm_http_proxy or ""))
         self._gm_persistent_profile = tk.BooleanVar(value=self._settings.gm_persistent_profile)
+        self._gm_auto_install_browser = tk.BooleanVar(value=self._settings.gm_auto_install_browser)
         self._gm_user_data_dir = tk.StringVar(value=str(self._settings.gm_user_data_dir))
         self._status = tk.StringVar(value="Ready.")
+        self._metrics_elapsed = tk.StringVar(value="Elapsed: —")
+        self._metrics_tokens = tk.StringVar(value="LLM tokens: —")
+        self._run_t0: float | None = None
+        self._run_metrics_active = False
+        self._advanced_expanded = tk.BooleanVar(value=False)
         self._banner_dismiss_after: str | None = None
         self._loading_gui_state = False
         self._save_gui_state_after: str | None = None
@@ -120,11 +164,15 @@ class TranscriberGui:
         self._build_ui()
         self._poll_queue()
 
+        # Install persistence before restore + default prompt so `trace_add` handlers exist when
+        # `_prompt_path.set(...)` runs; otherwise the fixture default would not schedule a save.
+        self._install_gui_state_persistence()
         self._restore_gui_state()
         default_prompt = _repo_fixtures_prompt()
         if default_prompt and not self._prompt_path.get().strip():
             self._prompt_path.set(str(default_prompt))
-        self._install_gui_state_persistence()
+
+    # ── UI construction ──────────────────────────────────────────────────────
 
     def _build_ui(self) -> None:
         style = ttk.Style()
@@ -143,23 +191,24 @@ class TranscriberGui:
         style.configure("TEntry", fieldbackground=_FIELD_BG)
         style.configure("TCombobox", fieldbackground=_FIELD_BG)
 
-        # Same body face as subtitle / labels (title stays Georgia); not monospace
         if sys.platform == "darwin":
-            _content_font = ("system", 11)
+            self._content_font = ("system", 11)
         elif sys.platform == "win32":
-            _content_font = ("Segoe UI", 10)
+            self._content_font = ("Segoe UI", 10)
         else:
-            _content_font = ("DejaVu Sans", 10)
-        self._content_font = _content_font
+            self._content_font = ("DejaVu Sans", 10)
 
-        # Scrollable main column: the form is long; canvas + inner frame lets it scroll while
-        # bottom_bar stays pinned.  Mousewheel bound so the whole pane scrolls naturally.
+        # Scrollable main column
         self._scroll_canvas = tk.Canvas(self.root, bg=_BG, highlightthickness=0)
-        self._scroll_vsb = ttk.Scrollbar(self.root, orient=tk.VERTICAL, command=self._scroll_canvas.yview)
+        self._scroll_vsb = ttk.Scrollbar(
+            self.root, orient=tk.VERTICAL, command=self._scroll_canvas.yview
+        )
         self._scroll_canvas.configure(yscrollcommand=self._scroll_vsb.set)
 
         outer = ttk.Frame(self._scroll_canvas, padding=(16, 16, 16, 8), style="Main.TFrame")
-        self._scroll_canvas_window = self._scroll_canvas.create_window((0, 0), window=outer, anchor="nw")
+        self._scroll_canvas_window = self._scroll_canvas.create_window(
+            (0, 0), window=outer, anchor="nw"
+        )
 
         def _on_outer_configure(_e: tk.Event) -> None:
             self._scroll_canvas.configure(scrollregion=self._scroll_canvas.bbox("all"))
@@ -170,21 +219,10 @@ class TranscriberGui:
         outer.bind("<Configure>", _on_outer_configure)
         self._scroll_canvas.bind("<Configure>", _on_canvas_configure)
 
-        def _on_mousewheel(e: tk.Event) -> None:
-            if sys.platform == "darwin":
-                self._scroll_canvas.yview_scroll(-1 * int(e.delta), "units")
-            else:
-                self._scroll_canvas.yview_scroll(-1 * int(e.delta / 120), "units")
-
-        self._scroll_canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        if sys.platform == "linux":
-            self._scroll_canvas.bind_all("<Button-4>", lambda _e: self._scroll_canvas.yview_scroll(-3, "units"))
-            self._scroll_canvas.bind_all("<Button-5>", lambda _e: self._scroll_canvas.yview_scroll(3, "units"))
-
         ttk.Label(outer, text="Transcriber shell", style="Title.TLabel").pack(anchor=tk.W)
         ttk.Label(
             outer,
-            text="Image → lines XML (default: Glyph Machina) → LLM → transcription.yaml under artifacts/",
+            text="Image → lines XML (default: Glyph Machina) → LLM → <image_stem>_transcription.yaml under artifacts/",
             style="Sub.TLabel",
         ).pack(anchor=tk.W, pady=(0, 4))
         ttk.Label(
@@ -197,6 +235,114 @@ class TranscriberGui:
             wraplength=540,
         ).pack(anchor=tk.W, pady=(0, 8))
 
+        self._build_keys_section(outer)
+        self._build_llm_section(outer)
+        self._build_images_section(outer)
+
+        # Prompt file row
+        pf = ttk.Frame(outer, style="Main.TFrame")
+        pf.pack(fill=tk.X, pady=4)
+        ttk.Label(pf, text="Prompt file", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        ttk.Entry(pf, textvariable=self._prompt_path).pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8)
+        )
+        ttk.Button(pf, text="Browse…", command=self._browse_prompt).pack(side=tk.RIGHT)
+
+        self._build_lineation_section(outer)
+        self._build_advanced_section(outer)
+
+        # Job ID
+        job_block = ttk.Frame(outer, style="Main.TFrame")
+        job_block.pack(fill=tk.X, pady=4)
+        job_row = ttk.Frame(job_block, style="Main.TFrame")
+        job_row.pack(fill=tk.X)
+        ttk.Label(job_row, text="Job ID", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        self._job_entry = ttk.Entry(job_row, textvariable=self._job_id, width=24)
+        self._job_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        job_hint_row = ttk.Frame(job_block, style="Main.TFrame")
+        job_hint_row.pack(fill=tk.X)
+        ttk.Label(job_hint_row, text="", width=14).pack(side=tk.LEFT)
+        self._job_hint = ttk.Label(job_hint_row, text="", style="Muted.TLabel", wraplength=480)
+        self._job_hint.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        ttk.Label(
+            outer,
+            text="Outputs: artifacts/<job_id>/  ·  .env still used when fields above are empty.",
+            style="Muted.TLabel",
+        ).pack(anchor=tk.W, pady=(4, 4))
+
+        self._build_log_section(outer)
+
+        # Bottom bar
+        bottom_bar = ttk.Frame(self.root, padding=(16, 10, 16, 14), style="Main.TFrame")
+
+        self._banner_outer = tk.Frame(
+            self.root, bd=0, highlightthickness=1, highlightbackground="#b8b0a8"
+        )
+        self._banner_inner = tk.Frame(self._banner_outer)
+        self._banner_label = tk.Label(
+            self._banner_inner,
+            text="",
+            wraplength=540,
+            justify=tk.LEFT,
+            anchor=tk.W,
+            font=self._content_font,
+        )
+        self._banner_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Button(self._banner_inner, text="Dismiss", command=self._gui_notify_clear).pack(
+            side=tk.RIGHT, padx=(10, 0)
+        )
+        self._banner_inner.pack(fill=tk.X, padx=14, pady=8)
+
+        eff_bottom = ttk.Frame(bottom_bar, style="Main.TFrame")
+        eff_bottom.pack(fill=tk.X, pady=(0, 6))
+        ttk.Checkbutton(
+            eff_bottom,
+            text="Efficient mode (protocol §2.9 — single pass, core tokens only)",
+            variable=self._efficient_mode,
+        ).pack(side=tk.LEFT)
+        ttk.Label(
+            eff_bottom,
+            text="Sets runMode: efficient on the prompt for this run.",
+            style="Muted.TLabel",
+        ).pack(side=tk.LEFT, padx=(12, 0))
+        btn_row = ttk.Frame(bottom_bar, style="Main.TFrame")
+        btn_row.pack(fill=tk.X)
+        ttk.Button(
+            btn_row,
+            text="Transcribe",
+            style="Accent.TButton",
+            command=self._run,
+        ).pack(side=tk.LEFT)
+        ttk.Button(btn_row, text="Open artifacts folder", command=self._open_artifacts).pack(
+            side=tk.LEFT, padx=(12, 0)
+        )
+        ttk.Button(btn_row, text="HTTP API docs (browser)", command=self._open_api_docs).pack(
+            side=tk.LEFT, padx=(12, 0)
+        )
+        ttk.Button(btn_row, text="Save log…", command=self._save_run_log).pack(side=tk.RIGHT)
+        prog_row = ttk.Frame(bottom_bar, style="Main.TFrame")
+        prog_row.pack(fill=tk.X, pady=(8, 0))
+        ttk.Label(prog_row, textvariable=self._status, style="Muted.TLabel").pack(
+            side=tk.LEFT, anchor=tk.W
+        )
+        ttk.Label(prog_row, textvariable=self._metrics_tokens, style="Muted.TLabel").pack(
+            side=tk.RIGHT, padx=(16, 0)
+        )
+        ttk.Label(prog_row, textvariable=self._metrics_elapsed, style="Muted.TLabel").pack(
+            side=tk.RIGHT
+        )
+
+        bottom_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        self._scroll_vsb.pack(side=tk.RIGHT, fill=tk.Y)
+        self._scroll_canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        self._setup_main_canvas_mousewheel()
+        self._refresh_model_combos()
+        self._refresh_image_list()
+        self._refresh_ui_state()
+
+    def _build_keys_section(self, outer: ttk.Frame) -> None:
         cred = ttk.LabelFrame(outer, text="Provider keys (LLM)", padding=(10, 8))
         cred.pack(fill=tk.X, pady=(0, 10))
 
@@ -206,8 +352,8 @@ class TranscriberGui:
             style="Muted.TLabel",
         ).pack(anchor=tk.W, pady=(0, 6))
 
-        def key_row(parent: ttk.LabelFrame, label: str, var: tk.StringVar) -> None:
-            f = ttk.Frame(parent, style="Main.TFrame")
+        def key_row(label: str, var: tk.StringVar) -> None:
+            f = ttk.Frame(cred, style="Main.TFrame")
             f.pack(fill=tk.X, pady=3)
             ttk.Label(f, text=label, width=14, anchor=tk.W).pack(side=tk.LEFT)
             show = "*" if self._mask_keys.get() else ""
@@ -224,19 +370,21 @@ class TranscriberGui:
                 highlightthickness=1,
                 highlightbackground="#c8c4bc",
                 highlightcolor=_ACCENT,
-                font=_content_font,
+                font=self._content_font,
             )
             e.pack(side=tk.LEFT, fill=tk.X, expand=True)
             self._key_entry_widgets.append(e)
 
-        key_row(cred, "Anthropic", self._key_anthropic)
-        key_row(cred, "OpenAI", self._key_openai)
-        key_row(cred, "Google (Gemini)", self._key_google)
+        key_row("Anthropic", self._key_anthropic)
+        key_row("OpenAI", self._key_openai)
+        key_row("Google (Gemini)", self._key_google)
 
         olf = ttk.Frame(cred, style="Main.TFrame")
         olf.pack(fill=tk.X, pady=(4, 2))
         ttk.Label(olf, text="Ollama URL", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        ttk.Entry(olf, textvariable=self._ollama_base_url).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Entry(olf, textvariable=self._ollama_base_url).pack(
+            side=tk.LEFT, fill=tk.X, expand=True
+        )
 
         optf = ttk.Frame(cred, style="Main.TFrame")
         optf.pack(fill=tk.X, pady=(4, 0))
@@ -257,79 +405,17 @@ class TranscriberGui:
             text="Also save keys to .env after a successful run",
             variable=self._persist_keys_after_run,
         ).pack(side=tk.LEFT, padx=(12, 0))
+        ttk.Checkbutton(
+            save_row,
+            text="Skip jobs that already have a successful transcription",
+            variable=self._skip_successful,
+        ).pack(side=tk.LEFT, padx=(12, 0))
         ttk.Label(
             cred,
             text="Writes to .env in the process working directory (usually the repo root). Do not commit .env.",
             style="Muted.TLabel",
             wraplength=480,
         ).pack(anchor=tk.W, pady=(4, 0))
-
-        net = ttk.LabelFrame(
-            outer,
-            text="Network (LLM APIs) & Chromium profile (Glyph Machina lineation only)",
-            padding=(10, 8),
-        )
-        net.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(
-            net,
-            text=(
-                "HTTP proxy below applies to cloud LLM calls (Anthropic/OpenAI/Gemini). "
-                "Chromium profile applies only when lineation backend is Glyph Machina and skip is off."
-            ),
-            style="Muted.TLabel",
-            wraplength=520,
-        ).pack(anchor=tk.W, pady=(0, 6))
-        ttk.Checkbutton(
-            net,
-            text="Route LLM API calls through HTTP proxy",
-            variable=self._llm_use_proxy,
-        ).pack(anchor=tk.W)
-        pxf = ttk.Frame(net, style="Main.TFrame")
-        pxf.pack(fill=tk.X, pady=(4, 0))
-        ttk.Label(pxf, text="Proxy URL", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        show_px = "*" if self._mask_keys.get() else ""
-        self._proxy_entry = tk.Entry(
-            pxf,
-            textvariable=self._llm_http_proxy,
-            show=show_px,
-            bg=_FIELD_BG,
-            fg=_FG,
-            insertbackground=_FG,
-            relief=tk.FLAT,
-            borderwidth=1,
-            highlightthickness=1,
-            highlightbackground="#c8c4bc",
-            highlightcolor=_ACCENT,
-            font=_content_font,
-        )
-        self._proxy_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self._key_entry_widgets.append(self._proxy_entry)
-        ttk.Label(
-            net,
-            text="Anthropic/OpenAI use httpx; Gemini uses HTTP(S)_PROXY for the request. Ollama (local) is unchanged.",
-            style="Muted.TLabel",
-            wraplength=500,
-        ).pack(anchor=tk.W, pady=(6, 0))
-        self._gm_profile_check = ttk.Checkbutton(
-            net,
-            text="Persistent Chromium profile for Glyph Machina lineation (keep site login/cookies between runs)",
-            variable=self._gm_persistent_profile,
-        )
-        self._gm_profile_check.pack(anchor=tk.W, pady=(8, 0))
-        gmdf = ttk.Frame(net, style="Main.TFrame")
-        gmdf.pack(fill=tk.X, pady=(4, 0))
-        ttk.Label(gmdf, text="Profile dir", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        self._gm_user_data_entry = ttk.Entry(gmdf, textvariable=self._gm_user_data_dir)
-        self._gm_user_data_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
-        self._gm_profile_browse_btn = ttk.Button(gmdf, text="Browse…", command=self._browse_gm_profile_dir)
-        self._gm_profile_browse_btn.pack(side=tk.RIGHT)
-        self._gm_profile_hint = ttk.Label(
-            net,
-            text="",
-            style="Muted.TLabel",
-            wraplength=500,
-        )
-        self._gm_profile_hint.pack(anchor=tk.W, pady=(4, 0))
 
         def _key_var_trace(*_a: object) -> None:
             self._sanitize_key_stringvars_on_write()
@@ -339,9 +425,15 @@ class TranscriberGui:
             _kv.trace_add("write", _key_var_trace)
         self._bind_key_entry_clipboard_shortcuts()
 
+        if self._key_entry_widgets:
+            self._key_entry_widgets[0].focus_set()
+
+    def _build_llm_section(self, outer: ttk.Frame) -> None:
         disc_row = ttk.Frame(outer, style="Main.TFrame")
         disc_row.pack(fill=tk.X, pady=(0, 4))
-        ttk.Button(disc_row, text="Scan for Ollama / local tools", command=self._discover).pack(side=tk.LEFT)
+        ttk.Button(
+            disc_row, text="Scan for Ollama / local tools", command=self._discover
+        ).pack(side=tk.LEFT)
         ttk.Label(
             outer,
             text="Optional HTTP API: run transcriber-shell serve, then open HTTP API docs below.",
@@ -400,9 +492,7 @@ class TranscriberGui:
             wraplength=500,
         ).pack(anchor=tk.W, pady=(6, 0))
 
-        if self._key_entry_widgets:
-            self._key_entry_widgets[0].focus_set()
-
+    def _build_images_section(self, outer: ttk.Frame) -> None:
         img_frame = ttk.LabelFrame(outer, text="Page images", padding=(8, 6))
         img_frame.pack(fill=tk.BOTH, pady=(0, 4))
         self._image_count_label = ttk.Label(img_frame, text="0 image(s)", style="Muted.TLabel")
@@ -420,9 +510,15 @@ class TranscriberGui:
         # Pack the button row at the BOTTOM first so the expanding list cannot compress it vertically.
         img_btns = ttk.Frame(img_frame, style="Main.TFrame")
         img_btns.pack(side=tk.BOTTOM, fill=tk.X, pady=(6, 0))
-        ttk.Button(img_btns, text="Add files…", command=self._add_image_files).pack(side=tk.LEFT, padx=(0, 6))
-        ttk.Button(img_btns, text="Add folder…", command=self._add_image_folder).pack(side=tk.LEFT, padx=(0, 6))
-        ttk.Button(img_btns, text="Remove selected", command=self._remove_selected_images).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(img_btns, text="Add files…", command=self._add_image_files).pack(
+            side=tk.LEFT, padx=(0, 6)
+        )
+        ttk.Button(img_btns, text="Add folder…", command=self._add_image_folder).pack(
+            side=tk.LEFT, padx=(0, 6)
+        )
+        ttk.Button(img_btns, text="Remove selected", command=self._remove_selected_images).pack(
+            side=tk.LEFT, padx=(0, 6)
+        )
         ttk.Button(img_btns, text="Clear all", command=self._clear_images).pack(side=tk.LEFT)
 
         list_fr = ttk.Frame(img_frame, style="Main.TFrame")
@@ -430,7 +526,7 @@ class TranscriberGui:
         self._image_listbox = tk.Listbox(
             list_fr,
             height=5,
-            font=_content_font,
+            font=self._content_font,
             bg=_FIELD_BG,
             fg=_FG,
             selectmode=tk.EXTENDED,
@@ -442,16 +538,7 @@ class TranscriberGui:
         self._image_listbox.configure(yscrollcommand=sb.set)
         self._setup_image_drop_target()
 
-        def row(label: str, var: tk.StringVar, browse_cmd, browse_label: str) -> None:
-            f = ttk.Frame(outer, style="Main.TFrame")
-            f.pack(fill=tk.X, pady=4)
-            ttk.Label(f, text=label, width=14, anchor=tk.W).pack(side=tk.LEFT)
-            e = ttk.Entry(f, textvariable=var)
-            e.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
-            ttk.Button(f, text=browse_label, command=browse_cmd).pack(side=tk.RIGHT)
-
-        row("Prompt file", self._prompt_path, self._browse_prompt, "Browse…")
-
+    def _build_lineation_section(self, outer: ttk.Frame) -> None:
         lineation_src = ttk.LabelFrame(outer, text="Lineation source", padding=(8, 6))
         lineation_src.pack(fill=tk.X, pady=(4, 6))
         lb_row = ttk.Frame(lineation_src, style="Main.TFrame")
@@ -492,15 +579,21 @@ class TranscriberGui:
         lines_row = ttk.Frame(outer, style="Main.TFrame")
         lines_row.pack(fill=tk.X, pady=4)
         ttk.Label(lines_row, text="Lines XML file", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        self._lines_entry = ttk.Entry(lines_row, textvariable=self._lines_xml_path, state="disabled")
+        self._lines_entry = ttk.Entry(
+            lines_row, textvariable=self._lines_xml_path, state="disabled"
+        )
         self._lines_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
-        self._lines_btn = ttk.Button(lines_row, text="Browse…", command=self._browse_lines, state="disabled")
+        self._lines_btn = ttk.Button(
+            lines_row, text="Browse…", command=self._browse_lines, state="disabled"
+        )
         self._lines_btn.pack(side=tk.RIGHT)
 
         lines_dir_row = ttk.Frame(outer, style="Main.TFrame")
         lines_dir_row.pack(fill=tk.X, pady=4)
         ttk.Label(lines_dir_row, text="Lines XML dir", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        self._lines_dir_entry = ttk.Entry(lines_dir_row, textvariable=self._lines_xml_dir, state="disabled")
+        self._lines_dir_entry = ttk.Entry(
+            lines_dir_row, textvariable=self._lines_xml_dir, state="disabled"
+        )
         self._lines_dir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
         self._lines_dir_btn = ttk.Button(
             lines_dir_row, text="Browse…", command=self._browse_lines_dir, state="disabled"
@@ -510,7 +603,103 @@ class TranscriberGui:
         self._lines_help = ttk.Label(outer, text="", style="Muted.TLabel", wraplength=520)
         self._lines_help.pack(anchor=tk.W, pady=(0, 2))
 
-        xsd_row = ttk.Frame(outer, style="Main.TFrame")
+    def _build_advanced_section(self, outer: ttk.Frame) -> None:
+        """Collapsible advanced settings: proxy, Chromium profile, XML validation."""
+        toggle_row = ttk.Frame(outer, style="Main.TFrame")
+        toggle_row.pack(fill=tk.X, pady=(4, 0))
+        self._advanced_toggle_btn = ttk.Button(
+            toggle_row,
+            text="▶ Advanced settings",
+            command=self._toggle_advanced,
+        )
+        self._advanced_toggle_btn.pack(side=tk.LEFT)
+
+        self._advanced_content = ttk.Frame(outer, style="Main.TFrame")
+        # Not packed initially — shown/hidden by _toggle_advanced.
+
+        # Network / proxy subsection
+        net = ttk.LabelFrame(
+            self._advanced_content,
+            text="Network (LLM APIs) & Chromium profile (Glyph Machina lineation only)",
+            padding=(10, 8),
+        )
+        net.pack(fill=tk.X, pady=(8, 0))
+        ttk.Label(
+            net,
+            text=(
+                "HTTP proxy below applies to cloud LLM calls (Anthropic/OpenAI/Gemini). "
+                "Chromium profile applies only when lineation backend is Glyph Machina and skip is off."
+            ),
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(0, 6))
+        ttk.Checkbutton(
+            net,
+            text="Route LLM API calls through HTTP proxy",
+            variable=self._llm_use_proxy,
+        ).pack(anchor=tk.W)
+        pxf = ttk.Frame(net, style="Main.TFrame")
+        pxf.pack(fill=tk.X, pady=(4, 0))
+        ttk.Label(pxf, text="Proxy URL", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        show_px = "*" if self._mask_keys.get() else ""
+        self._proxy_entry = tk.Entry(
+            pxf,
+            textvariable=self._llm_http_proxy,
+            show=show_px,
+            bg=_FIELD_BG,
+            fg=_FG,
+            insertbackground=_FG,
+            relief=tk.FLAT,
+            borderwidth=1,
+            highlightthickness=1,
+            highlightbackground="#c8c4bc",
+            highlightcolor=_ACCENT,
+            font=self._content_font,
+        )
+        self._proxy_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._key_entry_widgets.append(self._proxy_entry)
+        ttk.Label(
+            net,
+            text="Anthropic/OpenAI use httpx; Gemini uses HTTP(S)_PROXY for the request. Ollama (local) is unchanged.",
+            style="Muted.TLabel",
+            wraplength=500,
+        ).pack(anchor=tk.W, pady=(6, 0))
+        self._gm_auto_install_check = ttk.Checkbutton(
+            net,
+            text=(
+                "Auto-install Playwright Chromium before first browser session "
+                "(python -m playwright install chromium; env TRANSCRIBER_SHELL_GM_AUTO_INSTALL_BROWSER)"
+            ),
+            variable=self._gm_auto_install_browser,
+        )
+        self._gm_auto_install_check.pack(anchor=tk.W, pady=(8, 0))
+        self._gm_profile_check = ttk.Checkbutton(
+            net,
+            text="Persistent Chromium profile for Glyph Machina lineation (keep site login/cookies between runs)",
+            variable=self._gm_persistent_profile,
+        )
+        self._gm_profile_check.pack(anchor=tk.W, pady=(8, 0))
+        gmdf = ttk.Frame(net, style="Main.TFrame")
+        gmdf.pack(fill=tk.X, pady=(4, 0))
+        ttk.Label(gmdf, text="Profile dir", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        self._gm_user_data_entry = ttk.Entry(gmdf, textvariable=self._gm_user_data_dir)
+        self._gm_user_data_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
+        self._gm_profile_browse_btn = ttk.Button(
+            gmdf, text="Browse…", command=self._browse_gm_profile_dir
+        )
+        self._gm_profile_browse_btn.pack(side=tk.RIGHT)
+        self._gm_profile_hint = ttk.Label(
+            net,
+            text="",
+            style="Muted.TLabel",
+            wraplength=500,
+        )
+        self._gm_profile_hint.pack(anchor=tk.W, pady=(4, 0))
+
+        # Validation subsection
+        val = ttk.LabelFrame(self._advanced_content, text="XML validation", padding=(10, 8))
+        val.pack(fill=tk.X, pady=(8, 0))
+        xsd_row = ttk.Frame(val, style="Main.TFrame")
         xsd_row.pack(fill=tk.X, pady=4)
         ttk.Label(xsd_row, text="PAGE XSD (opt.)", width=14, anchor=tk.W).pack(side=tk.LEFT)
         ttk.Entry(xsd_row, textvariable=self._xsd_path).pack(
@@ -518,12 +707,12 @@ class TranscriberGui:
         )
         ttk.Button(xsd_row, text="Browse…", command=self._browse_xsd).pack(side=tk.RIGHT)
         ttk.Label(
-            outer,
+            val,
             text="Optional: validate lines XML against a PAGE XSD (install pip extra [xml-xsd] for lxml). Leave empty to skip.",
             style="Muted.TLabel",
             wraplength=520,
         ).pack(anchor=tk.W, pady=(0, 2))
-        req_tl_row = ttk.Frame(outer, style="Main.TFrame")
+        req_tl_row = ttk.Frame(val, style="Main.TFrame")
         req_tl_row.pack(fill=tk.X, pady=2)
         ttk.Label(req_tl_row, text="", width=14).pack(side=tk.LEFT)
         ttk.Checkbutton(
@@ -531,26 +720,27 @@ class TranscriberGui:
             text="Require ≥1 TextLine in lines XML (off = CLI --no-require-text-line)",
             variable=self._require_text_line,
         ).pack(side=tk.LEFT)
+        skip_xml_row = ttk.Frame(val, style="Main.TFrame")
+        skip_xml_row.pack(fill=tk.X, pady=2)
+        ttk.Label(skip_xml_row, text="", width=14).pack(side=tk.LEFT)
+        ttk.Checkbutton(
+            skip_xml_row,
+            text="Skip lines XML validation (no checks / XSD before LLM; CLI --skip-lines-xml-validation)",
+            variable=self._skip_lines_xml_validation,
+        ).pack(side=tk.LEFT)
+        cont_line_row = ttk.Frame(val, style="Main.TFrame")
+        cont_line_row.pack(fill=tk.X, pady=2)
+        ttk.Label(cont_line_row, text="", width=14).pack(side=tk.LEFT)
+        ttk.Checkbutton(
+            cont_line_row,
+            text=(
+                "Continue without lines XML if lineation fails (Glyph Machina / mask / Kraken / timeouts; "
+                "CLI --continue-on-lineation-failure)"
+            ),
+            variable=self._continue_on_lineation_failure,
+        ).pack(side=tk.LEFT)
 
-        job_block = ttk.Frame(outer, style="Main.TFrame")
-        job_block.pack(fill=tk.X, pady=4)
-        job_row = ttk.Frame(job_block, style="Main.TFrame")
-        job_row.pack(fill=tk.X)
-        ttk.Label(job_row, text="Job ID", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        self._job_entry = ttk.Entry(job_row, textvariable=self._job_id, width=24)
-        self._job_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        job_hint_row = ttk.Frame(job_block, style="Main.TFrame")
-        job_hint_row.pack(fill=tk.X)
-        ttk.Label(job_hint_row, text="", width=14).pack(side=tk.LEFT)
-        self._job_hint = ttk.Label(job_hint_row, text="", style="Muted.TLabel", wraplength=480)
-        self._job_hint.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        ttk.Label(
-            outer,
-            text="Outputs: artifacts/<job_id>/  ·  .env still used when fields above are empty.",
-            style="Muted.TLabel",
-        ).pack(anchor=tk.W, pady=(4, 4))
-
+    def _build_log_section(self, outer: ttk.Frame) -> None:
         log_head = ttk.Frame(outer, style="Main.TFrame")
         log_head.pack(fill=tk.X, pady=(4, 0))
         ttk.Label(log_head, text="Run log", style="Muted.TLabel").pack(side=tk.LEFT)
@@ -567,7 +757,7 @@ class TranscriberGui:
             outer,
             height=12,
             wrap=tk.WORD,
-            font=_content_font,
+            font=self._content_font,
             bg=_FIELD_BG,
             fg=_FG,
             insertbackground=_FG,
@@ -577,61 +767,219 @@ class TranscriberGui:
         )
         self._log.pack(fill=tk.BOTH, expand=True)
 
-        bottom_bar = ttk.Frame(self.root, padding=(16, 10, 16, 14), style="Main.TFrame")
+    def _toggle_advanced(self) -> None:
+        expanded = not self._advanced_expanded.get()
+        self._advanced_expanded.set(expanded)
+        if expanded:
+            self._advanced_content.pack(fill=tk.X, pady=(0, 8))
+            self._advanced_toggle_btn.configure(text="▼ Advanced settings")
+        else:
+            self._advanced_content.pack_forget()
+            self._advanced_toggle_btn.configure(text="▶ Advanced settings")
+        self._schedule_gui_state_save()
 
-        self._banner_outer = tk.Frame(self.root, bd=0, highlightthickness=1, highlightbackground="#b8b0a8")
-        self._banner_inner = tk.Frame(self._banner_outer)
-        self._banner_label = tk.Label(
-            self._banner_inner,
-            text="",
-            wraplength=540,
-            justify=tk.LEFT,
-            anchor=tk.W,
-            font=self._content_font,
-        )
-        self._banner_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Button(self._banner_inner, text="Dismiss", command=self._gui_notify_clear).pack(
-            side=tk.RIGHT, padx=(10, 0)
-        )
-        self._banner_inner.pack(fill=tk.X, padx=14, pady=8)
+    # ── UI state sync ────────────────────────────────────────────────────────
 
-        eff_bottom = ttk.Frame(bottom_bar, style="Main.TFrame")
-        eff_bottom.pack(fill=tk.X, pady=(0, 6))
-        ttk.Checkbutton(
-            eff_bottom,
-            text="Efficient mode (protocol §2.9 — single pass, core tokens only)",
-            variable=self._efficient_mode,
-        ).pack(side=tk.LEFT)
-        ttk.Label(
-            eff_bottom,
-            text="Sets runMode: efficient on the prompt for this run.",
-            style="Muted.TLabel",
-        ).pack(side=tk.LEFT, padx=(12, 0))
-        btn_row = ttk.Frame(bottom_bar, style="Main.TFrame")
-        btn_row.pack(fill=tk.X)
-        ttk.Button(
-            btn_row,
-            text="Transcribe",
-            style="Accent.TButton",
-            command=self._run,
-        ).pack(side=tk.LEFT)
-        ttk.Button(btn_row, text="Open artifacts folder", command=self._open_artifacts).pack(
-            side=tk.LEFT, padx=(12, 0)
-        )
-        ttk.Button(btn_row, text="HTTP API docs (browser)", command=self._open_api_docs).pack(
-            side=tk.LEFT, padx=(12, 0)
-        )
-        ttk.Button(btn_row, text="Save log…", command=self._save_run_log).pack(side=tk.RIGHT)
-        ttk.Label(bottom_bar, textvariable=self._status, style="Muted.TLabel").pack(anchor=tk.W, pady=(8, 0))
+    def _refresh_ui_state(self) -> None:
+        """Single pass: read all relevant state, update all dependent widgets."""
+        n = len(self._dedupe_sorted_images())
+        skip = self._skip_gm.get()
+        backend = self._lineation_backend.get().strip().lower()
+        gm_ok = not skip and backend == "glyph_machina"
 
-        bottom_bar.pack(side=tk.BOTTOM, fill=tk.X)
-        self._scroll_vsb.pack(side=tk.RIGHT, fill=tk.Y)
-        self._scroll_canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        # Lines XML / lineation combo / job entry
+        if not skip:
+            self._lineation_combo.configure(state="readonly")
+            self._lines_entry.configure(state="disabled")
+            self._lines_btn.configure(state="disabled")
+            self._lines_dir_entry.configure(state="disabled")
+            self._lines_dir_btn.configure(state="disabled")
+            self._lines_help.configure(text="")
+            self._job_entry.configure(state="normal")
+            self._job_hint.configure(text="")
+        else:
+            self._lineation_combo.configure(state="disabled")
+            if n <= 1:
+                self._lines_entry.configure(state="normal")
+                self._lines_btn.configure(state="normal")
+                self._lines_dir_entry.configure(state="normal")
+                self._lines_dir_btn.configure(state="normal")
+                self._lines_help.configure(
+                    text="One image: set Lines XML file, or Lines XML dir containing <stem>.xml. "
+                    "Multiple images: set Lines XML dir only (one .xml per image stem)."
+                )
+            else:
+                self._lines_entry.configure(state="disabled")
+                self._lines_btn.configure(state="disabled")
+                self._lines_dir_entry.configure(state="normal")
+                self._lines_dir_btn.configure(state="normal")
+                self._lines_help.configure(
+                    text="Batch + skip lineation: choose Lines XML dir with one <image_stem>.xml per page."
+                )
+            if n <= 1:
+                self._job_entry.configure(state="normal")
+                self._job_hint.configure(text="")
+            else:
+                self._job_entry.configure(state="disabled")
+                self._job_hint.configure(text="Batch uses each filename as job id.")
 
-        self._refresh_model_combos()
-        self._refresh_image_list()
-        self._sync_lines_xml_ui()
-        self._sync_model_credentials_state()
+        # Lineation backend hint
+        if skip:
+            self._lineation_backend_hint.configure(
+                text="Lineation backend is ignored for this run — supply lines XML below."
+            )
+        elif backend == "mask":
+            self._lineation_backend_hint.configure(
+                text=(
+                    "Mask: set TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE (and optional weights) in .env — "
+                    "see docs/mask-lineation-plugin.md."
+                )
+            )
+        elif backend == "kraken":
+            self._lineation_backend_hint.configure(
+                text=(
+                    "Kraken: set TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH; "
+                    "pip install 'transcriber-shell[kraken]' for BLLA lineation."
+                )
+            )
+        else:
+            self._lineation_backend_hint.configure(
+                text=(
+                    "Glyph Machina: runs python -m playwright install chromium before opening the browser when "
+                    "auto-install is on (default), then Playwright. Optional profile in Advanced for site login; "
+                    "see docs/glyph-machina-automation.md. Use TRANSCRIBER_SHELL_GM_HEADLESS=false to log in once."
+                )
+            )
+
+        # Glyph Machina profile controls (in Advanced section)
+        st = "normal" if gm_ok else "disabled"
+        self._gm_auto_install_check.configure(state=st)
+        self._gm_profile_check.configure(state=st)
+        self._gm_user_data_entry.configure(state=st)
+        self._gm_profile_browse_btn.configure(state=st)
+        if gm_ok:
+            self._gm_profile_hint.configure(
+                text="Avoid parallel runs sharing one profile directory."
+            )
+        else:
+            self._gm_profile_hint.configure(
+                text=(
+                    "Only when lineation backend is Glyph Machina and automated lineation is on. "
+                    "Not used for mask or Kraken lineation."
+                )
+            )
+
+        # LLM model / credentials
+        ok = self._provider_has_llm_credentials()
+        st_llm = "readonly" if ok else "disabled"
+        self._cb_model.configure(state=st_llm)
+        self._model_custom_entry.configure(state="normal" if ok else "disabled")
+        p = self._provider.get().lower().strip()
+        if p == "ollama" or ok:
+            self._llm_credentials_hint.configure(text="")
+        else:
+            self._llm_credentials_hint.configure(
+                text=(
+                    "Enter a provider key above or set .env to enable Model and Custom model id."
+                )
+            )
+
+    # Thin wrappers kept for call-site compatibility during transition.
+    def _sync_lines_xml_ui(self) -> None:
+        self._refresh_ui_state()
+
+    def _sync_gm_profile_controls(self) -> None:
+        self._refresh_ui_state()
+
+    def _sync_model_credentials_state(self) -> None:
+        self._refresh_ui_state()
+
+    def _refresh_lineation_hints(self) -> None:
+        self._refresh_ui_state()
+
+    def _on_lineation_backend_changed(self, _event: object | None = None) -> None:
+        self._refresh_ui_state()
+
+    def _toggle_skip_gm(self) -> None:
+        self._refresh_ui_state()
+
+    # ── Mousewheel routing ───────────────────────────────────────────────────
+
+    def _widget_tree_contains(self, w: tk.Misc, ancestor: tk.Misc) -> bool:
+        cur: tk.Misc | None = w
+        while cur is not None:
+            if cur == ancestor:
+                return True
+            cur = cur.master  # type: ignore[assignment]
+        return False
+
+    def _setup_main_canvas_mousewheel(self) -> None:
+        """Route wheel to the main canvas; keep native scroll for log + image list.
+
+        Global bind_all alone lets ``ttk.Combobox`` eat the wheel (cycles model/provider), which feels
+        like the form is not scrolling — stop that with ``return 'break'`` on TCombobox.
+        """
+
+        def _scroll_main(e: tk.Event) -> None:
+            if sys.platform == "darwin":
+                self._scroll_canvas.yview_scroll(-1 * int(e.delta), "units")
+            else:
+                self._scroll_canvas.yview_scroll(-1 * int(e.delta / 120), "units")
+
+        def on_wheel(e: tk.Event) -> str | None:
+            w = e.widget
+            if self._widget_tree_contains(w, self._log):
+                return None
+            if self._widget_tree_contains(w, self._image_listbox):
+                return None
+            try:
+                if str(w.winfo_class()) == "Listbox" and w.winfo_toplevel() != self.root:
+                    return None
+            except tk.TclError:
+                pass
+            _scroll_main(e)
+            if str(w.winfo_class()) == "TCombobox":
+                return "break"
+            return None
+
+        def on_btn4(e: tk.Event) -> str | None:
+            w = e.widget
+            if self._widget_tree_contains(w, self._log):
+                return None
+            if self._widget_tree_contains(w, self._image_listbox):
+                return None
+            try:
+                if str(w.winfo_class()) == "Listbox" and w.winfo_toplevel() != self.root:
+                    return None
+            except tk.TclError:
+                pass
+            self._scroll_canvas.yview_scroll(-3, "units")
+            if str(w.winfo_class()) == "TCombobox":
+                return "break"
+            return None
+
+        def on_btn5(e: tk.Event) -> str | None:
+            w = e.widget
+            if self._widget_tree_contains(w, self._log):
+                return None
+            if self._widget_tree_contains(w, self._image_listbox):
+                return None
+            try:
+                if str(w.winfo_class()) == "Listbox" and w.winfo_toplevel() != self.root:
+                    return None
+            except tk.TclError:
+                pass
+            self._scroll_canvas.yview_scroll(3, "units")
+            if str(w.winfo_class()) == "TCombobox":
+                return "break"
+            return None
+
+        self.root.bind_all("<MouseWheel>", on_wheel)
+        if sys.platform == "linux":
+            self.root.bind_all("<Button-4>", on_btn4)
+            self.root.bind_all("<Button-5>", on_btn5)
+
+    # ── Banner notifications ──────────────────────────────────────────────────
 
     def _gui_notify_clear(self) -> None:
         if self._banner_dismiss_after is not None:
@@ -680,6 +1028,8 @@ class TranscriberGui:
                 auto_dismiss_ms, self._gui_notify_clear
             )
 
+    # ── Image list management ─────────────────────────────────────────────────
+
     def _dedupe_sorted_images(self) -> list[Path]:
         seen: set[str] = set()
         out: list[Path] = []
@@ -697,103 +1047,8 @@ class TranscriberGui:
             self._image_listbox.insert(tk.END, str(p))
         n = len(self._image_paths)
         self._image_count_label.configure(text=f"{n} image(s)")
-        self._sync_lines_xml_ui()
+        self._refresh_ui_state()
         self._schedule_gui_state_save()
-
-    def _sync_lines_xml_ui(self) -> None:
-        n = len(self._dedupe_sorted_images())
-        skip = self._skip_gm.get()
-        if not skip:
-            self._lineation_combo.configure(state="readonly")
-            self._lines_entry.configure(state="disabled")
-            self._lines_btn.configure(state="disabled")
-            self._lines_dir_entry.configure(state="disabled")
-            self._lines_dir_btn.configure(state="disabled")
-            self._lines_help.configure(text="")
-            self._job_entry.configure(state="normal")
-            self._job_hint.configure(text="")
-            self._refresh_lineation_hints()
-            self._sync_gm_profile_controls()
-            return
-        self._lineation_combo.configure(state="disabled")
-        if n <= 1:
-            self._lines_entry.configure(state="normal")
-            self._lines_btn.configure(state="normal")
-            self._lines_dir_entry.configure(state="normal")
-            self._lines_dir_btn.configure(state="normal")
-            self._lines_help.configure(
-                text="One image: set Lines XML file, or Lines XML dir containing <stem>.xml. "
-                "Multiple images: set Lines XML dir only (one .xml per image stem)."
-            )
-        else:
-            self._lines_entry.configure(state="disabled")
-            self._lines_btn.configure(state="disabled")
-            self._lines_dir_entry.configure(state="normal")
-            self._lines_dir_btn.configure(state="normal")
-            self._lines_help.configure(
-                text="Batch + skip lineation: choose Lines XML dir with one <image_stem>.xml per page."
-            )
-        if n <= 1:
-            self._job_entry.configure(state="normal")
-            self._job_hint.configure(text="")
-        else:
-            self._job_entry.configure(state="disabled")
-            self._job_hint.configure(text="Batch uses each filename as job id.")
-        self._refresh_lineation_hints()
-        self._sync_gm_profile_controls()
-
-    def _refresh_lineation_hints(self) -> None:
-        if self._skip_gm.get():
-            self._lineation_backend_hint.configure(
-                text="Lineation backend is ignored for this run — supply lines XML below."
-            )
-            return
-        b = self._lineation_backend.get().strip().lower()
-        if b == "mask":
-            self._lineation_backend_hint.configure(
-                text=(
-                    "Mask: set TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE (and optional weights) in .env — "
-                    "see docs/mask-lineation-plugin.md."
-                )
-            )
-        elif b == "kraken":
-            self._lineation_backend_hint.configure(
-                text=(
-                    "Kraken: set TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH; "
-                    "pip install 'transcriber-shell[kraken]' for BLLA lineation."
-                )
-            )
-        else:
-            self._lineation_backend_hint.configure(
-                text=(
-                    "Glyph Machina: requires Playwright Chromium. Optional profile below for site login; "
-                    "see docs/glyph-machina-automation.md. Use TRANSCRIBER_SHELL_GM_HEADLESS=false to log in once."
-                )
-            )
-
-    def _sync_gm_profile_controls(self) -> None:
-        skip = self._skip_gm.get()
-        backend = self._lineation_backend.get().strip().lower()
-        gm_ok = not skip and backend == "glyph_machina"
-        st = "normal" if gm_ok else "disabled"
-        self._gm_profile_check.configure(state=st)
-        self._gm_user_data_entry.configure(state=st)
-        self._gm_profile_browse_btn.configure(state=st)
-        if gm_ok:
-            self._gm_profile_hint.configure(
-                text="Avoid parallel runs sharing one profile directory."
-            )
-        else:
-            self._gm_profile_hint.configure(
-                text=(
-                    "Only when lineation backend is Glyph Machina and automated lineation is on. "
-                    "Not used for mask or Kraken lineation."
-                )
-            )
-
-    def _on_lineation_backend_changed(self, _event: object | None = None) -> None:
-        self._refresh_lineation_hints()
-        self._sync_gm_profile_controls()
 
     def _setup_image_drop_target(self) -> None:
         if DND_FILES is None:
@@ -891,6 +1146,8 @@ class TranscriberGui:
         self._image_paths.clear()
         self._refresh_image_list()
 
+    # ── Key entry helpers ─────────────────────────────────────────────────────
+
     def _sanitize_key_stringvars_on_write(self) -> None:
         """Strip newlines from pasted keys (password managers often add trailing \\n)."""
         if getattr(self, "_suppress_key_sanitize", False):
@@ -952,6 +1209,13 @@ class TranscriberGui:
         if u:
             self._ollama_base_url.set(u)
 
+    def _toggle_key_visibility(self) -> None:
+        show = "*" if self._mask_keys.get() else ""
+        for e in self._key_entry_widgets:
+            e.configure(show=show)
+
+    # ── .env persistence ──────────────────────────────────────────────────────
+
     def _env_persist_dict(self) -> dict[str, str]:
         return {
             "ANTHROPIC_API_KEY": self._key_anthropic.get().strip(),
@@ -963,8 +1227,17 @@ class TranscriberGui:
             "TRANSCRIBER_SHELL_GM_PERSISTENT_PROFILE": (
                 "true" if self._gm_persistent_profile.get() else "false"
             ),
+            "TRANSCRIBER_SHELL_GM_AUTO_INSTALL_BROWSER": (
+                "true" if self._gm_auto_install_browser.get() else "false"
+            ),
             "TRANSCRIBER_SHELL_GM_USER_DATA_DIR": self._gm_user_data_dir.get().strip(),
             "TRANSCRIBER_SHELL_LINEATION_BACKEND": self._lineation_backend.get().strip(),
+            "TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION": (
+                "true" if self._skip_lines_xml_validation.get() else "false"
+            ),
+            "TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE": (
+                "true" if self._continue_on_lineation_failure.get() else "false"
+            ),
         }
 
     def _save_keys_to_dotenv(self) -> None:
@@ -975,15 +1248,12 @@ class TranscriberGui:
             self._gui_notify(f"Save keys failed: {e}", "error", auto_dismiss_ms=0)
             return
         self._gui_notify(
-            f"Save keys: Saved provider keys, network, lineation backend, and browser settings to:\n{path}\n\n"
+            f"Save keys: Saved provider keys, network, lineation backend, and Glyph Machina settings to:\n{path}\n\n"
             "Do not commit .env.",
             "info",
         )
 
-    def _toggle_key_visibility(self) -> None:
-        show = "*" if self._mask_keys.get() else ""
-        for e in self._key_entry_widgets:
-            e.configure(show=show)
+    # ── LLM model / credentials ───────────────────────────────────────────────
 
     def _refresh_model_combos(self, event: object | None = None) -> None:
         prov = self._provider.get().lower().strip()
@@ -1001,7 +1271,7 @@ class TranscriberGui:
         else:
             self._model_selected.set(_NONE_LABEL)
 
-        self._sync_model_credentials_state()
+        self._refresh_ui_state()
 
     def _provider_has_llm_credentials(self) -> bool:
         p = self._provider.get().lower().strip()
@@ -1016,22 +1286,7 @@ class TranscriberGui:
         return False
 
     def _on_credentials_changed(self, *args: object) -> None:
-        self._sync_model_credentials_state()
-
-    def _sync_model_credentials_state(self) -> None:
-        ok = self._provider_has_llm_credentials()
-        st = "readonly" if ok else "disabled"
-        self._cb_model.configure(state=st)
-        self._model_custom_entry.configure(state="normal" if ok else "disabled")
-        p = self._provider.get().lower().strip()
-        if p == "ollama" or ok:
-            self._llm_credentials_hint.configure(text="")
-        else:
-            self._llm_credentials_hint.configure(
-                text=(
-                    "Enter a provider key above or set .env to enable Model and Custom model id."
-                )
-            )
+        self._refresh_ui_state()
 
     def _effective_model_override(self) -> str | None:
         if not self._provider_has_llm_credentials():
@@ -1060,10 +1315,21 @@ class TranscriberGui:
         out["TRANSCRIBER_SHELL_GM_PERSISTENT_PROFILE"] = (
             "true" if self._gm_persistent_profile.get() else "false"
         )
+        out["TRANSCRIBER_SHELL_GM_AUTO_INSTALL_BROWSER"] = (
+            "true" if self._gm_auto_install_browser.get() else "false"
+        )
         if gd := self._gm_user_data_dir.get().strip():
             out["TRANSCRIBER_SHELL_GM_USER_DATA_DIR"] = gd
         out["TRANSCRIBER_SHELL_LINEATION_BACKEND"] = self._lineation_backend.get().strip()
+        out["TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION"] = (
+            "true" if self._skip_lines_xml_validation.get() else "false"
+        )
+        out["TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE"] = (
+            "true" if self._continue_on_lineation_failure.get() else "false"
+        )
         return out
+
+    # ── Discovery ─────────────────────────────────────────────────────────────
 
     def _discover(self) -> None:
         base = self._ollama_base_url.get().strip() or "http://127.0.0.1:11434"
@@ -1078,8 +1344,7 @@ class TranscriberGui:
         self._q.put(("status", "Discovering…"))
         threading.Thread(target=work, daemon=True).start()
 
-    def _toggle_skip_gm(self) -> None:
-        self._sync_lines_xml_ui()
+    # ── Browse dialogs ────────────────────────────────────────────────────────
 
     def _browse_prompt(self) -> None:
         p = filedialog.askopenfilename(
@@ -1135,6 +1400,8 @@ class TranscriberGui:
             return
         self._gui_notify(f"Save log: Saved:\n{path}", "info")
 
+    # ── Log helpers ───────────────────────────────────────────────────────────
+
     def _log_line(self, text: str) -> None:
         self._log.insert(tk.END, text + "\n")
         self._log.see(tk.END)
@@ -1160,6 +1427,11 @@ class TranscriberGui:
                         pass
 
     def _poll_queue(self) -> None:
+        if self._run_metrics_active and self._run_t0 is not None:
+            dt = time.monotonic() - self._run_t0
+            m = int(dt // 60)
+            s = int(dt % 60)
+            self._metrics_elapsed.set(f"Elapsed: {m}:{s:02d}")
         try:
             while True:
                 self._log_line(self._log_q.get_nowait())
@@ -1175,7 +1447,20 @@ class TranscriberGui:
                     self._log_line(str(payload))
                 elif kind == "status":
                     self._status.set(str(payload))
+                elif kind == "metrics":
+                    u = (
+                        payload.get("llm_usage")
+                        if isinstance(payload, dict)
+                        else None
+                    )
+                    self._metrics_tokens.set(_format_llm_usage_line(u))
                 elif kind == "done":
+                    self._run_metrics_active = False
+                    if self._run_t0 is not None:
+                        dt = time.monotonic() - self._run_t0
+                        m = int(dt // 60)
+                        sec = int(dt % 60)
+                        self._metrics_elapsed.set(f"Elapsed: {m}:{sec:02d}")
                     if payload is None:
                         self._gui_notify(
                             "Done: Run finished successfully. Check the run log above and Open artifacts folder "
@@ -1199,6 +1484,8 @@ class TranscriberGui:
         except queue.Empty:
             pass
         self.root.after(120, self._poll_queue)
+
+    # ── Run pipeline ──────────────────────────────────────────────────────────
 
     def _run(self) -> None:
         images = self._dedupe_sorted_images()
@@ -1230,6 +1517,7 @@ class TranscriberGui:
                 return
             xsd_path = xp.resolve()
         req_tl = self._require_text_line.get()
+        skip_xml_val = self._skip_lines_xml_validation.get()
         skip = self._skip_gm.get()
         lx = self._lines_xml_path.get().strip()
         lx_dir = self._lines_xml_dir.get().strip()
@@ -1267,136 +1555,218 @@ class TranscriberGui:
         env_overrides = self._env_overrides_from_form()
         eff_mode = self._efficient_mode.get()
         persist_after = self._persist_keys_after_run.get()
+        skip_successful = self._skip_successful.get()
         persist_snapshot = self._env_persist_dict()
 
         self._run_id += 1
         rid = self._run_id
         self._log.delete("1.0", tk.END)
         self._log_truncation_notified = False
+        self._run_t0 = time.monotonic()
+        self._run_metrics_active = True
+        self._metrics_elapsed.set("Elapsed: 0:00")
+        self._metrics_tokens.set("LLM tokens: —")
         self._q.put(("status", "Running…"))
         self._put_log("---")
         self._put_log(
             f"runMode={'efficient' if eff_mode else 'standard'} (from prompt + Efficient mode checkbox)"
         )
 
-        def worker() -> None:
-            try:
-                cfg = copy.deepcopy(load_prompt_cfg(Path(pr).expanduser()))
-                if eff_mode:
-                    cfg["runMode"] = "efficient"
-                with patch.dict(os.environ, env_overrides, clear=False):
-                    s = Settings()
-                    if not skip:
-                        s = s.model_copy(
-                            update={"lineation_backend": self._lineation_backend.get()}
-                        )
-                    if n == 1:
-                        img = images[0]
-                        job = TranscribeJob(
-                            job_id=self._job_id.get().strip() or "job",
-                            image_path=img,
-                            prompt_cfg=cfg,
-                            provider=prov,
-                            model_override=model_override,
-                        )
-                        lines_path: Path | None = None
-                        if skip:
-                            lx_one = lx.strip()
-                            lxd_one = lx_dir.strip()
-                            if lx_one and Path(lx_one).expanduser().is_file():
-                                lines_path = Path(lx_one).expanduser().resolve()
-                            elif lxd_one and Path(lxd_one).expanduser().is_dir():
-                                cand = Path(lxd_one).expanduser() / f"{img.stem}.xml"
-                                if not cand.is_file():
-                                    raise FileNotFoundError(
-                                        f"Lines XML dir is set but file is missing: {cand}. "
-                                        f"Need '{img.stem}.xml' beside image '{img.name}' (same stem)."
-                                    )
-                                lines_path = cand.resolve()
-                        res = run_pipeline(
-                            job,
-                            skip_gm=skip,
-                            lines_xml_path=lines_path,
-                            xsd_path=xsd_path,
-                            require_text_line=req_tl,
-                            settings=s,
-                        )
-                        if rid != self._run_id:
-                            return
-                        for w in res.warnings:
-                            self._put_log(f"warning: {w}")
-                        if res.lines_xml_path:
-                            self._put_log(f"lines_xml={res.lines_xml_path}")
-                        if res.transcription_yaml_path:
-                            self._put_log(f"transcription_yaml={res.transcription_yaml_path}")
-                        self._put_log(f"text_line_count={res.text_line_count}")
-                        if res.errors:
-                            for e in res.errors:
-                                self._put_log(f"error: {e}")
-                            self._q.put(("status", "Failed."))
-                            self._q.put(("done", "\n".join(res.errors)))
-                        else:
-                            if persist_after:
-                                try:
-                                    merge_dotenv(Path(".env"), persist_snapshot)
-                                except OSError as err:
-                                    self._put_log(f"warning: could not save keys to .env: {err}")
-                            self._q.put(("status", "Succeeded."))
-                            self._q.put(("done", None))
+        threading.Thread(
+            target=self._run_worker,
+            kwargs=dict(
+                images=images,
+                pr=pr,
+                env_overrides=env_overrides,
+                eff_mode=eff_mode,
+                skip=skip,
+                lineation_backend_str=self._lineation_backend.get(),
+                n=n,
+                job_id_str=self._job_id.get().strip(),
+                model_override=model_override,
+                prov=prov,
+                skip_successful=skip_successful,
+                lx=lx,
+                lx_dir=lx_dir,
+                xsd_path=xsd_path,
+                req_tl=req_tl,
+                skip_xml_val=skip_xml_val,
+                persist_after=persist_after,
+                persist_snapshot=persist_snapshot,
+                rid=rid,
+            ),
+            daemon=True,
+        ).start()
+
+    def _run_worker(
+        self,
+        *,
+        images: list[Path],
+        pr: str,
+        env_overrides: dict[str, str],
+        eff_mode: bool,
+        skip: bool,
+        lineation_backend_str: str,
+        n: int,
+        job_id_str: str,
+        model_override: str | None,
+        prov: str,
+        skip_successful: bool,
+        lx: str,
+        lx_dir: str,
+        xsd_path: Path | None,
+        req_tl: bool,
+        skip_xml_val: bool,
+        persist_after: bool,
+        persist_snapshot: dict[str, str],
+        rid: int,
+    ) -> None:
+        try:
+            cfg = copy.deepcopy(load_prompt_cfg(Path(pr).expanduser()))
+            if eff_mode:
+                cfg["runMode"] = "efficient"
+            with patch.dict(os.environ, env_overrides, clear=False):
+                s = Settings()
+                if not skip:
+                    s = s.model_copy(update={"lineation_backend": lineation_backend_str})
+                if n == 1:
+                    img = images[0]
+                    job = TranscribeJob(
+                        job_id=job_id_str or "job",
+                        image_path=img,
+                        prompt_cfg=cfg,
+                        provider=prov,
+                        model_override=model_override,
+                    )
+                    if skip_successful and has_successful_transcription(
+                        job.job_id, img, settings=s
+                    ):
+                        out = transcription_yaml_path(s.artifacts_dir, job.job_id, img)
+                        self._put_log(f"skipped job_id={job.job_id} (existing valid transcription)")
+                        self._put_log(f"transcription_yaml={out}")
+                        self._q.put(("metrics", {"llm_usage": None}))
+                        self._q.put(("status", "Succeeded (skipped existing)."))
+                        self._q.put(("done", None))
+                        return
+                    lines_path: Path | None = None
+                    if skip:
+                        lx_one = lx.strip()
+                        lxd_one = lx_dir.strip()
+                        if lx_one and Path(lx_one).expanduser().is_file():
+                            lines_path = Path(lx_one).expanduser().resolve()
+                        elif lxd_one and Path(lxd_one).expanduser().is_dir():
+                            cand = Path(lxd_one).expanduser() / f"{img.stem}.xml"
+                            if not cand.is_file():
+                                raise FileNotFoundError(
+                                    f"Lines XML dir is set but file is missing: {cand}. "
+                                    f"Need '{img.stem}.xml' beside image '{img.name}' (same stem)."
+                                )
+                            lines_path = cand.resolve()
+                    res = run_pipeline(
+                        job,
+                        skip_gm=skip,
+                        lines_xml_path=lines_path,
+                        xsd_path=xsd_path,
+                        require_text_line=req_tl,
+                        skip_lines_xml_validation=skip_xml_val,
+                        settings=s,
+                    )
+                    if rid != self._run_id:
+                        return
+                    self._q.put(("metrics", {"llm_usage": res.llm_usage}))
+                    for w in res.warnings:
+                        self._put_log(f"warning: {w}")
+                    if res.lines_xml_path:
+                        self._put_log(f"lines_xml={res.lines_xml_path}")
+                    if res.transcription_yaml_path:
+                        self._put_log(f"transcription_yaml={res.transcription_yaml_path}")
+                    self._put_log(f"text_line_count={res.text_line_count}")
+                    if res.errors:
+                        for e in res.errors:
+                            self._put_log(f"error: {e}")
+                        self._q.put(("status", "Failed."))
+                        self._q.put(("done", "\n".join(res.errors)))
                     else:
-                        lines_xml_arg: Path | None = None
-                        lines_xml_dir_arg: Path | None = None
-                        if skip:
-                            lines_xml_dir_arg = Path(lx_dir).expanduser().resolve()
-                        rows = run_batch(
-                            images,
-                            cfg,
-                            provider=prov,
-                            model_override=model_override,
-                            skip_gm=skip,
-                            lines_xml=lines_xml_arg,
-                            lines_xml_dir=lines_xml_dir_arg,
-                            xsd_path=xsd_path,
-                            require_text_line=req_tl,
-                            settings=s,
-                        )
-                        if rid != self._run_id:
-                            return
-                        ok_c = 0
-                        fail_c = 0
-                        for row in rows:
-                            jid = row.get("job_id", "")
-                            ok = bool(row.get("ok"))
-                            if ok:
-                                ok_c += 1
-                            else:
-                                fail_c += 1
-                            errs = row.get("errors") or []
-                            self._put_log(f"batch job_id={jid} ok={ok} image={row.get('image', '')}")
-                            for e in errs:
-                                self._put_log(f"  error: {e}")
-                            warns = row.get("warnings") or []
-                            for w in warns:
-                                self._put_log(f"  warning: {w}")
-                            if row.get("lines_xml"):
-                                self._put_log(f"  lines_xml={row['lines_xml']}")
-                            if row.get("transcription_yaml"):
-                                self._put_log(f"  transcription_yaml={row['transcription_yaml']}")
-                            self._put_log(f"  text_line_count={row.get('text_line_count', 0)}")
-                        if fail_c == 0 and persist_after:
+                        if persist_after:
                             try:
                                 merge_dotenv(Path(".env"), persist_snapshot)
                             except OSError as err:
                                 self._put_log(f"warning: could not save keys to .env: {err}")
-                        self._q.put(("status", f"Finished {len(rows)} jobs ({ok_c} ok, {fail_c} failed)."))
-                        self._q.put(("done", {"batch": True, "ok": ok_c, "fail": fail_c}))
-            except Exception as e:
-                if rid == self._run_id:
-                    self._put_log(f"error: {type(e).__name__}: {e}")
-                    self._q.put(("status", "Failed."))
-                    self._q.put(("done", f"{type(e).__name__}: {e}"))
+                        self._q.put(("status", "Succeeded."))
+                        self._q.put(("done", None))
+                else:
+                    lines_xml_dir_arg: Path | None = None
+                    if skip:
+                        lines_xml_dir_arg = Path(lx_dir).expanduser().resolve()
+                    rows = run_batch(
+                        images,
+                        cfg,
+                        provider=prov,
+                        model_override=model_override,
+                        skip_gm=skip,
+                        lines_xml=None,
+                        lines_xml_dir=lines_xml_dir_arg,
+                        xsd_path=xsd_path,
+                        require_text_line=req_tl,
+                        skip_lines_xml_validation=skip_xml_val,
+                        skip_successful=skip_successful,
+                        settings=s,
+                    )
+                    if rid != self._run_id:
+                        return
+                    ok_c = 0
+                    fail_c = 0
+                    for row in rows:
+                        jid = row.get("job_id", "")
+                        ok = bool(row.get("ok"))
+                        if ok:
+                            ok_c += 1
+                        else:
+                            fail_c += 1
+                        errs = row.get("errors") or []
+                        self._put_log(
+                            f"batch job_id={jid} ok={ok} image={row.get('image', '')}"
+                        )
+                        for e in errs:
+                            self._put_log(f"  error: {e}")
+                        warns = row.get("warnings") or []
+                        for w in warns:
+                            self._put_log(f"  warning: {w}")
+                        if row.get("lines_xml"):
+                            self._put_log(f"  lines_xml={row['lines_xml']}")
+                        if row.get("transcription_yaml"):
+                            self._put_log(f"  transcription_yaml={row['transcription_yaml']}")
+                        if row.get("skipped"):
+                            seg = row.get("transcription_segment_count")
+                            self._put_log(
+                                "  text_line_count=n/a (skipped; PageXML not recomputed); "
+                                f"transcription_segment_count={seg}"
+                            )
+                        else:
+                            tlc = row.get("text_line_count")
+                            self._put_log(
+                                f"  text_line_count={tlc if tlc is not None else 0}"
+                            )
+                    cum_u: dict[str, int] | None = None
+                    for row in rows:
+                        cum_u = _merge_llm_usage(cum_u, row.get("llm_usage"))
+                    self._q.put(("metrics", {"llm_usage": cum_u}))
+                    if fail_c == 0 and persist_after:
+                        try:
+                            merge_dotenv(Path(".env"), persist_snapshot)
+                        except OSError as err:
+                            self._put_log(f"warning: could not save keys to .env: {err}")
+                    self._q.put(
+                        ("status", f"Finished {len(rows)} jobs ({ok_c} ok, {fail_c} failed).")
+                    )
+                    self._q.put(("done", {"batch": True, "ok": ok_c, "fail": fail_c}))
+        except Exception as e:
+            if rid == self._run_id:
+                self._put_log(f"error: {type(e).__name__}: {e}")
+                self._q.put(("status", "Failed."))
+                self._q.put(("done", f"{type(e).__name__}: {e}"))
 
-        threading.Thread(target=worker, daemon=True).start()
+    # ── Utility actions ───────────────────────────────────────────────────────
 
     def _open_artifacts(self) -> None:
         d = self._settings.artifacts_dir.expanduser().resolve()
@@ -1420,6 +1790,8 @@ class TranscriberGui:
         except Exception:
             self._gui_notify(f"API docs: Open in browser:\n{url}", "info")
 
+    # ── GUI state persistence ─────────────────────────────────────────────────
+
     def _gui_state_dict(self) -> dict[str, object]:
         return {
             "provider": self._provider.get().strip(),
@@ -1435,14 +1807,19 @@ class TranscriberGui:
             "job_id": self._job_id.get().strip(),
             "xsd_path": self._xsd_path.get().strip(),
             "require_text_line": self._require_text_line.get(),
+            "skip_lines_xml_validation": self._skip_lines_xml_validation.get(),
+            "continue_on_lineation_failure": self._continue_on_lineation_failure.get(),
             "mask_keys": self._mask_keys.get(),
             "ollama_base_url": self._ollama_base_url.get().strip(),
             "llm_use_proxy": self._llm_use_proxy.get(),
             "llm_http_proxy": self._llm_http_proxy.get().strip(),
             "gm_persistent_profile": self._gm_persistent_profile.get(),
+            "gm_auto_install_browser": self._gm_auto_install_browser.get(),
             "gm_user_data_dir": self._gm_user_data_dir.get().strip(),
             "persist_keys_after_run": self._persist_keys_after_run.get(),
+            "skip_successful": self._skip_successful.get(),
             "image_paths": [str(p) for p in self._dedupe_sorted_images()],
+            "advanced_expanded": self._advanced_expanded.get(),
         }
 
     def _schedule_gui_state_save(self) -> None:
@@ -1469,18 +1846,18 @@ class TranscriberGui:
         mc = model_custom.strip()
         if mc:
             self._model_custom.set(mc)
-            self._sync_model_credentials_state()
+            self._refresh_ui_state()
             return
         ms = model_selected.strip()
         if not ms or ms.startswith("(none"):
-            self._sync_model_credentials_state()
+            self._refresh_ui_state()
             return
         vals = tuple(self._cb_model["values"])
         if ms in vals:
             self._model_selected.set(ms)
         else:
             self._model_custom.set(ms)
-        self._sync_model_credentials_state()
+        self._refresh_ui_state()
 
     def _restore_gui_state(self) -> None:
         data = load_gui_state()
@@ -1511,6 +1888,10 @@ class TranscriberGui:
                     var.set(str(data[key]))
             if "require_text_line" in data:
                 self._require_text_line.set(bool(data["require_text_line"]))
+            if "skip_lines_xml_validation" in data:
+                self._skip_lines_xml_validation.set(bool(data["skip_lines_xml_validation"]))
+            if "continue_on_lineation_failure" in data:
+                self._continue_on_lineation_failure.set(bool(data["continue_on_lineation_failure"]))
             if "mask_keys" in data:
                 self._mask_keys.set(bool(data["mask_keys"]))
                 self._toggle_key_visibility()
@@ -1524,11 +1905,15 @@ class TranscriberGui:
                 self._llm_http_proxy.set(lpx)
             if "gm_persistent_profile" in data:
                 self._gm_persistent_profile.set(bool(data["gm_persistent_profile"]))
+            if "gm_auto_install_browser" in data:
+                self._gm_auto_install_browser.set(bool(data["gm_auto_install_browser"]))
             gud = data.get("gm_user_data_dir")
             if isinstance(gud, str):
                 self._gm_user_data_dir.set(gud)
             if "persist_keys_after_run" in data:
                 self._persist_keys_after_run.set(bool(data["persist_keys_after_run"]))
+            if "skip_successful" in data:
+                self._skip_successful.set(bool(data["skip_successful"]))
             imgs = data.get("image_paths")
             if isinstance(imgs, list):
                 paths: list[Path] = []
@@ -1540,12 +1925,19 @@ class TranscriberGui:
                         paths.append(p)
                 self._image_paths = paths
                 self._refresh_image_list()
+            # Restore Advanced section state
+            if "advanced_expanded" in data:
+                exp = bool(data["advanced_expanded"])
+                self._advanced_expanded.set(exp)
+                if exp:
+                    self._advanced_content.pack(fill=tk.X, pady=(0, 8))
+                    self._advanced_toggle_btn.configure(text="▼ Advanced settings")
             ms = str(data.get("model_selected", "") or "")
             mc = str(data.get("model_custom", "") or "")
             self._restore_model_selection_after_load(ms, mc)
         finally:
             self._loading_gui_state = False
-        self._sync_lines_xml_ui()
+        self._refresh_ui_state()
 
     def _install_gui_state_persistence(self) -> None:
         def _on_state_var(_a: str, _b: str, _c: str) -> None:
@@ -1565,13 +1957,17 @@ class TranscriberGui:
             self._job_id,
             self._xsd_path,
             self._require_text_line,
+            self._skip_lines_xml_validation,
+            self._continue_on_lineation_failure,
             self._mask_keys,
             self._ollama_base_url,
             self._llm_use_proxy,
             self._llm_http_proxy,
             self._gm_persistent_profile,
+            self._gm_auto_install_browser,
             self._gm_user_data_dir,
             self._persist_keys_after_run,
+            self._skip_successful,
         ):
             v.trace_add("write", _on_state_var)
 
