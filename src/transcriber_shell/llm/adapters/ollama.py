@@ -50,7 +50,10 @@ def transcribe_ollama(
             data = json.loads(resp.read().decode("utf-8"))
     except HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
-        raise RuntimeError(f"Ollama HTTP {e.code}: {err_body or e.reason}") from e
+        raise RuntimeError(
+            f"Ollama HTTP {e.code} at {base}/api/chat: {err_body or e.reason}. "
+            "Check `ollama list` for the model id and pull it if missing."
+        ) from e
     except URLError as e:
         raise RuntimeError(
             f"Cannot reach Ollama at {base}. Is `ollama serve` running? ({e.reason})"
@@ -60,4 +63,7 @@ def transcribe_ollama(
     content = msg.get("content")
     if isinstance(content, str) and content.strip():
         return content.strip()
-    raise RuntimeError(f"Ollama returned no text: {data!r}")
+    raise RuntimeError(
+        f"Ollama returned no assistant text (model={model_id!r}). "
+        f"Response was: {data!r}. Try a vision-capable model (e.g. llava)."
+    )

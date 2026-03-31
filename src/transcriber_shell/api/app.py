@@ -13,6 +13,10 @@ from transcriber_shell.config import Settings
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.pipeline.run import load_prompt_cfg_from_str, run_pipeline
 
+# Per-part limits (multipart uploads are not globally capped by Starlette by default).
+MAX_UPLOAD_BYTES_PER_IMAGE = 40 * 1024 * 1024  # 40 MiB — enough for high-res page scans; limits memory DoS
+MAX_PROMPT_FIELD_CHARS = 2_000_000  # YAML/JSON prompt string in the form field
+
 _API_DESCRIPTION = """
 **transcriber-shell** — manuscript transcription pipeline: lineation (mask / Kraken / Glyph Machina) → PageXML checks → LLM (Anthropic / OpenAI / Gemini) → protocol YAML validation.
 
@@ -95,7 +99,12 @@ def create_app(settings: Settings | None = None) -> Any:
         if not prompt or not isinstance(prompt, str):
             raise HTTPException(
                 status_code=422,
-                detail="prompt is required (YAML/JSON string in form field 'prompt')",
+                detail="Field 'prompt' is required: send the full protocol CONFIGURATION as a YAML or JSON string (multipart form field named 'prompt').",
+            )
+        if len(prompt) > MAX_PROMPT_FIELD_CHARS:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Field 'prompt' exceeds maximum length ({MAX_PROMPT_FIELD_CHARS} characters).",
             )
         provider = form.get("provider")
         model = form.get("model")
@@ -115,12 +124,15 @@ def create_app(settings: Settings | None = None) -> Any:
         try:
             cfg = load_prompt_cfg_from_str(prompt)
         except (ValueError, OSError) as e:
-            raise HTTPException(status_code=422, detail=f"invalid prompt: {e}") from e
+            raise HTTPException(
+                status_code=422,
+                detail=f"Could not parse 'prompt' as YAML/JSON object: {e}",
+            ) from e
 
         if skip_gm:
             raise HTTPException(
                 status_code=422,
-                detail="skip_gm is not supported on the HTTP API; use CLI with --lines-xml or --lines-xml-dir",
+                detail="skip_gm is not supported on this API: uploads always use Glyph Machina for lineation. For offline lines XML use the CLI or GUI with --skip-gm / Skip Glyph Machina.",
             )
 
         prov_raw = provider if isinstance(provider, str) else None
@@ -128,20 +140,53 @@ def create_app(settings: Settings | None = None) -> Any:
         if prov not in ("anthropic", "openai", "gemini", "ollama"):
             raise HTTPException(
                 status_code=422,
-                detail="provider must be anthropic, openai, gemini, or ollama",
+                detail=f"Invalid provider {prov!r}. Must be one of: anthropic, openai, gemini, ollama.",
             )
 
         model_override = model if isinstance(model, str) else None
+
+        async def _stream_upload_to_temp(
+            uf: UploadFile, *, max_bytes: int, suffix: str
+        ) -> Path:
+            """Stream upload to a temp file; reject before reading more than max_bytes total.
+
+            Reads in fixed-size chunks so a single oversized part does not allocate the full
+            body in memory (Starlette's default ``read()`` loads the entire part).
+            """
+            tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+            tmp_path = Path(tmp.name)
+            chunk_size = 64 * 1024
+            try:
+                total = 0
+                while True:
+                    chunk = await uf.read(chunk_size)
+                    if not chunk:
+                        break
+                    if total + len(chunk) > max_bytes:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=(
+                                f"Image part exceeds maximum size ({max_bytes // (1024 * 1024)} MiB per file)."
+                            ),
+                        )
+                    tmp.write(chunk)
+                    total += len(chunk)
+            except HTTPException:
+                tmp.close()
+                tmp_path.unlink(missing_ok=True)
+                raise
+            else:
+                tmp.close()
+            return tmp_path
 
         out: list[dict[str, Any]] = []
         for uf in upload_files:
             if not uf.filename:
                 continue
             suffix = Path(uf.filename).suffix or ".jpg"
-            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                body = await uf.read()
-                tmp.write(body)
-                tmp_path = Path(tmp.name)
+            tmp_path = await _stream_upload_to_temp(
+                uf, max_bytes=MAX_UPLOAD_BYTES_PER_IMAGE, suffix=suffix
+            )
             job_id = Path(uf.filename).stem[:120] or "job"
             job = TranscribeJob(
                 job_id=job_id,
@@ -176,7 +221,10 @@ def create_app(settings: Settings | None = None) -> Any:
             out.append(item)
 
         if not out:
-            raise HTTPException(status_code=422, detail="no files processed")
+            raise HTTPException(
+                status_code=422,
+                detail="No image files were accepted: include at least one multipart part named 'files' with a filename (jpg, png, etc.).",
+            )
         return JSONResponse(content=out)
 
     @app.get("/health", tags=["ui"])

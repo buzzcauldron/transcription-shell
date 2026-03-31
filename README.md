@@ -83,6 +83,7 @@ Copy [`.env.example`](.env.example) to `.env` and fill in values (local use only
 - **Default provider:** `TRANSCRIBER_SHELL_DEFAULT_PROVIDER` (`anthropic` | `openai` | `gemini` | `ollama`) when you omit `--provider` on the CLI.
 - **Models:** per-provider vars (`TRANSCRIBER_SHELL_ANTHROPIC_MODEL`, …) or a single override `TRANSCRIBER_SHELL_MODEL` for the active provider. Precedence: **`--model` / `--provider` on the CLI** > `TRANSCRIBER_SHELL_MODEL` > per-provider defaults.
 - **Optional HTTP API:** `TRANSCRIBER_SHELL_API_HOST` (default `127.0.0.1`), `TRANSCRIBER_SHELL_API_PORT` (default `8765`), optional `TRANSCRIBER_SHELL_API_KEY` (if set, require `Authorization: Bearer <key>` on `/v1/*`).
+- **LLM HTTP proxy (optional):** `TRANSCRIBER_SHELL_LLM_USE_PROXY` and `TRANSCRIBER_SHELL_LLM_HTTP_PROXY` for corporate proxies; see `.env.example` and [docs/glyph-machina-automation.md](docs/glyph-machina-automation.md) for **persistent Glyph Machina browser profile** (`TRANSCRIBER_SHELL_GM_PERSISTENT_PROFILE`).
 
 Install optional pieces:
 
@@ -98,7 +99,7 @@ pip install -e ".[kraken]"   # optional: Kraken BLLA lineation
 
 ## Desktop GUI (simple, academic)
 
-Primary way to run the pipeline interactively — **tkinter** only (no extra GUI packages). At the top, **Provider keys (LLM)** for Anthropic / OpenAI / Gemini: paste keys or leave empty and use `.env` (keys are **masked** by default; uncheck **Mask keys** to show). The optional **HTTP API** (`transcriber-shell serve`) is separate — use **HTTP API docs** in the GUI only after the server is running. Choose **Lineation backend** when not skipping lineation. Queue **multiple page images** via **Add files…** or **Add folder…** (non-recursive folder scan, same as CLI batch). With **skip automated lineation** and **more than one image**, set **Lines XML dir** to a folder of `<stem>.xml` files (one per page). Then pick prompt, provider, and **Model** (all catalog IDs in one list; **Budget models only** narrows it). Optional **Efficient mode** forces protocol §2.9 single-pass behavior for that run. **Run transcription**. **Scan for Ollama / local tools** lists local models and PATH tools; provider **ollama** uses `ollama serve` (no cloud key).
+Primary way to run the pipeline interactively — **tkinter** plus **tkinterdnd2** (declared dependency) for drag-and-drop onto the **Page images** list. At the top, **Provider keys (LLM)** for Anthropic / OpenAI / Gemini: paste keys or leave empty and use `.env` (keys are **masked** by default; uncheck **Mask keys** to show). **Save keys to .env** writes the current fields into `.env` in the working directory; you can also opt in to **save after a successful run** so keys persist without an extra click. The optional **HTTP API** (`transcriber-shell serve`) is separate — use **HTTP API docs** in the GUI only after the server is running. Choose **Lineation backend** when not skipping lineation. Queue **multiple page images** via **Add files…**, **Add folder…**, or **drag files/folders onto the list** (non-recursive folder scan, same as CLI batch). With **skip automated lineation** and **more than one image**, set **Lines XML dir** to a folder of `<stem>.xml` files (one per page). Then pick prompt, provider, and **Model** (all catalog IDs in one list; **Budget models only** narrows it). Optional **Efficient mode** (bottom bar, next to **Transcribe**) sets `runMode: efficient` for that run (protocol §2.9 single-pass). **Transcribe** (bottom bar); **Save log…** is on the **right** of that bar. **Scan for Ollama / local tools** lists local models and PATH tools; provider **ollama** uses `ollama serve` (no cloud key).
 
 ```bash
 transcriber-shell gui
@@ -108,7 +109,7 @@ transcriber-shell-gui
 
 Requires **Playwright Chromium** only when **lineation backend** is **glyph_machina** and you are not using `--skip-gm`. On Linux over SSH, use X11 forwarding or run with `--skip-gm` and a saved lines file.
 
-**Recommended workflow (desktop):** (1) Add page images and choose prompt YAML/JSON. (2) Set provider and model (or custom id). (3) Configure mask / Kraken / Glyph Machina in `.env`, or enable **skip automated lineation** and point to a lines XML file (one image) or folder of `<stem>.xml` files (batch). (4) **Run transcription**, then use **Open artifacts folder** (and the log for paths). Agent-oriented context lives in **[docs/claude.md](docs/claude.md)** (links to [architecture.md](docs/architecture.md), decisions, plan, progress).
+**Recommended workflow (desktop):** (1) Add page images and choose prompt YAML/JSON. (2) Set provider and model (or custom id). (3) Configure mask / Kraken / Glyph Machina in `.env`, or enable **skip automated lineation** and point to a lines XML file (one image) or folder of `<stem>.xml` files (batch). (4) **Transcribe** (bottom bar), then use **Open artifacts folder** (and the log for paths). Agent-oriented context lives in **[docs/claude.md](docs/claude.md)** (links to [architecture.md](docs/architecture.md), decisions, plan, progress).
 
 ## CLI
 
@@ -159,6 +160,8 @@ uvicorn transcriber_shell.api.app:app --host 127.0.0.1 --port 8765
 
 Bind defaults to **localhost**; add an API key via `.env` for local multi-user setups. Do not expose without a reverse proxy and auth in production.
 
+**Upload size:** The app enforces a **per-image** maximum (see `docs/red_team_review.md`). A reverse proxy should still set a **total** body limit (for example nginx `client_max_body_size`) because **many files × per-file cap** can add up to a very large multipart body.
+
 ## Development
 
 ```bash
@@ -174,6 +177,8 @@ Continuous integration runs the same suite on Python 3.11 and 3.12 (see `.github
 - `docs/local-setup.md` — clone, venv, `.env`, lineation backends, smoke tests, troubleshooting
 - `docs/mask-lineation-plugin.md` — mask backend plugin contract and private-repo install notes
 - `examples/latin_lineation_stub/` — example installable plugin (synthetic masks) for testing wiring
+- `docs/architecture.md` — architecture (Mermaid pipeline diagram + prose)
+- `docs/red_team_review.md` — threat notes, API limits, residual risks
 - `pyproject.toml` — Python project metadata and extras (Hatchling build backend)
 - `src/transcriber_shell/` — Python package (installs as `transcriber-shell` on PyPI); `gui.py` — desktop UI
 - `vendor/transcription-protocol/` — git submodule (protocol specs + validators)

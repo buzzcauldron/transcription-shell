@@ -63,7 +63,10 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> str:
             model=mo,
             settings=s,
         )
-    raise ValueError(f"unknown provider: {job.provider}")
+    raise ValueError(
+        f"Unknown provider {job.provider!r}. Use anthropic, openai, gemini, or ollama "
+        "(see Provider in the GUI or --provider on the CLI)."
+    )
 
 
 def strip_yaml_fence(text: str) -> str:

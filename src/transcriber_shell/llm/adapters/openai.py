@@ -6,6 +6,7 @@ import base64
 from pathlib import Path
 
 from transcriber_shell.config import Settings
+from transcriber_shell.llm.http_client import llm_httpx_client
 
 
 def _mime_for_path(path: Path) -> str:
@@ -31,8 +32,15 @@ def transcribe_openai(
 
     s = settings or Settings()
     if not s.openai_api_key:
-        raise RuntimeError("OPENAI_API_KEY / TRANSCRIBER_SHELL_OPENAI_API_KEY not set")
-    client = OpenAI(api_key=s.openai_api_key)
+        raise RuntimeError(
+            "No OpenAI API key: set OPENAI_API_KEY or TRANSCRIBER_SHELL_OPENAI_API_KEY "
+            "in .env or paste under Provider keys in the GUI."
+        )
+    http_client = llm_httpx_client(s, timeout_seconds=600.0)
+    client_kw = {"api_key": s.openai_api_key}
+    if http_client is not None:
+        client_kw["http_client"] = http_client
+    client = OpenAI(**client_kw)
     raw = image_path.read_bytes()
     b64 = base64.standard_b64encode(raw).decode("ascii")
     media = _mime_for_path(image_path)

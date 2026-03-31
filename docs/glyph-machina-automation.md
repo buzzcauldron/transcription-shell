@@ -21,6 +21,19 @@
 
 The tool works best when the pipeline input is already **cropped to a paragraph or case** with **complete lines**, as the site recommends. Heavy reliance on scripted crop-handle dragging is **not** implemented by default.
 
+## Persistent browser profile (optional)
+
+When **`TRANSCRIBER_SHELL_GM_PERSISTENT_PROFILE`** is true (or the GUI checkbox **Persistent Chromium profile for Glyph Machina**), Playwright uses `launch_persistent_context` with **`TRANSCRIBER_SHELL_GM_USER_DATA_DIR`** (default under `~/.cache/transcriber-shell/glyph-machina-browser`). Cookies and site logins can **persist across runs**, which helps if the site expects a session.
+
+- **Security:** The profile directory holds cookies and local site data — treat it like a browser profile; do not share or commit it.
+- **Headless vs visible:** Some flows only work in a visible browser; set **`TRANSCRIBER_SHELL_GM_HEADLESS=false`** to log in interactively once, then reuse the profile.
+- **Concurrency:** Do **not** run two pipeline jobs at once against the **same** user-data directory; Chromium profiles are not safe for parallel writers.
+
 ## Lineation vs transcription
 
 Use Glyph Machina output for **line boundaries and `lineRange` alignment** only. Do **not** treat **Extract Text**, spell-check, or **Modern English** outputs as protocol-ground truth — see the protocol repo’s external line tools note. You may stop the workflow after **Download Lines File** and never use their extracted Latin for canonical YAML.
+
+---
+
+**Doc workflow inspiration:** [Axel Edin (@axlolo)](https://github.com/axlolo). Adapted for transcriber-shell.
+

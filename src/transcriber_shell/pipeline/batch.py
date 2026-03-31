@@ -56,16 +56,20 @@ def resolve_lines_xml_for_image(
         if candidate.is_file():
             return candidate.resolve()
         raise FileNotFoundError(
-            f"skip_gm: expected lines XML at {candidate} (from --lines-xml-dir)"
+            f"Skip Glyph Machina + batch: need one lines XML per image stem. "
+            f"Missing file: {candidate} (under --lines-xml-dir). "
+            f"Expected filename '{image.stem}.xml' next to image '{image.name}'."
         )
     if lines_xml is not None:
         if n_images != 1:
             raise ValueError(
-                "skip_gm with single --lines-xml only works for exactly one image; "
-                "use --lines-xml-dir for batches"
+                "Skip Glyph Machina: --lines-xml applies only when there is exactly one image. "
+                "For multiple images use --lines-xml-dir with <image_stem>.xml for each page."
             )
         return lines_xml.resolve()
-    raise ValueError("skip_gm requires --lines-xml or --lines-xml-dir")
+    raise ValueError(
+        "Skip Glyph Machina requires --lines-xml (single image) or --lines-xml-dir (folder of per-page XML files)."
+    )
 
 
 def run_batch(

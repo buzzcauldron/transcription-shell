@@ -105,6 +105,32 @@ def test_v1_transcribe_no_files_returns_422() -> None:
     assert r.status_code == 422
 
 
+def test_v1_transcribe_rejects_oversized_image() -> None:
+    app = create_app(Settings(api_key=None))
+    client = TestClient(app)
+    with patch("transcriber_shell.api.app.MAX_UPLOAD_BYTES_PER_IMAGE", 100):
+        r = client.post(
+            "/v1/transcribe",
+            data={"prompt": "{}"},
+            files=[("files", ("big.jpg", b"x" * 200, "image/jpeg"))],
+        )
+    assert r.status_code == 413
+    assert "maximum size" in r.json()["detail"].lower()
+
+
+def test_v1_transcribe_rejects_oversized_prompt_field() -> None:
+    app = create_app(Settings(api_key=None))
+    client = TestClient(app)
+    with patch("transcriber_shell.api.app.MAX_PROMPT_FIELD_CHARS", 80):
+        r = client.post(
+            "/v1/transcribe",
+            data={"prompt": "x" * 100},
+            files=[("files", ("a.jpg", b"\xff\xd8", "image/jpeg"))],
+        )
+    assert r.status_code == 413
+    assert "prompt" in r.json()["detail"].lower()
+
+
 def test_v1_transcribe_invalid_provider_returns_422() -> None:
     app = create_app(Settings(api_key=None))
     client = TestClient(app)

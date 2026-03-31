@@ -71,6 +71,10 @@ docker build --platform linux/amd64 --build-arg APP_VERSION="$(tr -d '\n' < VERS
 
 - **Glyph Machina** is a **remote site**; automation needs **network** access from the container (allowed by default in `docker run` / compose).
 
+## Reverse proxy and upload limits
+
+If you terminate TLS or expose the API behind **nginx** (or similar), set a **maximum request body** size that matches your largest expected batch. The application caps each image part, but **N images × per-part limit** still produces a large total body — configure **`client_max_body_size`** (or equivalent) at the proxy. See also [docs/red_team_review.md](docs/red_team_review.md).
+
 ## Troubleshooting
 
 | Issue | What to try |
@@ -78,3 +82,8 @@ docker build --platform linux/amd64 --build-arg APP_VERSION="$(tr -d '\n' < VERS
 | Build fails at `COPY vendor` | `git submodule update --init vendor/transcription-protocol` |
 | `ModuleNotFoundError` inside shell | Run `pip install -e ".[api]"` from `/workspace` or rely on `entrypoint.sh` |
 | Rebuild after dependency change | `./docker-run.sh --build` or `docker compose build --no-cache` |
+
+---
+
+**Doc workflow inspiration:** [Axel Edin (@axlolo)](https://github.com/axlolo). Adapted for transcriber-shell.
+

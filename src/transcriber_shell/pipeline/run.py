@@ -10,6 +10,7 @@ import yaml
 from transcriber_shell.config import LineationBackend, Settings
 from transcriber_shell.glyph_machina.workflow import GlyphMachinaError, fetch_lines_xml
 from transcriber_shell.kraken_lineation import KrakenLineationError, fetch_lines_xml_kraken
+from transcriber_shell.llm.errors import LLMProviderError
 from transcriber_shell.mask_lineation import MaskLineationError, fetch_lines_xml_mask
 from transcriber_shell.llm.transcribe import run_transcribe, strip_yaml_fence
 from transcriber_shell.llm.validate_output import validate_transcript_file
@@ -39,7 +40,11 @@ def run_pipeline(
 
     if skip_gm:
         if not lines_xml_path or not lines_xml_path.is_file():
-            errors.append("skip_gm requires existing --lines-xml path")
+            p = lines_xml_path if lines_xml_path else "(not set)"
+            errors.append(
+                f"Skip Glyph Machina requires an existing lines XML file. Got: {p}. "
+                "Use --lines-xml (one image) or --lines-xml-dir with <stem>.xml per page (batch)."
+            )
             return PipelineResult(
                 job.job_id,
                 None,
@@ -73,7 +78,10 @@ def run_pipeline(
     warnings.extend(m for m in xml_msgs if m.startswith("warning:"))
     errors.extend(m for m in xml_msgs if m.startswith("error:"))
     if not ok:
-        errors.append("lines XML validation failed")
+        errors.append(
+            "Lines XML did not pass validation (well-formed XML, TextLine rules, or optional checks). "
+            "See detailed messages above; try unchecking 'Require ≥1 TextLine' if your file has no TextLine yet."
+        )
     text_line_count = int(stats.get("text_line", 0))
 
     if xsd_path and lines_out:
@@ -99,8 +107,24 @@ def run_pipeline(
 
     try:
         raw = run_transcribe(job, settings=s)
+    except LLMProviderError as e:
+        hint = ""
+        if job.provider.lower() == "anthropic":
+            hint = " See docs/claude_anthropic_reference.md for Anthropic-specific troubleshooting."
+        errors.append(f"LLM transcription failed ({job.provider}): {e}{hint}")
+        return PipelineResult(
+            job.job_id,
+            lines_out,
+            None,
+            text_line_count,
+            errors=errors,
+            warnings=warnings,
+        )
     except Exception as e:
-        errors.append(f"LLM transcription failed: {e}")
+        errors.append(
+            f"LLM transcription failed ({job.provider}): {e}. "
+            "Check API key in .env or the GUI, provider outage/rate limits, and that the model id is valid."
+        )
         return PipelineResult(
             job.job_id,
             lines_out,
@@ -121,7 +145,10 @@ def run_pipeline(
         if isinstance(data, dict):
             out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
     except yaml.YAMLError as e:
-        errors.append(f"model output is not valid YAML: {e}")
+        errors.append(
+            f"Model returned text that is not valid YAML: {e}. "
+            "Retry or switch model; ensure the prompt asks for YAML matching the Academic Transcription Protocol."
+        )
         return PipelineResult(
             job.job_id,
             lines_out,
@@ -160,5 +187,5 @@ def load_prompt_cfg_from_str(text: str, *, suffix: str = "") -> dict:
     else:
         data = yaml.safe_load(t)
     if not isinstance(data, dict):
-        raise ValueError("prompt must be a JSON/YAML object")
+        raise ValueError("prompt file must parse to a JSON/YAML object (top-level mapping), not a list or scalar")
     return data

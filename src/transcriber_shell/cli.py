@@ -78,8 +78,67 @@ def _resolve_provider(cli_provider: str | None, settings: Settings) -> str:
     return (cli_provider or settings.default_provider).lower()
 
 
+def _resolve_xsd_path(cli_xsd: str | None, settings: Settings) -> Path | None:
+    """CLI --xsd wins; else optional TRANSCRIBER_SHELL_LINES_XML_XSD from settings."""
+    if cli_xsd:
+        return Path(cli_xsd).expanduser().resolve()
+    if settings.lines_xml_xsd:
+        return settings.lines_xml_xsd.expanduser().resolve()
+    return None
+
+
+def _expand_resolve_cli_path(arg: str | None) -> Path | None:
+    """User-typed paths may use ``~``; expand before resolve."""
+    if not arg:
+        return None
+    return Path(arg).expanduser().resolve()
+
+
+def _require_text_line_from_cli(args: argparse.Namespace, settings: Settings) -> bool:
+    """--no-require-text-line forces False; else use settings.xml_require_text_line."""
+    if getattr(args, "no_require_text_line", False):
+        return False
+    return settings.xml_require_text_line
+
+
+def _pipeline_settings(args: argparse.Namespace) -> Settings:
+    """Apply optional CLI overrides for LLM proxy and Glyph Machina browser profile."""
+    s = Settings()
+    updates: dict = {}
+    if getattr(args, "llm_proxy", None):
+        updates["llm_use_proxy"] = True
+        updates["llm_http_proxy"] = args.llm_proxy
+    if getattr(args, "gm_persistent_profile", False):
+        updates["gm_persistent_profile"] = True
+    if getattr(args, "gm_user_data_dir", None):
+        updates["gm_user_data_dir"] = Path(args.gm_user_data_dir).expanduser()
+    if updates:
+        return s.model_copy(update=updates)
+    return s
+
+
+def _add_pipeline_network_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--llm-proxy",
+        metavar="URL",
+        default=None,
+        help="HTTP(S) proxy for cloud LLM APIs (enables TRANSCRIBER_SHELL_LLM_USE_PROXY)",
+    )
+    p.add_argument(
+        "--gm-persistent-profile",
+        action="store_true",
+        help="Use persistent Chromium profile for Glyph Machina (cookies / login)",
+    )
+    p.add_argument(
+        "--gm-user-data-dir",
+        metavar="PATH",
+        default=None,
+        help="Chromium user data dir for --gm-persistent-profile (default: env or ~/.cache/...)",
+    )
+
+
 def cmd_run(args: argparse.Namespace) -> int:
-    settings = Settings()
+    settings = _pipeline_settings(args)
     if getattr(args, "lineation_backend", None):
         settings = settings.model_copy(
             update={"lineation_backend": args.lineation_backend}
@@ -93,14 +152,14 @@ def cmd_run(args: argparse.Namespace) -> int:
         provider=provider,
         model_override=args.model,
     )
-    lines_xml = Path(args.lines_xml).resolve() if args.lines_xml else None
-    xsd = Path(args.xsd).resolve() if args.xsd else None
+    lines_xml = _expand_resolve_cli_path(args.lines_xml)
+    xsd = _resolve_xsd_path(args.xsd, settings)
     res = run_pipeline(
         job,
         skip_gm=args.skip_gm,
         lines_xml_path=lines_xml,
         xsd_path=xsd,
-        require_text_line=not args.no_require_text_line,
+        require_text_line=_require_text_line_from_cli(args, settings),
         settings=settings,
     )
     for w in res.warnings:
@@ -118,7 +177,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_batch(args: argparse.Namespace) -> int:
-    settings = Settings()
+    settings = _pipeline_settings(args)
     if getattr(args, "lineation_backend", None):
         settings = settings.model_copy(
             update={"lineation_backend": args.lineation_backend}
@@ -129,9 +188,9 @@ def cmd_batch(args: argparse.Namespace) -> int:
         return 2
     cfg = load_prompt_cfg(Path(args.prompt))
     provider = _resolve_provider(args.provider, settings)
-    lines_xml = Path(args.lines_xml).resolve() if args.lines_xml else None
-    lines_xml_dir = Path(args.lines_xml_dir).resolve() if args.lines_xml_dir else None
-    xsd = Path(args.xsd).resolve() if args.xsd else None
+    lines_xml = _expand_resolve_cli_path(args.lines_xml)
+    lines_xml_dir = _expand_resolve_cli_path(args.lines_xml_dir)
+    xsd = _resolve_xsd_path(args.xsd, settings)
     rows = run_batch(
         images,
         cfg,
@@ -141,7 +200,7 @@ def cmd_batch(args: argparse.Namespace) -> int:
         lines_xml=lines_xml,
         lines_xml_dir=lines_xml_dir,
         xsd_path=xsd,
-        require_text_line=not args.no_require_text_line,
+        require_text_line=_require_text_line_from_cli(args, settings),
         settings=settings,
     )
     if args.batch_report:
@@ -272,12 +331,16 @@ def main() -> None:
         help="Lineation source (default: env or mask). Ignored with --skip-gm.",
     )
     run.add_argument("--lines-xml", help="Existing lines XML when using --skip-gm")
-    run.add_argument("--xsd", help="Optional XSD for lines XML")
+    run.add_argument(
+        "--xsd",
+        help="Optional XSD for lines XML (overrides TRANSCRIBER_SHELL_LINES_XML_XSD if set)",
+    )
     run.add_argument(
         "--no-require-text-line",
         action="store_true",
         help="Do not fail XML step when TextLine count is 0",
     )
+    _add_pipeline_network_args(run)
     run.set_defaults(func=cmd_run)
 
     batch = sub.add_parser(
@@ -316,13 +379,17 @@ def main() -> None:
         "--lines-xml-dir",
         help="Directory of <stem>.xml files matching each image stem (for --skip-gm)",
     )
-    batch.add_argument("--xsd", help="Optional XSD for lines XML")
+    batch.add_argument(
+        "--xsd",
+        help="Optional XSD for lines XML (overrides TRANSCRIBER_SHELL_LINES_XML_XSD if set)",
+    )
     batch.add_argument("--no-require-text-line", action="store_true")
     batch.add_argument(
         "--batch-report",
         metavar="PATH",
         help="Write JSON report of all jobs",
     )
+    _add_pipeline_network_args(batch)
     batch.set_defaults(func=cmd_batch)
 
     gui = sub.add_parser(

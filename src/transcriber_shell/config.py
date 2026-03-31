@@ -66,6 +66,38 @@ class Settings(BaseSettings):
         ),
     )
 
+    anthropic_timeout_seconds: float = Field(
+        default=600.0,
+        ge=30.0,
+        le=3_600.0,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_ANTHROPIC_TIMEOUT_S",
+            "TRANSCRIBER_SHELL_ANTHROPIC_TIMEOUT",
+        ),
+        description="HTTP timeout (seconds) for Anthropic API calls; vision+YAML can be slow.",
+    )
+    anthropic_max_retries: int = Field(
+        default=2,
+        ge=0,
+        le=8,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_ANTHROPIC_MAX_RETRIES"),
+        description="Extra attempts after the first for 429/503/529 (rate limit / overloaded).",
+    )
+
+    llm_use_proxy: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_LLM_USE_PROXY"),
+        description="Route Anthropic/OpenAI HTTP via llm_http_proxy (Gemini uses HTTP(S)_PROXY for the call).",
+    )
+    llm_http_proxy: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_LLM_HTTP_PROXY",
+            "TRANSCRIBER_SHELL_HTTPS_PROXY",
+        ),
+        description="Proxy URL for cloud LLM clients (e.g. http://user:pass@host:8080).",
+    )
+
     gm_headless: bool = Field(
         default=True,
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_GM_HEADLESS", "GM_HEADLESS"),
@@ -77,6 +109,25 @@ class Settings(BaseSettings):
     gm_base_url: str = Field(
         default="https://glyphmachina.com/",
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_GM_BASE_URL", "GM_BASE_URL"),
+    )
+    gm_persistent_profile: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_GM_PERSISTENT_PROFILE",
+            "TRANSCRIBER_SHELL_GM_USE_PERSISTENT_PROFILE",
+        ),
+        description="Use a stable Chromium profile dir so Glyph Machina logins persist.",
+    )
+    gm_user_data_dir: Path = Field(
+        default_factory=lambda: Path.home()
+        / ".cache"
+        / "transcriber-shell"
+        / "glyph-machina-browser",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_GM_USER_DATA_DIR",
+            "TRANSCRIBER_SHELL_GM_BROWSER_PROFILE",
+        ),
+        description="Playwright persistent context directory (cookies, local site data).",
     )
 
     lineation_backend: LineationBackend = Field(
@@ -212,6 +263,23 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_ARTIFACTS_DIR", "ARTIFACTS_DIR"),
     )
 
+    # Lines XML gate (optional PAGE XSD; TextLine requirement). CLI flags override env.
+    lines_xml_xsd: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_LINES_XML_XSD",
+            "TRANSCRIBER_SHELL_PAGE_XSD",
+        ),
+        description="Optional PAGE XML XSD path for lines file validation (needs [xml-xsd]).",
+    )
+    xml_require_text_line: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_XML_REQUIRE_TEXT_LINE",
+        ),
+        description="If false, lines XML may have zero TextLine elements (CLI: --no-require-text-line).",
+    )
+
     default_provider: ProviderName = Field(
         default="anthropic",
         validation_alias=AliasChoices(
@@ -236,6 +304,35 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_API_KEY", "API_KEY"),
     )
+
+    @field_validator("lines_xml_xsd", mode="before")
+    @classmethod
+    def _empty_lines_xml_xsd_none(cls, v: object) -> object:
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return None
+        if isinstance(v, str):
+            return Path(v).expanduser()
+        if isinstance(v, Path):
+            return v.expanduser()
+        return v
+
+    @field_validator("llm_http_proxy", mode="before")
+    @classmethod
+    def _empty_llm_http_proxy_none(cls, v: object) -> object:
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return None
+        return v
+
+    @field_validator("gm_user_data_dir", mode="before")
+    @classmethod
+    def _expand_gm_user_data_dir(cls, v: object) -> object:
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return Path.home() / ".cache" / "transcriber-shell" / "glyph-machina-browser"
+        if isinstance(v, str):
+            return Path(v).expanduser()
+        if isinstance(v, Path):
+            return v.expanduser()
+        return v
 
     @field_validator("default_provider", mode="before")
     @classmethod

@@ -10,3 +10,9 @@ This project is **install-from-source** today. The **git/project directory** is 
 | **Docker** | [`README-DOCKER.md`](README-DOCKER.md), [`Dockerfile`](Dockerfile), [`docker-run.sh`](docker-run.sh), [`docker-compose.yml`](docker-compose.yml) |
 | **Line-mask training (optional)** | `pip install -e "examples/latin_lineation_mvp"` — separate package; requires PyTorch |
 | **Version** | Single source: [`pyproject.toml`](pyproject.toml) `version` and repo [`VERSION`](VERSION) for Docker tags (keep in sync when releasing) |
+| **CI** | [`.github/workflows/ci.yml`](.github/workflows/ci.yml): checks out `vendor/transcription-protocol` (recursive submodules), runs [`scripts/check_version.py`](scripts/check_version.py), tests, `python -m build` + `twine check` on sdist/wheel. On **push to `main`**, a **Docker** job builds [`Dockerfile`](Dockerfile) with `APP_VERSION` from `VERSION`. |
+
+---
+
+**Doc workflow inspiration:** [Axel Edin (@axlolo)](https://github.com/axlolo). Adapted for transcriber-shell.
+

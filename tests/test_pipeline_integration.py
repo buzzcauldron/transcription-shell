@@ -85,4 +85,4 @@ def test_run_pipeline_skip_gm_fails_when_lines_xml_missing(tmp_path: Path) -> No
         lines_xml_path=tmp_path / "nope.xml",
         settings=Settings(artifacts_dir=tmp_path / "a"),
     )
-    assert any("skip_gm requires" in e for e in res.errors)
+    assert any("Skip Glyph Machina requires" in e for e in res.errors)

@@ -11,7 +11,7 @@ from pathlib import Path
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from transcriber_shell.config import Settings
-from transcriber_shell.glyph_machina.browser import playwright_browser
+from transcriber_shell.glyph_machina.browser import playwright_glyph_context
 
 
 class GlyphMachinaError(RuntimeError):
@@ -36,7 +36,10 @@ def fetch_lines_xml(
     s = settings or Settings()
     image_path = image_path.expanduser().resolve()
     if not image_path.is_file():
-        raise GlyphMachinaError(f"image not found: {image_path}")
+        raise GlyphMachinaError(
+            f"Image path is missing or not a file: {image_path}. "
+            "Choose a pre-cropped page image (jpg/png/webp/tiff, etc.)."
+        )
 
     out_dir = (s.artifacts_dir / job_id).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -45,8 +48,7 @@ def fetch_lines_xml(
 
     timeout = s.gm_timeout_ms
 
-    with playwright_browser(s) as (_p, browser):
-        context = browser.new_context(accept_downloads=True)
+    with playwright_glyph_context(s) as context:
         page = context.new_page()
         page.set_default_timeout(timeout)
         try:
@@ -78,11 +80,15 @@ def fetch_lines_xml(
             download.save_as(str(out_path))
 
             if not out_path.is_file() or out_path.stat().st_size == 0:
-                raise GlyphMachinaError("downloaded lines file is missing or empty")
+                raise GlyphMachinaError(
+                    f"Glyph Machina download saved nothing usable at {out_path}. "
+                    "Try again, confirm Identify Lines completed, or use Skip Glyph Machina with a saved lines XML."
+                )
 
             return out_path
 
         except PlaywrightTimeout as e:
-            raise GlyphMachinaError(f"Glyph Machina UI timed out: {e}") from e
-        finally:
-            context.close()
+            raise GlyphMachinaError(
+                f"Glyph Machina UI timed out after {timeout} ms ({e}). "
+                "Increase TRANSCRIBER_SHELL_GM_TIMEOUT_MS, check network, or use Skip Glyph Machina with existing XML."
+            ) from e

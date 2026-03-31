@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+from unittest.mock import patch
+
 from transcriber_shell.config import Settings
 
 
@@ -23,3 +27,21 @@ def test_resolved_model_per_provider_without_override():
 def test_resolved_model_ollama():
     s = Settings(default_model=None, ollama_model="llava-phi3")
     assert s.resolved_model("ollama") == "llava-phi3"
+
+
+def test_lines_xml_xsd_and_require_text_line_defaults():
+    s = Settings()
+    assert s.lines_xml_xsd is None
+    assert s.xml_require_text_line is True
+
+
+def test_lines_xml_xsd_expands_tilde_from_env():
+    with patch.dict(os.environ, {"TRANSCRIBER_SHELL_LINES_XML_XSD": "~/schemas/page.xsd"}, clear=False):
+        s = Settings()
+    assert s.lines_xml_xsd is not None
+    assert s.lines_xml_xsd == Path.home() / "schemas" / "page.xsd"
+
+
+def test_xml_require_text_line_can_be_false():
+    s = Settings(xml_require_text_line=False)
+    assert s.xml_require_text_line is False

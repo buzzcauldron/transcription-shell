@@ -9,9 +9,9 @@ Use this file as the **entry point** when starting a new agent session. Jump to 
 | Doc | When to open |
 |-----|----------------|
 | [local-setup.md](local-setup.md) | Clone, venv, `.env`, lineation backends, smoke tests, troubleshooting |
-| [architecture.md](architecture.md) | System shape, modules, data flow, how pieces connect |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Mermaid diagram of the pipeline (canonical diagram) |
+| [architecture.md](architecture.md) | Pipeline **Mermaid** diagram + prose: stages, surfaces (CLI / GUI / API), links to code |
 | [claude_openai_reference.md](claude_openai_reference.md) | OpenAI models, env vars, vision chat path in this repo |
+| [claude_anthropic_reference.md](claude_anthropic_reference.md) | Anthropic (Claude) env vars, streaming adapter, timeouts/retries, common failures |
 | [decisions.md](decisions.md) | Append-only record of decisions (date, why, impact) |
 | [plan.md](plan.md) | Prioritized checklist of planned work |
 | [progress.md](progress.md) | What changed recently, by date and area |

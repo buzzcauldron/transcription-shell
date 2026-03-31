@@ -92,3 +92,8 @@ Use the sections below as dropdowns to expand each part of the review.
 3. Add **Playwright** specs under `.tdad/workflows/glyph-machina/` when you want TDAD traces for Glyph Machina, accepting flakiness from third-party UI changes.
 
 </details>
+
+---
+
+**Doc workflow inspiration:** [Axel Edin (@axlolo)](https://github.com/axlolo). Adapted for transcriber-shell.
+
