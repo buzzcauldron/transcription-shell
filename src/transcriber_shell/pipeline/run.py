@@ -191,6 +191,32 @@ def run_pipeline(
             warnings=warnings,
         )
 
+    if s.xml_only:
+        if lines_out is None:
+            errors.append(
+                "XML-only mode requires a lines XML file (from lineation or skip lineation with an existing lines XML path)."
+            )
+            return PipelineResult(
+                job.job_id,
+                None,
+                None,
+                text_line_count,
+                errors=errors,
+                warnings=warnings,
+            )
+        warnings.append(
+            "XML-only run: stopped after lines XML validation; LLM transcription was not performed."
+        )
+        return PipelineResult(
+            job.job_id,
+            lines_out,
+            None,
+            text_line_count,
+            errors=[],
+            warnings=warnings,
+            llm_usage=None,
+        )
+
     if not job.line_hint and text_line_count > 0:
         job.line_hint = (
             f"PageXML line detector reports {text_line_count} TextLine element(s); "

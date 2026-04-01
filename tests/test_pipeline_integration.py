@@ -73,6 +73,37 @@ def test_run_pipeline_skip_gm_success_with_mocks(
     mock_val.assert_called_once()
 
 
+def test_run_pipeline_xml_only_skips_llm(tmp_path: Path, tmp_artifacts: Path) -> None:
+    lines = tmp_path / "lines.xml"
+    lines.write_text(MINIMAL_LINES_XML, encoding="utf-8")
+    image = tmp_path / "page.jpg"
+    image.write_bytes(b"\xff\xd8\xff")
+    job = TranscribeJob(
+        job_id="t_xml_only",
+        image_path=image,
+        prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
+        provider="anthropic",
+    )
+    settings = Settings(artifacts_dir=tmp_artifacts, xml_only=True)
+
+    with patch(
+        "transcriber_shell.pipeline.run.run_transcribe",
+        side_effect=AssertionError("run_transcribe must not be called in xml_only mode"),
+    ):
+        res = run_pipeline(
+            job,
+            skip_gm=True,
+            lines_xml_path=lines,
+            require_text_line=True,
+            settings=settings,
+        )
+
+    assert res.errors == []
+    assert res.transcription_yaml_path is None
+    assert res.lines_xml_path and res.lines_xml_path.resolve() == lines.resolve()
+    assert any("XML-only" in w for w in res.warnings)
+
+
 def test_run_pipeline_skip_gm_fails_when_lines_xml_missing(tmp_path: Path) -> None:
     image = tmp_path / "page.jpg"
     image.write_bytes(b"\xff\xd8\xff")
