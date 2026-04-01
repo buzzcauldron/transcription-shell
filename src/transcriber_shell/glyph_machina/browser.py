@@ -42,8 +42,13 @@ def _install_chromium_cli_once(settings: Settings) -> None:
         proc = subprocess.run(
             [sys.executable, "-m", "playwright", "install", "chromium"],
             check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
         if proc.returncode != 0:
+            sys.stderr.buffer.write(proc.stdout)
+            sys.stderr.buffer.write(proc.stderr)
+            sys.stderr.flush()
             raise RuntimeError(
                 "Playwright Chromium install failed. Install manually:\n"
                 f"  {sys.executable} -m playwright install chromium"
