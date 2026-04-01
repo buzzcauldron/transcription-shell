@@ -8,6 +8,7 @@ from __future__ import annotations
 import errno
 import hashlib
 import re
+import tempfile
 import time
 from pathlib import Path
 
@@ -17,6 +18,32 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from transcriber_shell.config import Settings
 from transcriber_shell.glyph_machina.browser import playwright_glyph_context
+
+# Max pixels before downscaling for upload (4 MP keeps layout stable in browser)
+_GM_MAX_PIXELS = 4_000_000
+
+
+def _prepare_upload_image(image_path: Path) -> tuple[Path, Path | None]:
+    """Return (upload_path, tmp_path). If image is oversized, write a scaled copy to tmp_path."""
+    try:
+        from PIL import Image
+        im = Image.open(image_path)
+        im.load()
+        w, h = im.size
+        pixels = w * h
+        if pixels <= _GM_MAX_PIXELS:
+            return image_path, None
+        scale = (_GM_MAX_PIXELS / pixels) ** 0.5
+        new_w, new_h = int(w * scale), int(h * scale)
+        im_small = im.resize((new_w, new_h), Image.LANCZOS)
+        suffix = image_path.suffix or ".jpg"
+        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+        tmp_path = Path(tmp.name)
+        tmp.close()
+        im_small.save(tmp_path)
+        return tmp_path, tmp_path
+    except Exception:
+        return image_path, None
 
 
 class GlyphMachinaError(RuntimeError):
@@ -96,78 +123,86 @@ def _fetch_lines_xml_attempt(
     identify_timeout = s.gm_identify_timeout_ms
     post_identify = int(s.gm_post_identify_wait_ms)
 
-    with playwright_glyph_context(s) as context:
-        page = context.new_page()
-        page.set_default_timeout(nav_timeout)
-        try:
-            # "load" waits for all resources; Glyph Machina is a SPA and may never satisfy it on slow
-            # networks. domcontentloaded is enough to interact (file input + buttons).
-            page.goto(s.gm_base_url, wait_until="domcontentloaded", timeout=nav_timeout)
-
-            file_input = page.locator('input[type="file"]').first
-            file_input.wait_for(state="attached", timeout=nav_timeout)
-            file_input.set_input_files(str(image_path))
-            page.wait_for_timeout(1_200)
-
-            # Accept crop: pre-cropped images should fill the frame; button label on site is "Crop Image"
-            crop = page.get_by_role("button", name="Crop Image")
-            if crop.count() > 0:
-                crop.first.click()
-
-            identify = page.get_by_role("button", name="Identify Lines")
-            identify.wait_for(state="visible", timeout=nav_timeout)
-            identify.click()
-
-            if post_identify > 0:
-                page.wait_for_timeout(post_identify)
-
-            # Do not use locator.count() == 0 immediately — the button may appear only after Identify.
-            download_btn = page.locator("#downloadLinesBtn")
+    upload_path, tmp_path = _prepare_upload_image(image_path)
+    try:
+        with playwright_glyph_context(s) as context:
+            page = context.new_page()
+            page.set_default_timeout(nav_timeout)
             try:
-                download_btn.wait_for(state="attached", timeout=identify_timeout)
-            except PlaywrightTimeout:
-                download_btn = page.get_by_role(
-                    "button", name=re.compile(r"Download Lines File", re.IGNORECASE)
-                )
-                download_btn.wait_for(state="attached", timeout=identify_timeout)
+                # "load" waits for all resources; Glyph Machina is a SPA and may never satisfy it on slow
+                # networks. domcontentloaded is enough to interact (file input + buttons).
+                page.goto(s.gm_base_url, wait_until="domcontentloaded", timeout=nav_timeout)
 
-            dloc = download_btn.first
-            _wait_for_download_control(page, dloc, timeout_ms=identify_timeout)
+                file_input = page.locator('input[type="file"]').first
+                file_input.wait_for(state="attached", timeout=nav_timeout)
+                file_input.set_input_files(str(upload_path))
+                page.wait_for_timeout(1_200)
 
-            try:
-                dloc.scroll_into_view_if_needed(timeout=min(30_000, identify_timeout))
-            except PlaywrightTimeout:
-                pass
+                # Accept crop: pre-cropped images should fill the frame; button label on site is "Crop Image"
+                crop = page.get_by_role("button", name="Crop Image")
+                if crop.count() > 0:
+                    crop.first.click()
 
-            with page.expect_download(timeout=identify_timeout) as dl_info:
-                dloc.click(force=True)
-            download = dl_info.value
-            suggested = download.suggested_filename or f"{job_id}-lines.xml"
-            out_path = out_dir / suggested
-            download.save_as(str(out_path))
+                identify = page.get_by_role("button", name="Identify Lines")
+                identify.wait_for(state="visible", timeout=nav_timeout)
+                identify.click()
 
-            if not out_path.is_file() or out_path.stat().st_size == 0:
+                if post_identify > 0:
+                    page.wait_for_timeout(post_identify)
+
+                # Do not use locator.count() == 0 immediately — the button may appear only after Identify.
+                download_btn = page.locator("#downloadLinesBtn")
+                try:
+                    download_btn.wait_for(state="attached", timeout=identify_timeout)
+                except PlaywrightTimeout:
+                    download_btn = page.get_by_role(
+                        "button", name=re.compile(r"Download Lines File", re.IGNORECASE)
+                    )
+                    download_btn.wait_for(state="attached", timeout=identify_timeout)
+
+                dloc = download_btn.first
+                _wait_for_download_control(page, dloc, timeout_ms=identify_timeout)
+
+                try:
+                    dloc.scroll_into_view_if_needed(timeout=min(30_000, identify_timeout))
+                except Exception:
+                    pass
+
+                with page.expect_download(timeout=identify_timeout) as dl_info:
+                    try:
+                        dloc.click(force=True)
+                    except Exception:
+                        # Fallback: JS dispatch bypasses all visibility/interactability checks
+                        dloc.dispatch_event("click")
+                download = dl_info.value
+                out_path = out_dir / "lines.xml"
+                download.save_as(str(out_path))
+
+                if not out_path.is_file() or out_path.stat().st_size == 0:
+                    raise GlyphMachinaError(
+                        f"Glyph Machina download saved nothing usable at {out_path}. "
+                        "Try again, confirm Identify Lines completed, or use Skip Glyph Machina with a saved lines XML."
+                    )
+
+                return out_path
+
+            except PlaywrightTimeout as e:
                 raise GlyphMachinaError(
-                    f"Glyph Machina download saved nothing usable at {out_path}. "
-                    "Try again, confirm Identify Lines completed, or use Skip Glyph Machina with a saved lines XML."
-                )
-
-            return out_path
-
-        except PlaywrightTimeout as e:
-            raise GlyphMachinaError(
-                f"Glyph Machina UI timed out ({e}). "
-                f"Navigation budget: {nav_timeout} ms (TRANSCRIBER_SHELL_GM_NAVIGATE_TIMEOUT_MS). "
-                f"Identify/download budget: {identify_timeout} ms (TRANSCRIBER_SHELL_GM_IDENTIFY_TIMEOUT_MS). "
-                "Check network or use Skip automated lineation with existing XML."
-            ) from e
-        except OSError as e:
-            if getattr(e, "errno", None) == errno.ETIMEDOUT or isinstance(e, TimeoutError):
-                raise GlyphMachinaError(
-                    f"Glyph Machina: network-level timeout (errno {getattr(e, 'errno', '?')}): {e}. "
-                    "Check connectivity to glyphmachina.com or use Skip automated lineation with existing XML."
+                    f"Glyph Machina UI timed out ({e}). "
+                    f"Navigation budget: {nav_timeout} ms (TRANSCRIBER_SHELL_GM_NAVIGATE_TIMEOUT_MS). "
+                    f"Identify/download budget: {identify_timeout} ms (TRANSCRIBER_SHELL_GM_IDENTIFY_TIMEOUT_MS). "
+                    "Check network or use Skip automated lineation with existing XML."
                 ) from e
-            raise
+            except OSError as e:
+                if getattr(e, "errno", None) == errno.ETIMEDOUT or isinstance(e, TimeoutError):
+                    raise GlyphMachinaError(
+                        f"Glyph Machina: network-level timeout (errno {getattr(e, 'errno', '?')}): {e}. "
+                        "Check connectivity to glyphmachina.com or use Skip automated lineation with existing XML."
+                    ) from e
+                raise
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
 
 
 def fetch_lines_xml(
