@@ -40,6 +40,7 @@ from transcriber_shell.pipeline.batch import (
     discover_images,
     has_successful_transcription,
     run_batch,
+    sanitize_job_id,
 )
 from transcriber_shell.pipeline.run import load_prompt_cfg, run_pipeline
 from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path
@@ -1620,7 +1621,7 @@ class TranscriberGui:
                 if n == 1:
                     img = images[0]
                     job = TranscribeJob(
-                        job_id=job_id_str or "job",
+                        job_id=sanitize_job_id(job_id_str) if job_id_str else sanitize_job_id(img.stem),
                         image_path=img,
                         prompt_cfg=cfg,
                         provider=prov,

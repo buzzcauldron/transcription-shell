@@ -341,7 +341,7 @@ class Settings(BaseSettings):
     )
 
     artifacts_dir: Path = Field(
-        default=Path("artifacts"),
+        default=Path(__file__).resolve().parents[2] / "artifacts",
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_ARTIFACTS_DIR", "ARTIFACTS_DIR"),
     )
 
@@ -458,7 +458,7 @@ class Settings(BaseSettings):
     def _normalize_lineation_backend(cls, v: object) -> str:
         allowed = ("mask", "kraken", "glyph_machina")
         if v is None or (isinstance(v, str) and not str(v).strip()):
-            return "mask"
+            return "glyph_machina"
         if not isinstance(v, str):
             raise ValueError("lineation_backend must be a string")
         x = v.lower().strip()
