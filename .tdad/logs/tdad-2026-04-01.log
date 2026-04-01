@@ -1,0 +1,28 @@
+
+================================================================================
+TDAD Session Started: 2026-04-01T19:47:38.908Z
+================================================================================
+[2026-04-01T19:47:39.167Z] [EXTENSION] 🚀 TDAD extension is now ACTIVATED! Version with comprehensive logging
+[2026-04-01T19:47:39.167Z] [EXTENSION] 📁 Log file location: /Users/halxiii/Projects/transcription-shell/.tdad/logs/tdad-2026-04-01.log
+[2026-04-01T19:47:39.167Z] [EXTENSION] 📊 Workspace folders: /Users/halxiii/Projects/transcription-shell
+[2026-04-01T19:47:39.168Z] [EXTENSION] Creating WorkflowController...
+[2026-04-01T19:47:39.168Z] [EXTENSION] MVP: Using simple JSON storage (.tdad/workflows/workflow.json)
+[2026-04-01T19:47:39.168Z] [EXTENSION] TDAD Extension activated successfully
+[2026-04-01T19:47:39.168Z] [EXTENSION] Registering commands...
+[2026-04-01T19:47:39.216Z] [EXTENSION] FeedbackManager: Session 85
+[2026-04-01T19:47:39.218Z] [EXTENSION] TDAD structure already initialized
+[2026-04-01T19:47:39.218Z] [EXTENSION] Auto-opening TDAD Canvas...
+[2026-04-01T19:47:39.219Z] [CANVAS] Sprint 13: Agent Orchestrator initialized
+[2026-04-01T19:47:39.219Z] [CANVAS] [FileStatusSync] File watchers initialized
+[2026-04-01T19:47:39.220Z] [CANVAS] [FileStatusSync] Synced 0 nodes
+[2026-04-01T19:47:39.421Z] [CANVAS] WEBVIEW
+Data: Using stylesheets: index-F_v7nmCS.css
+[2026-04-01T19:47:39.421Z] [CANVAS] MVP: Canvas initialized with simple JSON storage
+[2026-04-01T19:47:40.424Z] [CANVAS] [FitView] isLoading=true, nodes.length=0, folderId=null
+[2026-04-01T19:47:40.525Z] [CANVAS] [FileStatusSync] Synced 0 nodes
+[2026-04-01T19:47:40.586Z] [CANVAS] [FitView] isLoading=false, nodes.length=5, folderId=null
+[2026-04-01T19:47:40.587Z] [CANVAS] [FitView] All nodes at (0,0)? false
+[2026-04-01T19:47:40.688Z] [CANVAS] [FitView] Calling fitView with 5 nodes
+[2026-04-01T19:47:41.956Z] [CANVAS] saveNow: Saving 5 nodes to folder root - statuses: [glyph-machina:no-status, xml-tools:no-status, llm:no-status, pipeline:no-status, api:no-status]
+[2026-04-01T19:47:41.958Z] [CANVAS] [FileStatusSync] File watchers disposed
+[2026-04-01T19:47:42.048Z] [EXTENSION] Blueprint workflow changed (suppressed - internal save): /Users/halxiii/Projects/transcription-shell/.tdad/workflows/root.workflow.json
