@@ -29,13 +29,15 @@ def _dataloader_workers(device_type: str) -> int:
     """MPS + macOS fork = deadlock; use 0 workers. CUDA/CPU can use multiple."""
     if device_type == "mps":
         return 0
-    return min(4, os.cpu_count() or 2)
+    return min(6, os.cpu_count() or 2)
 
 
 def _auto_batch_size(device_type: str) -> int:
-    if device_type in ("mps", "cuda"):
-        return 4
-    return 1
+    if device_type == "mps":
+        return 8   # 18 GB unified memory — headroom for larger batches
+    if device_type == "cuda":
+        return 8
+    return 2
 
 from latin_lineation_mvp.dataset import (
     build_page_sample,
