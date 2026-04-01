@@ -123,6 +123,8 @@ def _pipeline_settings(args: argparse.Namespace) -> Settings:
         updates["gm_user_data_dir"] = Path(args.gm_user_data_dir).expanduser()
     if getattr(args, "continue_on_lineation_failure", False):
         updates["continue_on_lineation_failure"] = True
+    if getattr(args, "xml_only", False):
+        updates["xml_only"] = True
     if updates:
         return s.model_copy(update=updates)
     return s
@@ -390,6 +392,14 @@ def main() -> None:
             "(env: TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE)"
         ),
     )
+    run.add_argument(
+        "--xml-only",
+        action="store_true",
+        help=(
+            "Lineation and lines XML validation only; do not call the LLM "
+            "(env: TRANSCRIBER_SHELL_XML_ONLY)"
+        ),
+    )
     _add_pipeline_network_args(run)
     run.set_defaults(func=cmd_run)
 
@@ -450,6 +460,14 @@ def main() -> None:
         help=(
             "If automated lineation fails, continue to LLM without lines XML "
             "(env: TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE)"
+        ),
+    )
+    batch.add_argument(
+        "--xml-only",
+        action="store_true",
+        help=(
+            "Lineation and lines XML validation only; do not call the LLM "
+            "(env: TRANSCRIBER_SHELL_XML_ONLY)"
         ),
     )
     batch.add_argument(

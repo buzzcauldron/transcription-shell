@@ -35,6 +35,7 @@ def test_lines_xml_xsd_and_require_text_line_defaults():
     assert s.xml_require_text_line is True
     assert s.skip_lines_xml_validation is False
     assert s.continue_on_lineation_failure is False
+    assert s.xml_only is False
     assert s.gm_auto_install_browser is True
 
 

@@ -378,6 +378,13 @@ class Settings(BaseSettings):
             "continue to LLM transcription without lines XML instead of failing the run (CLI: --continue-on-lineation-failure)."
         ),
     )
+    xml_only: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_XML_ONLY"),
+        description=(
+            "If true, run lineation and lines XML validation only; do not call the LLM (CLI: --xml-only)."
+        ),
+    )
 
     default_provider: ProviderName = Field(
         default="anthropic",

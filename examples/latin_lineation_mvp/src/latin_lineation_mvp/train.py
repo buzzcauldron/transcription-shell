@@ -4,12 +4,38 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import warnings
 from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader, Dataset
+
+
+def _auto_device() -> str:
+    """Pick the fastest available device: MPS > CUDA > CPU."""
+    try:
+        if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+            return "mps"
+    except Exception:
+        pass
+    if torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
+
+
+def _dataloader_workers(device_type: str) -> int:
+    """MPS + macOS fork = deadlock; use 0 workers. CUDA/CPU can use multiple."""
+    if device_type == "mps":
+        return 0
+    return min(4, os.cpu_count() or 2)
+
+
+def _auto_batch_size(device_type: str) -> int:
+    if device_type in ("mps", "cuda"):
+        return 4
+    return 1
 
 from latin_lineation_mvp.dataset import (
     build_page_sample,
@@ -134,7 +160,7 @@ def main() -> None:
     p.add_argument("--max-lines", type=int, default=0, help="0 = auto from data")
     p.add_argument("--line-width", type=int, default=4)
     p.add_argument("--out", type=Path, default=Path("line_mask_unet.pt"))
-    p.add_argument("--device", default="cpu")
+    p.add_argument("--device", default="auto", help="cpu | cuda | mps | auto (default: auto)")
     p.add_argument(
         "--min-lr",
         type=float,
@@ -169,9 +195,16 @@ def main() -> None:
         "train_pages": len(train_pairs),
         "val_pages": len(val_pairs),
     }
-    device = torch.device(args.device)
+    resolved = _auto_device() if args.device.strip().lower() == "auto" else args.device.strip().lower()
+    device = torch.device(resolved)
     if device.type == "cuda":
         torch.backends.cudnn.benchmark = True
+    if device.type == "mps":
+        try:
+            torch.mps.empty_cache()
+        except Exception:
+            pass
+    print(f"device: {device}  (requested: {args.device})")
 
     out_path = args.out.expanduser().resolve()
     state_path = _train_state_path(out_path)
@@ -249,13 +282,17 @@ def main() -> None:
         max_lines=max_lines,
         line_width=args.line_width,
     )
-    pin = device.type == "cuda"
+    pin = device.type == "cuda"  # pin_memory only valid for CUDA
+    workers = _dataloader_workers(device.type)
+    effective_batch = args.batch_size if args.batch_size != 1 else _auto_batch_size(device.type)
+    print(f"batch_size: {effective_batch}  num_workers: {workers}  pin_memory: {pin}")
     train_loader = DataLoader(
         train_ds,
-        batch_size=args.batch_size,
+        batch_size=effective_batch,
         shuffle=True,
-        num_workers=2,
+        num_workers=workers,
         pin_memory=pin,
+        persistent_workers=(workers > 0),
     )
     val_loader = DataLoader(
         val_ds, batch_size=1, shuffle=False, num_workers=0, pin_memory=pin
@@ -277,6 +314,12 @@ def main() -> None:
             }
             torch.save(payload, out_path)
             print(f"  saved {out_path}  (best val_loss={best:.4f})")
+
+        if device.type == "mps":
+            try:
+                torch.mps.empty_cache()
+            except Exception:
+                pass
 
         train_payload = {
             "epoch": epoch,

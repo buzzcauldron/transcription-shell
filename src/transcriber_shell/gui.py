@@ -132,7 +132,10 @@ class TranscriberGui:
         self._efficient_mode = tk.BooleanVar(value=False)
         self._model_custom = tk.StringVar(value="")
         self._skip_gm = tk.BooleanVar(value=False)
-        self._lineation_backend = tk.StringVar(value=str(self._settings.lineation_backend))
+        _lb_init = str(self._settings.lineation_backend)
+        if _lb_init == "kraken":
+            _lb_init = "michael-lineator"
+        self._lineation_backend = tk.StringVar(value=_lb_init)
         self._xsd_path = tk.StringVar(
             value=str(self._settings.lines_xml_xsd) if self._settings.lines_xml_xsd else ""
         )
@@ -143,6 +146,7 @@ class TranscriberGui:
         self._continue_on_lineation_failure = tk.BooleanVar(
             value=self._settings.continue_on_lineation_failure
         )
+        self._xml_only = tk.BooleanVar(value=self._settings.xml_only)
         self._persist_keys_after_run = tk.BooleanVar(value=False)
         self._skip_successful = tk.BooleanVar(value=False)
         self._llm_use_proxy = tk.BooleanVar(value=self._settings.llm_use_proxy)
@@ -155,7 +159,6 @@ class TranscriberGui:
         self._metrics_tokens = tk.StringVar(value="LLM tokens: —")
         self._run_t0: float | None = None
         self._run_metrics_active = False
-        self._advanced_expanded = tk.BooleanVar(value=False)
         self._banner_dismiss_after: str | None = None
         self._loading_gui_state = False
         self._save_gui_state_after: str | None = None
@@ -308,6 +311,11 @@ class TranscriberGui:
         ).pack(side=tk.LEFT, padx=(12, 0))
         btn_row = ttk.Frame(bottom_bar, style="Main.TFrame")
         btn_row.pack(fill=tk.X)
+        ttk.Checkbutton(
+            btn_row,
+            text="XML only (lines XML; no LLM)",
+            variable=self._xml_only,
+        ).pack(side=tk.LEFT, padx=(0, 12))
         ttk.Button(
             btn_row,
             text="Transcribe",
@@ -543,11 +551,11 @@ class TranscriberGui:
         lineation_src.pack(fill=tk.X, pady=(4, 6))
         lb_row = ttk.Frame(lineation_src, style="Main.TFrame")
         lb_row.pack(fill=tk.X, pady=(0, 4))
-        ttk.Label(lb_row, text="Backend", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        ttk.Label(lb_row, text="Draw baselines", width=14, anchor=tk.W).pack(side=tk.LEFT)
         self._lineation_combo = ttk.Combobox(
             lb_row,
             textvariable=self._lineation_backend,
-            values=("glyph_machina", "mask", "kraken"),
+            values=("michael-lineator", "glyph_machina", "mask"),
             state="readonly",
             width=22,
         )
@@ -604,23 +612,14 @@ class TranscriberGui:
         self._lines_help.pack(anchor=tk.W, pady=(0, 2))
 
     def _build_advanced_section(self, outer: ttk.Frame) -> None:
-        """Collapsible advanced settings: proxy, Chromium profile, XML validation."""
-        toggle_row = ttk.Frame(outer, style="Main.TFrame")
-        toggle_row.pack(fill=tk.X, pady=(4, 0))
-        self._advanced_toggle_btn = ttk.Button(
-            toggle_row,
-            text="▶ Advanced settings",
-            command=self._toggle_advanced,
-        )
-        self._advanced_toggle_btn.pack(side=tk.LEFT)
-
+        """Always-visible advanced settings: proxy, Chromium profile, XML validation."""
         self._advanced_content = ttk.Frame(outer, style="Main.TFrame")
-        # Not packed initially — shown/hidden by _toggle_advanced.
+        self._advanced_content.pack(fill=tk.X, pady=(4, 0))
 
         # Network / proxy subsection
         net = ttk.LabelFrame(
             self._advanced_content,
-            text="Network (LLM APIs) & Chromium profile (Glyph Machina lineation only)",
+            text="Network & proxy (LLM APIs) — Glyph Machina browser settings",
             padding=(10, 8),
         )
         net.pack(fill=tk.X, pady=(8, 0))
@@ -767,16 +766,6 @@ class TranscriberGui:
         )
         self._log.pack(fill=tk.BOTH, expand=True)
 
-    def _toggle_advanced(self) -> None:
-        expanded = not self._advanced_expanded.get()
-        self._advanced_expanded.set(expanded)
-        if expanded:
-            self._advanced_content.pack(fill=tk.X, pady=(0, 8))
-            self._advanced_toggle_btn.configure(text="▼ Advanced settings")
-        else:
-            self._advanced_content.pack_forget()
-            self._advanced_toggle_btn.configure(text="▶ Advanced settings")
-        self._schedule_gui_state_save()
 
     # ── UI state sync ────────────────────────────────────────────────────────
 
@@ -824,30 +813,37 @@ class TranscriberGui:
                 self._job_hint.configure(text="Batch uses each filename as job id.")
 
         # Lineation backend hint
+        kraken_model = str(self._settings.kraken_model_path or "").strip()
+        kraken_model_label = kraken_model.split("/")[-1] if kraken_model else ""
         if skip:
             self._lineation_backend_hint.configure(
-                text="Lineation backend is ignored for this run — supply lines XML below."
+                text="Baseline detection is skipped — supply an existing lines XML below."
             )
         elif backend == "mask":
             self._lineation_backend_hint.configure(
                 text=(
-                    "Mask: set TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE (and optional weights) in .env — "
-                    "see docs/mask-lineation-plugin.md."
+                    "Mask (custom plugin): runs your own model to detect baselines. "
+                    "Set TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE in .env — see docs/mask-lineation-plugin.md."
                 )
             )
-        elif backend == "kraken":
-            self._lineation_backend_hint.configure(
-                text=(
-                    "Kraken: set TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH; "
-                    "pip install 'transcriber-shell[kraken]' for BLLA lineation."
+        elif backend == "michael-lineator":
+            if kraken_model_label:
+                self._lineation_backend_hint.configure(
+                    text=f"Michael Lineator (local model): detects baselines using {kraken_model_label}."
                 )
-            )
+            else:
+                self._lineation_backend_hint.configure(
+                    text=(
+                        "Michael Lineator (local model): detects baselines offline. "
+                        "Set TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH in .env."
+                    )
+                )
         else:
             self._lineation_backend_hint.configure(
                 text=(
-                    "Glyph Machina: runs python -m playwright install chromium before opening the browser when "
-                    "auto-install is on (default), then Playwright. Optional profile in Advanced for site login; "
-                    "see docs/glyph-machina-automation.md. Use TRANSCRIBER_SHELL_GM_HEADLESS=false to log in once."
+                    "Glyph Machina (cloud): opens a browser and uploads the image to glyphmachina.com "
+                    "to detect baselines. Requires internet and a site login; "
+                    "use TRANSCRIBER_SHELL_GM_HEADLESS=false to log in once."
                 )
             )
 
@@ -926,53 +922,31 @@ class TranscriberGui:
             else:
                 self._scroll_canvas.yview_scroll(-1 * int(e.delta / 120), "units")
 
-        def on_wheel(e: tk.Event) -> str | None:
-            w = e.widget
+        def _native_scroll_widget(w: tk.Widget) -> bool:
+            """True for widgets that should keep their own native scroll."""
             if self._widget_tree_contains(w, self._log):
-                return None
+                return True
             if self._widget_tree_contains(w, self._image_listbox):
+                return True
+            return False
+
+        def on_wheel(e: tk.Event) -> str | None:
+            if _native_scroll_widget(e.widget):
                 return None
-            try:
-                if str(w.winfo_class()) == "Listbox" and w.winfo_toplevel() != self.root:
-                    return None
-            except tk.TclError:
-                pass
             _scroll_main(e)
-            if str(w.winfo_class()) == "TCombobox":
-                return "break"
-            return None
+            return "break"
 
         def on_btn4(e: tk.Event) -> str | None:
-            w = e.widget
-            if self._widget_tree_contains(w, self._log):
+            if _native_scroll_widget(e.widget):
                 return None
-            if self._widget_tree_contains(w, self._image_listbox):
-                return None
-            try:
-                if str(w.winfo_class()) == "Listbox" and w.winfo_toplevel() != self.root:
-                    return None
-            except tk.TclError:
-                pass
             self._scroll_canvas.yview_scroll(-3, "units")
-            if str(w.winfo_class()) == "TCombobox":
-                return "break"
-            return None
+            return "break"
 
         def on_btn5(e: tk.Event) -> str | None:
-            w = e.widget
-            if self._widget_tree_contains(w, self._log):
+            if _native_scroll_widget(e.widget):
                 return None
-            if self._widget_tree_contains(w, self._image_listbox):
-                return None
-            try:
-                if str(w.winfo_class()) == "Listbox" and w.winfo_toplevel() != self.root:
-                    return None
-            except tk.TclError:
-                pass
             self._scroll_canvas.yview_scroll(3, "units")
-            if str(w.winfo_class()) == "TCombobox":
-                return "break"
-            return None
+            return "break"
 
         self.root.bind_all("<MouseWheel>", on_wheel)
         if sys.platform == "linux":
@@ -1231,13 +1205,17 @@ class TranscriberGui:
                 "true" if self._gm_auto_install_browser.get() else "false"
             ),
             "TRANSCRIBER_SHELL_GM_USER_DATA_DIR": self._gm_user_data_dir.get().strip(),
-            "TRANSCRIBER_SHELL_LINEATION_BACKEND": self._lineation_backend.get().strip(),
+            "TRANSCRIBER_SHELL_LINEATION_BACKEND": (
+                "kraken" if self._lineation_backend.get().strip() == "michael-lineator"
+                else self._lineation_backend.get().strip()
+            ),
             "TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION": (
                 "true" if self._skip_lines_xml_validation.get() else "false"
             ),
             "TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE": (
                 "true" if self._continue_on_lineation_failure.get() else "false"
             ),
+            "TRANSCRIBER_SHELL_XML_ONLY": "true" if self._xml_only.get() else "false",
         }
 
     def _save_keys_to_dotenv(self) -> None:
@@ -1320,13 +1298,17 @@ class TranscriberGui:
         )
         if gd := self._gm_user_data_dir.get().strip():
             out["TRANSCRIBER_SHELL_GM_USER_DATA_DIR"] = gd
-        out["TRANSCRIBER_SHELL_LINEATION_BACKEND"] = self._lineation_backend.get().strip()
+        out["TRANSCRIBER_SHELL_LINEATION_BACKEND"] = (
+            "kraken" if self._lineation_backend.get().strip() == "michael-lineator"
+            else self._lineation_backend.get().strip()
+        )
         out["TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION"] = (
             "true" if self._skip_lines_xml_validation.get() else "false"
         )
         out["TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE"] = (
             "true" if self._continue_on_lineation_failure.get() else "false"
         )
+        out["TRANSCRIBER_SHELL_XML_ONLY"] = "true" if self._xml_only.get() else "false"
         return out
 
     # ── Discovery ─────────────────────────────────────────────────────────────
@@ -1571,6 +1553,9 @@ class TranscriberGui:
         self._put_log(
             f"runMode={'efficient' if eff_mode else 'standard'} (from prompt + Efficient mode checkbox)"
         )
+        self._put_log(
+            f"xml_only={self._xml_only.get()} (lines XML + validation only; no LLM when true)"
+        )
 
         threading.Thread(
             target=self._run_worker,
@@ -1580,7 +1565,10 @@ class TranscriberGui:
                 env_overrides=env_overrides,
                 eff_mode=eff_mode,
                 skip=skip,
-                lineation_backend_str=self._lineation_backend.get(),
+                lineation_backend_str=(
+                    "kraken" if self._lineation_backend.get() == "michael-lineator"
+                    else self._lineation_backend.get()
+                ),
                 n=n,
                 job_id_str=self._job_id.get().strip(),
                 model_override=model_override,
@@ -1809,6 +1797,7 @@ class TranscriberGui:
             "require_text_line": self._require_text_line.get(),
             "skip_lines_xml_validation": self._skip_lines_xml_validation.get(),
             "continue_on_lineation_failure": self._continue_on_lineation_failure.get(),
+            "xml_only": self._xml_only.get(),
             "mask_keys": self._mask_keys.get(),
             "ollama_base_url": self._ollama_base_url.get().strip(),
             "llm_use_proxy": self._llm_use_proxy.get(),
@@ -1819,7 +1808,6 @@ class TranscriberGui:
             "persist_keys_after_run": self._persist_keys_after_run.get(),
             "skip_successful": self._skip_successful.get(),
             "image_paths": [str(p) for p in self._dedupe_sorted_images()],
-            "advanced_expanded": self._advanced_expanded.get(),
         }
 
     def _schedule_gui_state_save(self) -> None:
@@ -1875,7 +1863,9 @@ class TranscriberGui:
             if "skip_gm" in data:
                 self._skip_gm.set(bool(data["skip_gm"]))
             lb = str(data.get("lineation_backend", "")).strip().lower()
-            if lb in ("mask", "kraken", "glyph_machina"):
+            if lb == "kraken":
+                lb = "michael-lineator"
+            if lb in ("mask", "michael-lineator", "glyph_machina"):
                 self._lineation_backend.set(lb)
             for key, var in (
                 ("prompt_path", self._prompt_path),
@@ -1892,6 +1882,8 @@ class TranscriberGui:
                 self._skip_lines_xml_validation.set(bool(data["skip_lines_xml_validation"]))
             if "continue_on_lineation_failure" in data:
                 self._continue_on_lineation_failure.set(bool(data["continue_on_lineation_failure"]))
+            if "xml_only" in data:
+                self._xml_only.set(bool(data["xml_only"]))
             if "mask_keys" in data:
                 self._mask_keys.set(bool(data["mask_keys"]))
                 self._toggle_key_visibility()
@@ -1925,13 +1917,6 @@ class TranscriberGui:
                         paths.append(p)
                 self._image_paths = paths
                 self._refresh_image_list()
-            # Restore Advanced section state
-            if "advanced_expanded" in data:
-                exp = bool(data["advanced_expanded"])
-                self._advanced_expanded.set(exp)
-                if exp:
-                    self._advanced_content.pack(fill=tk.X, pady=(0, 8))
-                    self._advanced_toggle_btn.configure(text="▼ Advanced settings")
             ms = str(data.get("model_selected", "") or "")
             mc = str(data.get("model_custom", "") or "")
             self._restore_model_selection_after_load(ms, mc)
@@ -1959,6 +1944,7 @@ class TranscriberGui:
             self._require_text_line,
             self._skip_lines_xml_validation,
             self._continue_on_lineation_failure,
+            self._xml_only,
             self._mask_keys,
             self._ollama_base_url,
             self._llm_use_proxy,
