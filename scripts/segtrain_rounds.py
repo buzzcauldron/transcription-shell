@@ -14,8 +14,8 @@ Usage:
         --out ~/kraken-finetuned.mlmodel \\
         --device cuda:0
 
-    # Resume from a specific round (0-indexed):
-    python segtrain_rounds.py --start-round 2 --resume-model ~/kraken-round1.mlmodel
+    # Resume from a specific round (0-indexed); use the last epoch checkpoint, e.g.:
+    python segtrain_rounds.py --start-round 2 --resume-model ~/src/kraken-round1.mlmodel_49.mlmodel
 
     # Override batch size / epochs:
     python segtrain_rounds.py --batch-size 80 --epochs 30
@@ -122,7 +122,7 @@ def main() -> None:
         ]
         # Build ketos command directly
         cmd = [
-            "ketos",
+            "/home/seth/.venv-kraken/bin/ketos",
             "-d", args.device,
             "--workers", str(args.workers),
             "segtrain",
@@ -145,7 +145,19 @@ def main() -> None:
             print(f"    --device {args.device}")
             sys.exit(result.returncode)
 
-        current_model = round_out
+        # ketos saves epoch checkpoints as <out>_N.mlmodel, not the bare <out> path.
+        # Find the last epoch checkpoint to use as input for the next round.
+        checkpoints = sorted(
+            round_out.parent.glob(f"{round_out.name}_[0-9]*.mlmodel"),
+            key=lambda p: int(p.stem.rsplit("_", 1)[-1]),
+        )
+        best = Path(str(round_out) + "_best.mlmodel")
+        if checkpoints:
+            current_model = checkpoints[-1]
+        elif best.exists():
+            current_model = best
+        else:
+            current_model = round_out  # fallback: ketos may have written bare path in future versions
         print(f"\nRound {round_idx + 1} done → {current_model}\n")
 
     print(f"\nAll {n_rounds} rounds complete.")
