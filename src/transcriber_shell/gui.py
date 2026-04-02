@@ -63,17 +63,20 @@ def _merge_llm_usage(
     return out
 
 
-def _format_llm_usage_line(u: dict[str, int] | None) -> str:
-    if not u:
-        return "LLM tokens: —"
+def _format_llm_usage_line(u: dict[str, int] | None, elapsed_ms: int | None = None) -> str:
     parts: list[str] = []
-    if "input_tokens" in u:
-        parts.append(f"in {u['input_tokens']}")
-    if "output_tokens" in u:
-        parts.append(f"out {u['output_tokens']}")
-    if "total_tokens" in u:
-        parts.append(f"total {u['total_tokens']}")
-    return "LLM tokens: " + " · ".join(parts) if parts else "LLM tokens: —"
+    if u:
+        if "input_tokens" in u:
+            parts.append(f"in {u['input_tokens']}")
+        if "output_tokens" in u:
+            parts.append(f"out {u['output_tokens']}")
+        if "total_tokens" in u:
+            parts.append(f"total {u['total_tokens']}")
+    if elapsed_ms is not None:
+        parts.append(f"{elapsed_ms / 1000:.1f}s")
+    if not parts:
+        return "Environmental impact: —"
+    return "Environmental impact: " + " · ".join(parts)
 
 
 # Bounded log line queue: avoids unbounded memory if a worker logs very heavily.
@@ -1431,12 +1434,9 @@ class TranscriberGui:
                 elif kind == "status":
                     self._status.set(str(payload))
                 elif kind == "metrics":
-                    u = (
-                        payload.get("llm_usage")
-                        if isinstance(payload, dict)
-                        else None
-                    )
-                    self._metrics_tokens.set(_format_llm_usage_line(u))
+                    u = payload.get("llm_usage") if isinstance(payload, dict) else None
+                    ms = payload.get("elapsed_ms") if isinstance(payload, dict) else None
+                    self._metrics_tokens.set(_format_llm_usage_line(u, ms))
                 elif kind == "done":
                     self._run_metrics_active = False
                     if self._run_t0 is not None:
@@ -1662,7 +1662,7 @@ class TranscriberGui:
                     )
                     if rid != self._run_id:
                         return
-                    self._q.put(("metrics", {"llm_usage": res.llm_usage}))
+                    self._q.put(("metrics", {"llm_usage": res.llm_usage, "elapsed_ms": res.elapsed_ms}))
                     for w in res.warnings:
                         self._put_log(f"warning: {w}")
                     if res.lines_xml_path:
@@ -1737,9 +1737,13 @@ class TranscriberGui:
                                 f"  text_line_count={tlc if tlc is not None else 0}"
                             )
                     cum_u: dict[str, int] | None = None
+                    cum_ms: int | None = None
                     for row in rows:
                         cum_u = _merge_llm_usage(cum_u, row.get("llm_usage"))
-                    self._q.put(("metrics", {"llm_usage": cum_u}))
+                        row_ms = row.get("elapsed_ms")
+                        if isinstance(row_ms, int):
+                            cum_ms = (cum_ms or 0) + row_ms
+                    self._q.put(("metrics", {"llm_usage": cum_u, "elapsed_ms": cum_ms}))
                     if fail_c == 0 and persist_after:
                         try:
                             merge_dotenv(Path(".env"), persist_snapshot)

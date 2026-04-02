@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import errno
 import json
+import time
 from pathlib import Path
 
 import httpx
@@ -54,6 +55,32 @@ def _llm_network_timeout_hint(job: TranscribeJob) -> str:
         "TRANSCRIBER_SHELL_LLM_HTTP_PROXY when appropriate."
     )
     return " ".join(parts)
+
+
+def _inject_environmental_impact(
+    data: dict,
+    usage: dict[str, int] | None,
+    elapsed_ms: int | None,
+) -> None:
+    """Write environmentalImpact into transcriptionOutput.metadata (mutates data)."""
+    root = data.get("transcriptionOutput")
+    if not isinstance(root, dict):
+        return
+    meta = root.get("metadata")
+    if not isinstance(meta, dict):
+        return
+    impact: dict[str, int] = {}
+    if usage:
+        if "input_tokens" in usage:
+            impact["tokensIn"] = usage["input_tokens"]
+        if "output_tokens" in usage:
+            impact["tokensOut"] = usage["output_tokens"]
+        if "total_tokens" in usage:
+            impact["tokensTotal"] = usage["total_tokens"]
+    if elapsed_ms is not None:
+        impact["elapsedMs"] = elapsed_ms
+    if impact:
+        meta["environmentalImpact"] = impact
 
 
 def run_pipeline(
@@ -224,8 +251,11 @@ def run_pipeline(
         )
 
     llm_usage: dict[str, int] | None = None
+    elapsed_ms: int | None = None
     try:
+        _t0 = time.perf_counter()
         tx = run_transcribe(job, settings=s)
+        elapsed_ms = int((time.perf_counter() - _t0) * 1000)
         if isinstance(tx, TranscribeResult):
             raw = tx.text
             llm_usage = tx.usage
@@ -318,6 +348,7 @@ def run_pipeline(
         data = yaml.safe_load(raw)
         if isinstance(data, dict):
             normalize_transcription_yaml_data(data)
+            _inject_environmental_impact(data, llm_usage, elapsed_ms)
             out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
     except yaml.YAMLError as e:
         errors.append(
@@ -332,6 +363,7 @@ def run_pipeline(
             errors=errors,
             warnings=warnings,
             llm_usage=llm_usage,
+            elapsed_ms=elapsed_ms,
         )
 
     val_ok, val_errs, val_warns = validate_transcript_file(out_yaml, settings=s)
@@ -347,6 +379,7 @@ def run_pipeline(
         errors=errors,
         warnings=warnings,
         llm_usage=llm_usage,
+        elapsed_ms=elapsed_ms,
     )
 
 

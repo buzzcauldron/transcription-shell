@@ -30,3 +30,5 @@ class PipelineResult:
     warnings: list[str] = field(default_factory=list)
     # Populated when the LLM step runs; keys may include input_tokens, output_tokens, total_tokens.
     llm_usage: dict[str, int] | None = None
+    # Wall-clock milliseconds spent inside run_transcribe (LLM call only, not lineation).
+    elapsed_ms: int | None = None

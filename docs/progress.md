@@ -2,6 +2,19 @@
 
 Append new entries at the **top** with **date** and short notes: what changed, which areas (pipeline, GUI, HTTP API, tests, docs).
 
+### 2026-04-01 (Vatlib segtrain + transcription campaign)
+- **Area:** segtrain, scraping, transcription, adapters, browser
+- **Changes:**
+  - Segtrain running on server RTX 4090; rounds 0–1 complete; round 2 in progress
+  - CUDA MPS Error 805 fixed: `CUDA_MPS_PIPE_DIRECTORY=/dev/null`
+  - Strigil IIIF filename collision bug fixed (`storage.py`); pushed to buzzcauldron/web-scraper
+  - 13 Pal.lat.1447 folios scraped, GM-annotated, Gemini-transcribed
+  - Gemini adapter migrated from `google-generativeai` → `google.genai` SDK
+  - Playwright OS warning suppressed (subprocess stdout/stderr captured)
+  - Ollama llava:latest pulled; batch transcription started for comparison
+  - Plan file updated with active campaign checklist
+- **Blockers:** llava YAML parse failures (markdown fences + pipe chars in output)
+
 ### 2026-03-30 (GUI: Efficient mode visibility)
 - **Area:** GUI
 - **Changes:** **Efficient mode** checkbox moved to the **bottom bar** above **Transcribe** (was easy to miss mid-form). Run log prints `runMode=efficient|standard` for each run. README notes bottom-bar placement.

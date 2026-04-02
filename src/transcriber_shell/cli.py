@@ -24,6 +24,24 @@ from transcriber_shell.xml_tools.validate_gt_pagexml import validate_gt_pagexml
 from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
 
 
+def _print_environmental_impact(
+    usage: dict[str, int] | None,
+    elapsed_ms: int | None,
+) -> None:
+    parts: list[str] = []
+    if usage:
+        if "input_tokens" in usage:
+            parts.append(f"tokens_in={usage['input_tokens']}")
+        if "output_tokens" in usage:
+            parts.append(f"tokens_out={usage['output_tokens']}")
+        if "total_tokens" in usage:
+            parts.append(f"tokens_total={usage['total_tokens']}")
+    if elapsed_ms is not None:
+        parts.append(f"elapsed_ms={elapsed_ms}")
+    if parts:
+        print("environmental_impact " + " ".join(parts))
+
+
 def cmd_compare_lines_xml(args: argparse.Namespace) -> int:
     try:
         result = compare_lines_xml(
@@ -194,6 +212,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if res.transcription_yaml_path:
         print(f"transcription_yaml={res.transcription_yaml_path}")
     print(f"text_line_count={res.text_line_count}")
+    _print_environmental_impact(res.llm_usage, res.elapsed_ms)
     if res.errors:
         for e in res.errors:
             print(e, file=sys.stderr)
