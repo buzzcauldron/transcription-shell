@@ -84,12 +84,28 @@ def _suggest_batch_size(device: str) -> int:
         return 4
     vram = _gpu_vram_mib(device)
     if vram >= 20_000:   # RTX 4090, A100, etc.
-        return 60
+        return 40
     if vram >= 10_000:   # RTX 3080 10 GB, RTX 3080 Ti, etc.
-        return 25
+        return 20
     if vram >= 8_000:    # RTX 3070, RTX 2080, etc.
-        return 16
-    return 8             # low VRAM fallback
+        return 12
+    return 6             # low VRAM fallback
+
+
+def _suggest_anchor_batch_size(device: str) -> int:
+    """Anchor pages sampled per round (deed + all anchor-gt dirs combined)."""
+    if device == "mps":
+        return 8
+    if device == "cpu":
+        return 4
+    vram = _gpu_vram_mib(device)
+    if vram >= 20_000:
+        return 40
+    if vram >= 10_000:
+        return 20
+    if vram >= 8_000:
+        return 12
+    return 6
 
 
 def _suggest_workers(device: str) -> int:
@@ -120,6 +136,7 @@ def main() -> None:
     # Auto-detect hardware defaults before parsing so they show in --help.
     _auto_device = _detect_device()
     _auto_batch = _suggest_batch_size(_auto_device)
+    _auto_anchor_batch = _suggest_anchor_batch_size(_auto_device)
     _auto_workers = _suggest_workers(_auto_device)
 
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -141,6 +158,9 @@ def main() -> None:
                    help=f"DataLoader workers (auto-detected: {_auto_workers})")
     p.add_argument("--batch-size", type=int, default=_auto_batch,
                    help=f"Vatlib pages per round (auto-detected: {_auto_batch})")
+    p.add_argument("--anchor-batch-size", type=int, default=_auto_anchor_batch,
+                   help=f"Anchor pages sampled per round from deed+anchor-gt combined "
+                        f"(auto-detected: {_auto_anchor_batch}; 0 = include all)")
     p.add_argument("--epochs", type=int, default=50,
                    help="Max epochs per round (default 50)")
     p.add_argument("--start-round", type=int, default=0,
@@ -187,8 +207,11 @@ def main() -> None:
     print(f"Workers:      {args.workers}")
     print(f"Vatlib XMLs:  {len(vatlib_xmls)}  →  {n_rounds} rounds of ~{args.batch_size}")
     print(f"Deed GT:      {len(deed_xmls)} XMLs included in every round")
+    all_anchor_xmls = list(anchor_xmls)  # full pool for per-round sampling
+    anchor_sample_n = args.anchor_batch_size if args.anchor_batch_size > 0 else None
     if anchor_xmls:
-        print(f"Anchor GT:    {len(anchor_xmls)} XMLs included in every round ({', '.join(str(d) for d in args.anchor_gt)})")
+        sample_desc = f"sampled {anchor_sample_n}/round" if anchor_sample_n else "all"
+        print(f"Anchor GT:    {len(anchor_xmls)} XMLs pool ({sample_desc}) from {', '.join(str(d) for d in args.anchor_gt)}")
     print(f"Epochs/round: {args.epochs} (early stopping, min 5)")
     print(f"Base model:   {base_model}")
     print(f"Final output: {final_out}")
@@ -208,14 +231,20 @@ def main() -> None:
         is_last = round_idx == n_rounds - 1
         round_out = final_out if is_last else final_out.parent / f"kraken-round{round_idx}.mlmodel"
 
+        # Sample anchor pages for this round (deed always included fully; anchor-gt pooled).
+        if anchor_sample_n and len(all_anchor_xmls) > anchor_sample_n:
+            sampled_anchors = rng.sample(all_anchor_xmls, anchor_sample_n)
+        else:
+            sampled_anchors = all_anchor_xmls
+
+        total = len(batch) + len(deed_xmls) + len(sampled_anchors)
         print(f"{'='*60}")
-        extra_count = len(deed_xmls) + len(anchor_xmls)
-        print(f"Round {round_idx + 1}/{n_rounds}  ({len(batch)} vatlib + {extra_count} anchor pages)")
+        print(f"Round {round_idx + 1}/{n_rounds}  ({len(batch)} vatlib + {len(deed_xmls)} deed + {len(sampled_anchors)} anchor = {total} total)")
         print(f"  input:  {current_model}")
         print(f"  output: {round_out}")
         print(f"{'='*60}")
 
-        xml_args = [str(x) for x in batch] + [str(x) for x in deed_xmls] + [str(x) for x in anchor_xmls]
+        xml_args = [str(x) for x in batch] + [str(x) for x in deed_xmls] + [str(x) for x in sampled_anchors]
 
         cmd = [
             ketos_bin,
