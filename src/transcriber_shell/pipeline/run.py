@@ -61,6 +61,7 @@ def _inject_environmental_impact(
     data: dict,
     usage: dict[str, int] | None,
     elapsed_ms: int | None,
+    lineation_ms: int | None,
 ) -> None:
     """Write environmentalImpact into transcriptionOutput.metadata (mutates data)."""
     root = data.get("transcriptionOutput")
@@ -78,7 +79,9 @@ def _inject_environmental_impact(
         if "total_tokens" in usage:
             impact["tokensTotal"] = usage["total_tokens"]
     if elapsed_ms is not None:
-        impact["elapsedMs"] = elapsed_ms
+        impact["llmMs"] = elapsed_ms
+    if lineation_ms is not None:
+        impact["lineationMs"] = lineation_ms
     if impact:
         meta["environmentalImpact"] = impact
 
@@ -107,6 +110,7 @@ def run_pipeline(
 
     lines_out: Path | None = None
     text_line_count = 0
+    lineation_ms: int | None = None
 
     if skip_gm:
         if not lines_xml_path or not lines_xml_path.is_file():
@@ -127,12 +131,14 @@ def run_pipeline(
     else:
         try:
             backend = s.lineation_backend
+            _lt0 = time.perf_counter()
             if backend == "mask":
                 lines_out = fetch_lines_xml_mask(job.image_path, job.job_id, settings=s)
             elif backend == "kraken":
                 lines_out = fetch_lines_xml_kraken(job.image_path, job.job_id, settings=s)
             else:
                 lines_out = fetch_lines_xml(job.image_path, job.job_id, settings=s)
+            lineation_ms = int((time.perf_counter() - _lt0) * 1000)
         except (MaskLineationError, KrakenLineationError, GlyphMachinaError) as e:
             if s.continue_on_lineation_failure:
                 lines_out = None
@@ -216,6 +222,7 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            lineation_ms=lineation_ms,
         )
 
     if s.xml_only:
@@ -230,6 +237,7 @@ def run_pipeline(
                 text_line_count,
                 errors=errors,
                 warnings=warnings,
+                lineation_ms=lineation_ms,
             )
         warnings.append(
             "XML-only run: stopped after lines XML validation; LLM transcription was not performed."
@@ -242,6 +250,7 @@ def run_pipeline(
             errors=[],
             warnings=warnings,
             llm_usage=None,
+            lineation_ms=lineation_ms,
         )
 
     if not job.line_hint and text_line_count > 0:
@@ -273,6 +282,7 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            lineation_ms=lineation_ms,
         )
     except TimeoutError as e:
         errors.append(
@@ -285,6 +295,7 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            lineation_ms=lineation_ms,
         )
     except OSError as e:
         if getattr(e, "errno", None) == errno.ETIMEDOUT:
@@ -298,6 +309,7 @@ def run_pipeline(
                 text_line_count,
                 errors=errors,
                 warnings=warnings,
+                lineation_ms=lineation_ms,
             )
         errors.append(
             f"LLM transcription failed ({job.provider}): {e}. "
@@ -310,6 +322,7 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            lineation_ms=lineation_ms,
         )
     except httpx.TimeoutException as e:
         errors.append(
@@ -323,6 +336,7 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            lineation_ms=lineation_ms,
         )
     except Exception as e:
         errors.append(
@@ -336,6 +350,7 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            lineation_ms=lineation_ms,
         )
 
     raw = strip_yaml_fence(raw)
@@ -348,7 +363,7 @@ def run_pipeline(
         data = yaml.safe_load(raw)
         if isinstance(data, dict):
             normalize_transcription_yaml_data(data)
-            _inject_environmental_impact(data, llm_usage, elapsed_ms)
+            _inject_environmental_impact(data, llm_usage, elapsed_ms, lineation_ms)
             out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
     except yaml.YAMLError as e:
         errors.append(
@@ -364,6 +379,7 @@ def run_pipeline(
             warnings=warnings,
             llm_usage=llm_usage,
             elapsed_ms=elapsed_ms,
+            lineation_ms=lineation_ms,
         )
 
     val_ok, val_errs, val_warns = validate_transcript_file(out_yaml, settings=s)

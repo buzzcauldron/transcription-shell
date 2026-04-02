@@ -27,6 +27,7 @@ from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
 def _print_environmental_impact(
     usage: dict[str, int] | None,
     elapsed_ms: int | None,
+    lineation_ms: int | None = None,
 ) -> None:
     parts: list[str] = []
     if usage:
@@ -36,8 +37,10 @@ def _print_environmental_impact(
             parts.append(f"tokens_out={usage['output_tokens']}")
         if "total_tokens" in usage:
             parts.append(f"tokens_total={usage['total_tokens']}")
+    if lineation_ms is not None:
+        parts.append(f"lineation_ms={lineation_ms}")
     if elapsed_ms is not None:
-        parts.append(f"elapsed_ms={elapsed_ms}")
+        parts.append(f"llm_ms={elapsed_ms}")
     if parts:
         print("environmental_impact " + " ".join(parts))
 
@@ -212,7 +215,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if res.transcription_yaml_path:
         print(f"transcription_yaml={res.transcription_yaml_path}")
     print(f"text_line_count={res.text_line_count}")
-    _print_environmental_impact(res.llm_usage, res.elapsed_ms)
+    _print_environmental_impact(res.llm_usage, res.elapsed_ms, res.lineation_ms)
     if res.errors:
         for e in res.errors:
             print(e, file=sys.stderr)

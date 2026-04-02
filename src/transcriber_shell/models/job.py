@@ -32,3 +32,5 @@ class PipelineResult:
     llm_usage: dict[str, int] | None = None
     # Wall-clock milliseconds spent inside run_transcribe (LLM call only, not lineation).
     elapsed_ms: int | None = None
+    # Wall-clock milliseconds spent on lineation (GM, Kraken, or mask — not LLM).
+    lineation_ms: int | None = None
