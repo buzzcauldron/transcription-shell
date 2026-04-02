@@ -2,38 +2,39 @@
 
 Each round fine-tunes from the previous round's output, keeping deed GT
 and any --anchor-gt directories in every round. Works on MPS (Apple Silicon),
-CUDA, or CPU.
+CUDA, or CPU. Device, batch size, and workers are auto-detected from the
+hardware if not overridden.
 
 Usage:
-    python segtrain_rounds.py --device cuda:0
+    python segtrain_rounds.py               # fully auto-detected
 
     # Override paths:
     python segtrain_rounds.py \\
         --vatlib-gt ~/kraken-vatlib-gt \\
         --deed-gt ~/deed-finetune-gt \\
         --base-model ~/model_249.mlmodel \\
-        --out ~/kraken-finetuned.mlmodel \\
-        --device cuda:0
+        --out ~/kraken-finetuned.mlmodel
 
     # Add extra anchor GT dirs (included every round, like deed GT):
     python segtrain_rounds.py \\
         --anchor-gt ~/kraken-cp40-gt \\
         --anchor-gt ~/kraken-done-lines-gt \\
-        --out ~/kraken-son-of-gm.mlmodel \\
-        --device cuda:0
+        --out ~/kraken-son-of-gm.mlmodel
 
     # Resume from a specific round (0-indexed); use the last epoch checkpoint, e.g.:
     python segtrain_rounds.py --start-round 2 --resume-model ~/src/kraken-round1.mlmodel_49.mlmodel
 
-    # Override batch size / epochs:
-    python segtrain_rounds.py --batch-size 80 --epochs 30
+    # Override auto-detected hardware settings:
+    python segtrain_rounds.py --device cpu --batch-size 4 --workers 2 --epochs 30
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import platform
 import random
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -50,26 +51,96 @@ def _default(p: str) -> Path:
     return Path(p).expanduser()
 
 
+def _detect_device() -> str:
+    """Return the best available ketos device string."""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda:0"
+        if torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
+    return "cpu"
+
+
+def _gpu_vram_mib(device: str) -> int:
+    """Return total VRAM in MiB for a CUDA device, 0 otherwise."""
+    if not device.startswith("cuda"):
+        return 0
+    try:
+        import torch
+        idx = int(device.split(":")[-1]) if ":" in device else 0
+        return torch.cuda.get_device_properties(idx).total_memory // (1024 * 1024)
+    except Exception:
+        return 0
+
+
+def _suggest_batch_size(device: str) -> int:
+    """Vatlib pages per round based on available VRAM/device."""
+    if device == "mps":
+        return 8
+    if device == "cpu":
+        return 4
+    vram = _gpu_vram_mib(device)
+    if vram >= 20_000:   # RTX 4090, A100, etc.
+        return 60
+    if vram >= 10_000:   # RTX 3080 10 GB, RTX 3080 Ti, etc.
+        return 25
+    if vram >= 8_000:    # RTX 3070, RTX 2080, etc.
+        return 16
+    return 8             # low VRAM fallback
+
+
+def _suggest_workers(device: str) -> int:
+    """DataLoader workers based on CPU count and device."""
+    cpus = os.cpu_count() or 2
+    if device == "cpu":
+        return max(2, min(cpus // 2, 4))
+    return max(2, min(cpus // 2, 8))
+
+
+def _find_ketos() -> str:
+    """Locate the ketos binary: PATH first, then common venv locations."""
+    found = shutil.which("ketos")
+    if found:
+        return found
+    candidates = [
+        Path.home() / ".venv-kraken/bin/ketos",
+        Path.home() / ".local/bin/ketos",
+        Path(sys.prefix) / "bin/ketos",
+    ]
+    for c in candidates:
+        if c.exists():
+            return str(c)
+    return "ketos"  # last resort: let subprocess raise a clear error
+
+
 def main() -> None:
+    # Auto-detect hardware defaults before parsing so they show in --help.
+    _auto_device = _detect_device()
+    _auto_batch = _suggest_batch_size(_auto_device)
+    _auto_workers = _suggest_workers(_auto_device)
+
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--vatlib-gt", type=Path, default=_default("~/src/kraken-vatlib-gt"),
+    p.add_argument("--vatlib-gt", type=Path, default=_default("~/kraken-vatlib-gt"),
                    help="Directory of vatlib image+XML pairs")
-    p.add_argument("--deed-gt", type=Path, default=_default("~/src/deed-finetune-gt"),
+    p.add_argument("--deed-gt", type=Path, default=_default("~/deed-finetune-gt"),
                    help="Directory of deed image+XML pairs (included every round)")
     p.add_argument("--anchor-gt", type=Path, action="append", default=[],
                    metavar="DIR",
                    help="Additional GT directory included in every round (repeatable). "
                         "E.g. --anchor-gt ~/kraken-cp40-gt --anchor-gt ~/kraken-done-lines-gt")
-    p.add_argument("--base-model", type=Path, default=_default("~/src/latin_documents/model_249.mlmodel"),
+    p.add_argument("--base-model", type=Path, default=_default("~/model_249.mlmodel"),
                    help="Starting model for fine-tuning")
     p.add_argument("--out", type=Path, default=_default("~/src/kraken-finetuned.mlmodel"),
                    help="Final output model path")
-    p.add_argument("--device", default="cuda:0",
-                   help="ketos device string: cpu | mps | cuda:0 (default: cuda:0)")
-    p.add_argument("--workers", type=int, default=4,
-                   help="DataLoader workers (default 4)")
-    p.add_argument("--batch-size", type=int, default=100,
-                   help="Vatlib pages per round (default 100)")
+    p.add_argument("--device", default=_auto_device,
+                   help=f"ketos device string: cpu | mps | cuda:0 (auto-detected: {_auto_device})")
+    p.add_argument("--workers", type=int, default=_auto_workers,
+                   help=f"DataLoader workers (auto-detected: {_auto_workers})")
+    p.add_argument("--batch-size", type=int, default=_auto_batch,
+                   help=f"Vatlib pages per round (auto-detected: {_auto_batch})")
     p.add_argument("--epochs", type=int, default=50,
                    help="Max epochs per round (default 50)")
     p.add_argument("--start-round", type=int, default=0,
@@ -82,6 +153,7 @@ def main() -> None:
     deed_gt = args.deed_gt.expanduser().resolve()
     base_model = args.base_model.expanduser().resolve()
     final_out = args.out.expanduser().resolve()
+    ketos_bin = _find_ketos()
 
     vatlib_xmls = sorted(vatlib_gt.glob("*.xml"))
     deed_xmls = sorted(deed_gt.glob("*.xml"))
@@ -109,14 +181,18 @@ def main() -> None:
         batches.append(shuffled[i : i + args.batch_size])
 
     n_rounds = len(batches)
+    vram_mib = _gpu_vram_mib(args.device)
+    vram_str = f" ({vram_mib // 1024} GB VRAM)" if vram_mib else ""
+    print(f"Device:       {args.device}{vram_str}")
+    print(f"Workers:      {args.workers}")
     print(f"Vatlib XMLs:  {len(vatlib_xmls)}  →  {n_rounds} rounds of ~{args.batch_size}")
     print(f"Deed GT:      {len(deed_xmls)} XMLs included in every round")
     if anchor_xmls:
         print(f"Anchor GT:    {len(anchor_xmls)} XMLs included in every round ({', '.join(str(d) for d in args.anchor_gt)})")
-    print(f"Device:       {args.device}")
     print(f"Epochs/round: {args.epochs} (early stopping, min 5)")
     print(f"Base model:   {base_model}")
     print(f"Final output: {final_out}")
+    print(f"ketos:        {ketos_bin}")
     print()
 
     current_model = base_model
@@ -142,11 +218,7 @@ def main() -> None:
         xml_args = [str(x) for x in batch] + [str(x) for x in deed_xmls] + [str(x) for x in anchor_xmls]
 
         cmd = [
-            sys.executable, __file__,  # re-invoke self? No — invoke ketos directly
-        ]
-        # Build ketos command directly
-        cmd = [
-            "/home/seth/.venv-kraken/bin/ketos",
+            ketos_bin,
             "-d", args.device,
             "--workers", str(args.workers),
             "segtrain",
