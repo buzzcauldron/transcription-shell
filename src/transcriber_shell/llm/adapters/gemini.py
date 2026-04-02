@@ -26,11 +26,12 @@ def transcribe_gemini(
     settings: Settings | None = None,
 ) -> TranscribeResult:
     try:
-        import google.generativeai as genai
+        import google.genai as genai
+        from google.genai import types as genai_types
     except ImportError as e:
         raise RuntimeError(
             "Gemini SDK not installed. Run: pip install 'transcriber-shell[gemini]' "
-            "(or pip install google-generativeai)."
+            "(or pip install google-genai)."
         ) from e
 
     s = settings or Settings()
@@ -39,7 +40,7 @@ def transcribe_gemini(
             "No Google API key for Gemini: set GOOGLE_API_KEY or TRANSCRIBER_SHELL_GOOGLE_API_KEY "
             "in .env or paste under Provider keys in the GUI."
         )
-    genai.configure(api_key=s.google_api_key)
+    client = genai.Client(api_key=s.google_api_key)
     raw = image_path.read_bytes()
     suf = image_path.suffix.lower()
     if suf in (".jpg", ".jpeg"):
@@ -50,24 +51,30 @@ def transcribe_gemini(
         mime = "image/jpeg"
 
     model_id = model or s.resolved_model("gemini")
-    gen_model = genai.GenerativeModel(model_id, system_instruction=system)
     proxy = (s.llm_http_proxy or "").strip()
     env_extra: dict[str, str] = {}
     if s.llm_use_proxy and proxy:
         env_extra["HTTP_PROXY"] = proxy
         env_extra["HTTPS_PROXY"] = proxy
 
+    contents = [
+        genai_types.Part.from_bytes(data=raw, mime_type=mime),
+        user_text,
+    ]
+    generate_kwargs: dict = {
+        "model": model_id,
+        "contents": contents,
+        "config": genai_types.GenerateContentConfig(
+            system_instruction=system,
+            http_options=genai_types.HttpOptions(timeout=s.gemini_timeout_seconds * 1000),
+        ),
+    }
+
     max_attempts = 1 + max(0, s.gemini_max_retries)
     for attempt in range(max_attempts):
         try:
             with patch.dict(os.environ, env_extra, clear=False):
-                r = gen_model.generate_content(
-                    [
-                        {"mime_type": mime, "data": raw},
-                        user_text,
-                    ],
-                    request_options={"timeout": s.gemini_timeout_seconds},
-                )
+                r = client.models.generate_content(**generate_kwargs)
             text = (r.text or "").strip()
             usage: dict[str, int] | None = None
             um = getattr(r, "usage_metadata", None)
@@ -89,9 +96,14 @@ def transcribe_gemini(
             return TranscribeResult(text, usage)
         except Exception as exc:
             try:
-                from google.api_core.exceptions import ResourceExhausted
+                from google.genai.errors import ClientError
 
-                if isinstance(exc, ResourceExhausted) and attempt + 1 < max_attempts:
+                # 429 Resource Exhausted maps to ClientError with status 429
+                if (
+                    isinstance(exc, ClientError)
+                    and getattr(exc, "status_code", None) == 429
+                    and attempt + 1 < max_attempts
+                ):
                     _sleep_backoff(attempt)
                     continue
             except ImportError:
