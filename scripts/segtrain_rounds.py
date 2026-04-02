@@ -1,7 +1,8 @@
 """Incremental ketos segtrain across batches of ~100 pages.
 
 Each round fine-tunes from the previous round's output, keeping deed GT
-in every round. Works on MPS (Apple Silicon), CUDA, or CPU.
+and any --anchor-gt directories in every round. Works on MPS (Apple Silicon),
+CUDA, or CPU.
 
 Usage:
     python segtrain_rounds.py --device cuda:0
@@ -12,6 +13,13 @@ Usage:
         --deed-gt ~/deed-finetune-gt \\
         --base-model ~/model_249.mlmodel \\
         --out ~/kraken-finetuned.mlmodel \\
+        --device cuda:0
+
+    # Add extra anchor GT dirs (included every round, like deed GT):
+    python segtrain_rounds.py \\
+        --anchor-gt ~/kraken-cp40-gt \\
+        --anchor-gt ~/kraken-done-lines-gt \\
+        --out ~/kraken-son-of-gm.mlmodel \\
         --device cuda:0
 
     # Resume from a specific round (0-indexed); use the last epoch checkpoint, e.g.:
@@ -48,6 +56,10 @@ def main() -> None:
                    help="Directory of vatlib image+XML pairs")
     p.add_argument("--deed-gt", type=Path, default=_default("~/src/deed-finetune-gt"),
                    help="Directory of deed image+XML pairs (included every round)")
+    p.add_argument("--anchor-gt", type=Path, action="append", default=[],
+                   metavar="DIR",
+                   help="Additional GT directory included in every round (repeatable). "
+                        "E.g. --anchor-gt ~/kraken-cp40-gt --anchor-gt ~/kraken-done-lines-gt")
     p.add_argument("--base-model", type=Path, default=_default("~/src/latin_documents/model_249.mlmodel"),
                    help="Starting model for fine-tuning")
     p.add_argument("--out", type=Path, default=_default("~/src/kraken-finetuned.mlmodel"),
@@ -74,6 +86,15 @@ def main() -> None:
     vatlib_xmls = sorted(vatlib_gt.glob("*.xml"))
     deed_xmls = sorted(deed_gt.glob("*.xml"))
 
+    anchor_xmls: list[Path] = []
+    for anchor_dir in args.anchor_gt:
+        d = anchor_dir.expanduser().resolve()
+        found = sorted(d.glob("*.xml"))
+        if not found:
+            print(f"Warning: no XMLs found in anchor-gt dir {d}", file=sys.stderr)
+        else:
+            anchor_xmls.extend(found)
+
     if not vatlib_xmls:
         sys.exit(f"No XMLs found in {vatlib_gt}")
     if not base_model.exists():
@@ -90,6 +111,8 @@ def main() -> None:
     n_rounds = len(batches)
     print(f"Vatlib XMLs:  {len(vatlib_xmls)}  →  {n_rounds} rounds of ~{args.batch_size}")
     print(f"Deed GT:      {len(deed_xmls)} XMLs included in every round")
+    if anchor_xmls:
+        print(f"Anchor GT:    {len(anchor_xmls)} XMLs included in every round ({', '.join(str(d) for d in args.anchor_gt)})")
     print(f"Device:       {args.device}")
     print(f"Epochs/round: {args.epochs} (early stopping, min 5)")
     print(f"Base model:   {base_model}")
@@ -110,12 +133,13 @@ def main() -> None:
         round_out = final_out if is_last else final_out.parent / f"kraken-round{round_idx}.mlmodel"
 
         print(f"{'='*60}")
-        print(f"Round {round_idx + 1}/{n_rounds}  ({len(batch)} vatlib + {len(deed_xmls)} deed pages)")
+        extra_count = len(deed_xmls) + len(anchor_xmls)
+        print(f"Round {round_idx + 1}/{n_rounds}  ({len(batch)} vatlib + {extra_count} anchor pages)")
         print(f"  input:  {current_model}")
         print(f"  output: {round_out}")
         print(f"{'='*60}")
 
-        xml_args = [str(x) for x in batch] + [str(x) for x in deed_xmls]
+        xml_args = [str(x) for x in batch] + [str(x) for x in deed_xmls] + [str(x) for x in anchor_xmls]
 
         cmd = [
             sys.executable, __file__,  # re-invoke self? No — invoke ketos directly
