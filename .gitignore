@@ -14,3 +14,6 @@ artifacts/
 playwright-report/
 test-results/
 .DS_Store
+
+# Local agent / IDE (may contain machine-specific paths)
+.claude/
