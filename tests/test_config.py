@@ -39,8 +39,10 @@ def test_lines_xml_xsd_and_require_text_line_defaults():
     assert s.gm_auto_install_browser is True
 
 
-def test_default_lineation_backend_is_glyph_machina():
-    env = os.environ.copy()
+def test_default_lineation_backend_is_glyph_machina(tmp_path, monkeypatch):
+    """Default is glyph_machina when no env and no project .env (repo .env may set mask/kraken)."""
+    monkeypatch.chdir(tmp_path)
+    env = {k: v for k, v in os.environ.items() if k in ("PATH", "HOME", "USER")}
     env.pop("TRANSCRIBER_SHELL_LINEATION_BACKEND", None)
     env.pop("LINEATION_BACKEND", None)
     with patch.dict(os.environ, env, clear=True):

@@ -47,7 +47,7 @@ def test_ensure_playwright_runs_cli_install_once(monkeypatch: pytest.MonkeyPatch
     ok = MagicMock()
     ok.returncode = 0
 
-    def fake_run(_cmd, *, check=False):
+    def fake_run(_cmd, *, check=False, **kwargs):
         exe.write_bytes(b"fake")
         return ok
 
@@ -65,6 +65,8 @@ def test_ensure_playwright_raises_on_cli_install_failure(monkeypatch: pytest.Mon
     monkeypatch.delenv("TRANSCRIBER_SHELL_GM_AUTO_INSTALL_BROWSER", raising=False)
     bad = MagicMock()
     bad.returncode = 1
+    bad.stdout = b""
+    bad.stderr = b"install failed"
     with patch("subprocess.run", return_value=bad):
         with pytest.raises(RuntimeError, match="Playwright Chromium install failed"):
             gm_browser.ensure_playwright_chromium(settings=Settings())

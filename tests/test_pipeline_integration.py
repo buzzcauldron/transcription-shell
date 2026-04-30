@@ -257,7 +257,12 @@ def test_run_pipeline_lineation_failure_errors_when_continue_disabled(
         "transcriber_shell.pipeline.run.fetch_lines_xml",
         side_effect=GlyphMachinaError("simulated GM failure"),
     ) as mock_fetch:
-        res = run_pipeline(job, skip_gm=False, settings=settings)
+        res = run_pipeline(
+            job,
+            skip_gm=False,
+            settings=settings,
+            lineation_backend="glyph_machina",
+        )
 
     mock_fetch.assert_called_once()
     assert res.errors
@@ -292,7 +297,12 @@ def test_run_pipeline_lineation_failure_continues_when_continue_enabled(
             return_value=(True, [], []),
         ),
     ):
-        res = run_pipeline(job, skip_gm=False, settings=settings)
+        res = run_pipeline(
+            job,
+            skip_gm=False,
+            settings=settings,
+            lineation_backend="glyph_machina",
+        )
 
     mock_fetch.assert_called_once()
     mock_tx.assert_called_once()
