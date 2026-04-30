@@ -30,3 +30,5 @@ class PipelineResult:
     warnings: list[str] = field(default_factory=list)
     # Populated when the LLM step runs; keys may include input_tokens, output_tokens, total_tokens.
     llm_usage: dict[str, int] | None = None
+    # HTR backend results (backend_name → HtrResult or Exception); populated when HTR backends are configured.
+    htr_results: dict[str, Any] = field(default_factory=dict)

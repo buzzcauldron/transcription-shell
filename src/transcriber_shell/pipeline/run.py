@@ -1,13 +1,15 @@
-"""Orchestrate: lines XML → validate → LLM → YAML validate.
+"""Orchestrate: lines XML → validate → LLM (+ optional HTR backends in parallel) → YAML validate.
 
 Core path: fetch lines (or use --skip-gm + existing XML) → validate_lines_xml → run_transcribe →
 normalize + validate_transcript_file. Other backends (mask, kraken) are pluggable line sources only.
+HTR backends (kraken-htr, gm-htr) run in parallel with the LLM when configured.
 """
 
 from __future__ import annotations
 
 import errno
 import json
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 import httpx
@@ -223,6 +225,19 @@ def run_pipeline(
             "align segment lineRange fields accordingly."
         )
 
+    # Launch HTR backends in parallel with the LLM call when configured.
+    htr_future: Future | None = None
+    htr_executor: ThreadPoolExecutor | None = None
+    if s.htr_parallel and lines_out is not None:
+        from transcriber_shell.htr.detect import detect_scripts
+        from transcriber_shell.htr.parallel import build_htr_tasks, run_htr_parallel
+
+        scripts = detect_scripts(job.prompt_cfg)
+        htr_tasks = build_htr_tasks(job.image_path, lines_out, scripts, s)
+        if htr_tasks:
+            htr_executor = ThreadPoolExecutor(max_workers=1)
+            htr_future = htr_executor.submit(run_htr_parallel, htr_tasks)
+
     llm_usage: dict[str, int] | None = None
     try:
         tx = run_transcribe(job, settings=s)
@@ -324,6 +339,15 @@ def run_pipeline(
             f"Model returned text that is not valid YAML: {e}. "
             "Retry or switch model; ensure the prompt asks for YAML matching the Academic Transcription Protocol."
         )
+        _htr: dict = {}
+        if htr_future is not None:
+            try:
+                _htr = htr_future.result(timeout=300)
+            except Exception:  # noqa: BLE001
+                pass
+            finally:
+                if htr_executor is not None:
+                    htr_executor.shutdown(wait=False)
         return PipelineResult(
             job.job_id,
             lines_out,
@@ -332,12 +356,24 @@ def run_pipeline(
             errors=errors,
             warnings=warnings,
             llm_usage=llm_usage,
+            htr_results=_htr,
         )
 
     val_ok, val_errs, val_warns = validate_transcript_file(out_yaml, settings=s)
     warnings.extend(val_warns)
     if not val_ok:
         errors.extend(val_errs)
+
+    # Collect HTR results (LLM call is done; HTR should be done too or close).
+    htr_results: dict = {}
+    if htr_future is not None:
+        try:
+            htr_results = htr_future.result(timeout=300)
+        except Exception as exc:  # noqa: BLE001
+            warnings.append(f"HTR parallel runner error: {exc}")
+        finally:
+            if htr_executor is not None:
+                htr_executor.shutdown(wait=False)
 
     return PipelineResult(
         job.job_id,
@@ -347,6 +383,7 @@ def run_pipeline(
         errors=errors,
         warnings=warnings,
         llm_usage=llm_usage,
+        htr_results=htr_results,
     )
 
 

@@ -17,6 +17,7 @@ Pipeline glue for **manuscript transcription** that combines:
 2. **XML checks** — well-formed XML + `TextLine` counts; optional **XSD** validation with `lxml` (`pip install 'transcriber-shell[xml-xsd]'`). What **`text_line_count`** in CLI/GUI logs means (and why it differs across jobs): **[docs/log-lines-xml-text-line-count.md](docs/log-lines-xml-text-line-count.md)**.
 3. **LLM APIs** (Anthropic / OpenAI / optional Gemini) using prompts from the **[Academic Handwriting Transcription Protocol](https://github.com/buzzcauldron/transcription-protocol)**.
 4. **YAML validation** via vendored `validate_schema.py` from that protocol.
+5. **HTR backends** (optional, parallel) — set `TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH` and/or `TRANSCRIBER_SHELL_GM_HTR_REPO_PATH` to enable; script/language detection routes images to the appropriate model. Results are returned in `PipelineResult.htr_results` alongside the LLM output. See [Credits](#credits) for model and dataset attribution.
 
 Downstream **baseline → rectified line image** tooling from the same research line lives in [ideasrule/latin_documents](https://github.com/ideasrule/latin_documents); line exports aim for compatible `Baseline@points` where possible. Glyph Machina outputs are used for **lineation only** when that backend is selected — not as canonical diplomatic text.
 
@@ -193,6 +194,42 @@ Continuous integration runs the same suite on Python 3.11 and 3.12 (see `.github
 - `docker/entrypoint.sh` — editable install when `/workspace` is mounted
 - `scripts/install-local.sh`, `scripts/install-local.ps1` — local venv installers (Unix / Windows)
 - `VERSION` — Docker image tag; keep in sync with `pyproject.toml` via `python scripts/sync_repo_docs.py` (updates markdown too) or `python scripts/check_version.py --sync` (VERSION only)
+
+## Credits
+
+**HTR model — medieval documentary sources (Latin/French)**
+
+> Pinche, Ariane; Camps, Jean-Baptiste; Ing, Lionel (2023). *HTR model for medieval documentary sources*. Zenodo. <https://doi.org/10.5281/zenodo.7547438>. Licence: CC BY 4.0.
+
+Used as the `kraken-htr` backend (`TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH`). Set the path to `HTR_medieval_documentary_best.mlmodel` downloaded from the Zenodo record above.
+
+**Glyph Machina (HTR pipeline)**
+
+> *glyph_machina_public*. ideasrule. <https://github.com/ideasrule/glyph_machina_public>.
+
+Used as the optional `gm-htr` backend (`TRANSCRIBER_SHELL_GM_HTR_REPO_PATH`). Clone that repository and point the env var at the checkout root.
+
+**Glyph Machina training dataset**
+
+> mzzhang2014. *glyph_machina* [dataset]. Hugging Face. <https://huggingface.co/datasets/mzzhang2014/glyph_machina>.
+
+**Kraken OCR engine**
+
+> Kiessling, Benjamin. *Kraken*. <https://github.com/mittagessen/kraken>.
+
+Used for BLLA segmentation (lineation backend `kraken`) and HTR inference.
+
+**Glyph Machina website / browser automation**
+
+> *Glyph Machina*. <https://glyphmachina.com/>. Used for the default `glyph_machina` lineation backend.
+
+**ideasrule/latin_documents**
+
+> <https://github.com/ideasrule/latin_documents>. Lineation methods, training data, and baseline conventions referenced by the `mask` backend.
+
+**Academic Handwriting Transcription Protocol**
+
+> <https://github.com/buzzcauldron/transcription-protocol>. Prompt format and YAML schema validated by this pipeline.
 
 ## License
 

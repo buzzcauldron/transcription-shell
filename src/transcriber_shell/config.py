@@ -340,6 +340,36 @@ class Settings(BaseSettings):
         ),
     )
 
+    # HTR backends (optional; run in parallel alongside LLM)
+    kraken_htr_model_path: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH", "KRAKEN_HTR_MODEL_PATH"
+        ),
+        description=(
+            "Path to a kraken .mlmodel for HTR (e.g. Zenodo HTR_medieval_documentary_best.mlmodel). "
+            "Credit: Pinche, Camps, Ing (2023) https://doi.org/10.5281/zenodo.7547438 CC BY 4.0"
+        ),
+    )
+    gm_htr_repo_path: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_GM_HTR_REPO_PATH", "GM_HTR_REPO_PATH"
+        ),
+        description=(
+            "Path to a clone of ideasrule/glyph_machina_public containing run_line_image_generator.py "
+            "and run_htr.py. When set, GM HTR is run as a parallel backend alongside the LLM. "
+            "Credit: ideasrule/glyph_machina_public; training data: mzzhang2014/glyph_machina (HuggingFace)"
+        ),
+    )
+    htr_parallel: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_HTR_PARALLEL", "HTR_PARALLEL"
+        ),
+        description="Run HTR backends in parallel with the LLM call (default true).",
+    )
+
     artifacts_dir: Path = Field(
         default=Path(__file__).resolve().parents[2] / "artifacts",
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_ARTIFACTS_DIR", "ARTIFACTS_DIR"),
