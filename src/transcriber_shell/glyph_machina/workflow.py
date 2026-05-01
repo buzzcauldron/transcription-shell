@@ -1,12 +1,18 @@
-"""Drive glyphmachina.com: upload pre-cropped image, Identify Lines, Download Lines File.
+"""Glyph Machina lineation: local model first, website as circuit-breaker fallback.
 
-Selectors target the public UI as of 2026; the site may change — see docs/glyph-machina-automation.md.
+When gm_htr_repo_path is set, ``fetch_lines_xml`` runs seg.mlmodel locally via the
+kraken Python API (no network, no browser).  If that fails and gm_website_fallback is
+true (default), it falls back to driving glyphmachina.com with Playwright.
+
+Website automation selectors target the public UI as of 2026; the site may change —
+see docs/glyph-machina-automation.md.
 """
 
 from __future__ import annotations
 
 import errno
 import hashlib
+import logging
 import re
 import tempfile
 import time
@@ -18,6 +24,8 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from transcriber_shell.config import Settings
 from transcriber_shell.glyph_machina.browser import playwright_glyph_context
+
+_log = logging.getLogger(__name__)
 
 # Max pixels before downscaling for upload (4 MP keeps layout stable in browser)
 _GM_MAX_PIXELS = 4_000_000
@@ -210,9 +218,14 @@ def fetch_lines_xml(
     job_id: str,
     settings: Settings | None = None,
 ) -> Path:
-    """Upload ``image_path``, run Identify Lines, save downloaded lines XML under artifacts.
+    """Segment ``image_path`` and save a PageXML lines file under artifacts.
 
-    Retries once on timeout-style failures (slow SPA / network). Raises GlyphMachinaError otherwise.
+    Preference order:
+    1. Local seg.mlmodel via kraken API (when gm_htr_repo_path is set) — no browser, no network.
+    2. Playwright website fallback (glyphmachina.com) — used when local is unavailable or fails
+       and gm_website_fallback is true (the default).
+
+    Raises GlyphMachinaError on unrecoverable failure.
     """
     s = settings or Settings()
     image_path = image_path.expanduser().resolve()
@@ -222,6 +235,22 @@ def fetch_lines_xml(
             "Choose a pre-cropped page image (jpg/png/webp/tiff, etc.)."
         )
 
+    # --- Local path (preferred) ---
+    if s.gm_htr_repo_path:
+        from transcriber_shell.glyph_machina.local import (
+            GlyphMachinaLocalError,
+            fetch_lines_xml_gm_local,
+        )
+        try:
+            return fetch_lines_xml_gm_local(image_path, job_id, settings=s)
+        except GlyphMachinaLocalError as e:
+            if not s.gm_website_fallback:
+                raise GlyphMachinaError(
+                    f"Local GM segmentation failed and gm_website_fallback is disabled: {e}"
+                ) from e
+            _log.warning("Local GM segmentation failed (%s); falling back to website.", e)
+
+    # --- Website path (circuit-breaker fallback) ---
     out_dir = (s.artifacts_dir / job_id).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     meta = out_dir / "source_image.sha256"

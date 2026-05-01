@@ -46,8 +46,9 @@ def transcribe_ollama(
         headers={"Content-Type": "application/json"},
         method="POST",
     )
+    timeout_s = float(s.ollama_timeout_seconds)
     try:
-        with urlopen(req, timeout=600) as resp:
+        with urlopen(req, timeout=timeout_s) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except HTTPError as e:
         err_body = e.read().decode("utf-8", errors="replace") if e.fp else ""

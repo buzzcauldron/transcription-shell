@@ -30,6 +30,29 @@ def sanitize_job_id(stem: str) -> str:
     return (s[:120] if s else "job")
 
 
+def _htr_results_for_report(htr: dict[str, Any]) -> dict[str, Any] | None:
+    """JSON-serializable summary of HTR backend results for batch reports."""
+    if not htr:
+        return None
+    from transcriber_shell.htr.base import HtrResult
+
+    out: dict[str, Any] = {}
+    for name, v in htr.items():
+        if isinstance(v, Exception):
+            out[name] = {"error": str(v)}
+        elif isinstance(v, HtrResult):
+            preview = v.text[:800] + ("…" if len(v.text) > 800 else "")
+            out[name] = {
+                "backend": v.backend,
+                "line_count": v.line_count,
+                "confidence": v.confidence,
+                "text_preview": preview,
+            }
+        else:
+            out[name] = {"repr": repr(v)}
+    return out
+
+
 def discover_images(path_or_glob: str) -> list[Path]:
     raw = path_or_glob.strip()
     if any(ch in raw for ch in "*?["):
@@ -190,6 +213,7 @@ def run_batch(
             if res.transcription_yaml_path
             else None,
             "llm_usage": res.llm_usage,
+            "htr_results": _htr_results_for_report(res.htr_results),
         }
         rows.append(row)
     return rows

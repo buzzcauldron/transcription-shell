@@ -1,25 +1,67 @@
-"""HTR using the Glyph Machina pipeline (line-image generator + HTR net).
+"""HTR using the Glyph Machina pipeline (run_line_image_generator.py + run_htr.py).
+
+run_htr.py hardcodes device="cuda:0" and loads best_HTR.net from the repo root (CWD).
+A NVIDIA GPU is required; the upstream README notes CPU is possible but unusably slow.
 
 Software credit:
-  ideasrule/glyph_machina_public — Glyph Machina
+  ideasrule/glyph_machina_public — Glyph Machina (GPL-3.0)
   https://github.com/ideasrule/glyph_machina_public
-  (all rights reserved by the respective authors; used here as an optional backend)
 
 Training data credit:
   mzzhang2014/glyph_machina (Hugging Face Datasets)
   https://huggingface.co/datasets/mzzhang2014/glyph_machina
-
-Requires: gm_htr_repo_path in Settings pointing to a clone of glyph_machina_public.
 """
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from transcriber_shell.htr.base import HtrResult
+
+
+def _xml_namespace(element: ET.Element) -> str:
+    m = re.match(r"\{.*\}", element.tag)
+    return m.group(0)[1:-1] if m else ""
+
+
+def _copy_xml_abs_image(src: Path, dst: Path, image_path: Path) -> None:
+    """Write copy of PageXML to dst with imageFilename replaced by the absolute image path.
+
+    run_line_image_generator.py resolves imageFilename relative to the XML's directory,
+    so we set it to an absolute path to decouple the temp copy from the source location.
+    """
+    tree = ET.parse(str(src))
+    root = tree.getroot()
+    ns_uri = _xml_namespace(root)
+    ns = {"ns": ns_uri}
+    ET.register_namespace("", ns_uri)
+    page = root.find("ns:Page", ns)
+    if page is not None:
+        page.set("imageFilename", str(image_path))
+    tree.write(str(dst), xml_declaration=True, encoding="utf-8")
+
+
+def _extract_predictions(xml_path: Path) -> list[str]:
+    """Return per-line TextEquiv/Unicode texts written in-place by run_htr.py."""
+    tree = ET.parse(str(xml_path))
+    root = tree.getroot()
+    ns = {"ns": _xml_namespace(root)}
+    texts: list[str] = []
+    for text_region in root.findall(".//ns:TextRegion", ns):
+        for text_line in text_region.findall(".//ns:TextLine", ns):
+            if text_line.get("custom") == "type {type:margin;}":
+                continue
+            text_equiv = text_line.find("ns:TextEquiv", ns)
+            if text_equiv is not None:
+                unicode_elem = text_equiv.find("ns:Unicode", ns)
+                if unicode_elem is not None and unicode_elem.text:
+                    texts.append(unicode_elem.text.strip())
+    return texts
 
 
 def run_gm_htr(
@@ -29,68 +71,82 @@ def run_gm_htr(
     repo_path: Path,
     device: str = "cpu",
 ) -> HtrResult:
-    """Run GM line-image generator then HTR net; return concatenated predictions."""
+    """Run GM line-image generator then HTR net; return concatenated predictions.
+
+    The device parameter is accepted for API consistency but run_htr.py uses cuda:0
+    unconditionally; a NVIDIA GPU must be present.  best_HTR.net is loaded from
+    repo_path (the script's CWD).
+    """
     repo_path = Path(repo_path).expanduser().resolve()
+    image_path = Path(image_path).expanduser().resolve()
+    lines_xml_path = Path(lines_xml_path).expanduser().resolve()
+
     run_line_gen = repo_path / "run_line_image_generator.py"
-    run_htr = repo_path / "run_htr.py"
-    for p in (run_line_gen, run_htr):
+    run_htr_script = repo_path / "run_htr.py"
+    htr_net = repo_path / "best_HTR.net"
+
+    for p in (run_line_gen, run_htr_script, htr_net):
         if not p.is_file():
             raise FileNotFoundError(
-                f"Glyph Machina script not found: {p}. "
-                "Set TRANSCRIBER_SHELL_GM_HTR_REPO_PATH to the repo root."
+                f"Glyph Machina file not found: {p}. "
+                "Set TRANSCRIBER_SHELL_GM_HTR_REPO_PATH to the cloned repo root "
+                "(https://github.com/ideasrule/glyph_machina_public)."
             )
 
     warnings: list[str] = []
     with tempfile.TemporaryDirectory(prefix="ts_gm_htr_") as tmp:
         tmp_dir = Path(tmp)
-        line_images_dir = tmp_dir / "line_images"
-        line_images_dir.mkdir()
-        htr_out = tmp_dir / "htr_output.txt"
+        tmp_xml = tmp_dir / lines_xml_path.name
 
-        # Stage 1: generate per-line images from the PageXML
-        gen_cmd = [
-            sys.executable, str(run_line_gen),
-            "--input-image", str(image_path),
-            "--input-xml", str(lines_xml_path),
-            "--output-dir", str(line_images_dir),
-        ]
-        gen_result = subprocess.run(gen_cmd, capture_output=True, text=True)
-        if gen_result.returncode != 0:
+        # Set imageFilename to absolute path so the generator finds the source image
+        # regardless of where the temp dir lives.
+        _copy_xml_abs_image(lines_xml_path, tmp_xml, image_path)
+
+        # Stage 1: generate per-line images into the same directory as tmp_xml
+        gen = subprocess.run(
+            [sys.executable, str(run_line_gen), str(tmp_xml)],
+            capture_output=True,
+            text=True,
+        )
+        if gen.returncode != 0:
             raise RuntimeError(
-                f"GM line-image generator failed (exit {gen_result.returncode}): "
-                f"{gen_result.stderr.strip()}"
+                f"GM line-image generator failed (exit {gen.returncode}): "
+                f"{gen.stderr.strip()}"
             )
-        if gen_result.stderr.strip():
-            warnings.append(f"GM line-generator: {gen_result.stderr.strip()[:200]}")
+        if gen.stderr.strip():
+            warnings.append(f"GM line-generator: {gen.stderr.strip()[:300]}")
 
-        line_files = sorted(line_images_dir.glob("*.png")) + sorted(line_images_dir.glob("*.jpg"))
-        if not line_files:
+        line_images = sorted(tmp_dir.glob("line_*.png"))
+        if not line_images:
             return HtrResult(
-                text="", backend="gm-htr", line_count=0,
+                text="",
+                backend="gm-htr",
+                line_count=0,
                 warnings=["GM line-image generator produced no line images."],
             )
 
-        # Stage 2: run HTR net
-        htr_cmd = [
-            sys.executable, str(run_htr),
-            "--input-dir", str(line_images_dir),
-            "--output-file", str(htr_out),
-            "--device", device,
-        ]
-        htr_result = subprocess.run(htr_cmd, capture_output=True, text=True)
-        if htr_result.returncode != 0:
+        # Stage 2: HTR — best_HTR.net is loaded from CWD (repo_path); predictions are
+        # written back into tmp_xml in-place.
+        htr = subprocess.run(
+            [sys.executable, str(run_htr_script), str(tmp_xml)],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_path),
+        )
+        if htr.returncode != 0:
             raise RuntimeError(
-                f"GM HTR net failed (exit {htr_result.returncode}): "
-                f"{htr_result.stderr.strip()}"
+                f"GM HTR failed (exit {htr.returncode}): {htr.stderr.strip()}"
             )
-        if htr_result.stderr.strip():
-            warnings.append(f"GM HTR: {htr_result.stderr.strip()[:200]}")
+        if htr.stderr.strip():
+            warnings.append(f"GM HTR: {htr.stderr.strip()[:300]}")
 
-        text = htr_out.read_text(encoding="utf-8") if htr_out.is_file() else ""
-        lines = [l for l in text.splitlines() if l.strip()]
+        texts = _extract_predictions(tmp_xml)
+        if not texts:
+            warnings.append("GM HTR produced no text predictions (no TextEquiv/Unicode found).")
+
         return HtrResult(
-            text="\n".join(lines),
+            text="\n".join(texts),
             backend="gm-htr",
-            line_count=len(lines),
+            line_count=len(texts),
             warnings=warnings,
         )

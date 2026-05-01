@@ -1,14 +1,16 @@
-"""Orchestrate: lines XML → validate → LLM (+ optional HTR backends in parallel) → YAML validate.
+"""Orchestrate: lines XML → validate → LLM (+ optional HTR backends) → YAML validate.
 
 Core path: fetch lines (or use --skip-gm + existing XML) → validate_lines_xml → run_transcribe →
 normalize + validate_transcript_file. Other backends (mask, kraken) are pluggable line sources only.
-HTR backends (kraken-htr, gm-htr) run in parallel with the LLM when configured.
+HTR backends (kraken-htr, gm-htr): when ``htr_parallel`` is true they run alongside the LLM; when false
+they run **before** the LLM and drafts are appended to the lineation hint (lineation → HTR → LLM).
 """
 
 from __future__ import annotations
 
 import errno
 import json
+from typing import Any
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
@@ -51,11 +53,71 @@ def _llm_network_timeout_hint(job: TranscribeJob) -> str:
         parts.append(
             "For Anthropic, try increasing TRANSCRIBER_SHELL_ANTHROPIC_TIMEOUT_S (default 600s)."
         )
+    if prov == "ollama":
+        parts.append(
+            "For Ollama, try increasing TRANSCRIBER_SHELL_OLLAMA_TIMEOUT_S (default 3600s); "
+            "local vision models are often slow on CPU."
+        )
     parts.append(
         "If you use a proxy, set TRANSCRIBER_SHELL_LLM_USE_PROXY and/or "
         "TRANSCRIBER_SHELL_LLM_HTTP_PROXY when appropriate."
     )
     return " ".join(parts)
+
+
+def _htr_results_to_line_hint(htr_results: dict[str, Any]) -> str | None:
+    """Turn HTR backend output into an optional LLM hint (truncated)."""
+    from transcriber_shell.htr.base import HtrResult
+
+    parts: list[str] = []
+    for name, res in htr_results.items():
+        if isinstance(res, Exception):
+            parts.append(f"{name}: HTR failed ({res}).")
+            continue
+        if isinstance(res, HtrResult) and res.text.strip():
+            cap = 6000
+            body = res.text.strip()
+            if len(body) > cap:
+                body = body[:cap] + "\n[... truncated from HTR draft ...]"
+            tier = res.confidence or "n/a"
+            parts.append(
+                f"--- {name} (machine draft, {res.line_count} lines, tier={tier}) ---\n{body}"
+            )
+    if not parts:
+        return None
+    return (
+        "HTR machine-readable drafts (for cross-check only; output must still be full protocol YAML):\n"
+        + "\n".join(parts)
+    )
+
+
+def _collect_htr_parallel(
+    htr_future: Future | None,
+    htr_executor: ThreadPoolExecutor | None,
+    warnings: list[str],
+) -> dict[str, Any]:
+    htr_results: dict[str, Any] = {}
+    if htr_future is not None:
+        try:
+            htr_results = htr_future.result(timeout=300)
+        except Exception as exc:  # noqa: BLE001
+            warnings.append(f"HTR parallel runner error: {exc}")
+        finally:
+            if htr_executor is not None:
+                htr_executor.shutdown(wait=False)
+    return htr_results
+
+
+def _finalize_htr_results(
+    htr_results_early: dict[str, Any],
+    htr_future: Future | None,
+    htr_executor: ThreadPoolExecutor | None,
+    warnings: list[str],
+) -> dict[str, Any]:
+    """Prefer sequential HTR results; otherwise drain the parallel HTR future."""
+    if htr_results_early:
+        return dict(htr_results_early)
+    return _collect_htr_parallel(htr_future, htr_executor, warnings)
 
 
 def run_pipeline(
@@ -225,18 +287,58 @@ def run_pipeline(
             "align segment lineRange fields accordingly."
         )
 
-    # Launch HTR backends in parallel with the LLM call when configured.
+    # HTR (Glyph Machina, Zenodo kraken-htr): combination from htr_combination / htr_parallel; shell = LLM only.
     htr_future: Future | None = None
     htr_executor: ThreadPoolExecutor | None = None
-    if s.htr_parallel and lines_out is not None:
+    htr_results_early: dict[str, Any] = {}
+    if lines_out is not None and not s.xml_only:
         from transcriber_shell.htr.detect import detect_scripts
-        from transcriber_shell.htr.parallel import build_htr_tasks, run_htr_parallel
+        from transcriber_shell.htr.parallel import (
+            build_htr_tasks,
+            run_htr_ordered,
+            run_htr_parallel,
+        )
+        from transcriber_shell.htr.selector import HtrPlanKind, plan_htr_execution
 
         scripts = detect_scripts(job.prompt_cfg)
         htr_tasks = build_htr_tasks(job.image_path, lines_out, scripts, s)
-        if htr_tasks:
+        plan = plan_htr_execution(s, htr_tasks)
+        if plan.kind == HtrPlanKind.NONE:
+            if htr_tasks and (s.htr_combination or "").strip().lower() in (
+                "shell",
+                "off",
+                "none",
+                "llm_only",
+            ):
+                warnings.append(
+                    "HTR backends are configured (Glyph Machina and/or Zenodo paths) but "
+                    f"htr_combination={s.htr_combination!r} runs the original shell (LLM) only; HTR was skipped."
+                )
+        elif plan.kind == HtrPlanKind.WITH_LLM_PARALLEL and plan.tasks:
             htr_executor = ThreadPoolExecutor(max_workers=1)
-            htr_future = htr_executor.submit(run_htr_parallel, htr_tasks)
+            htr_future = htr_executor.submit(run_htr_parallel, plan.tasks)
+        elif plan.kind == HtrPlanKind.BEFORE_LLM_PARALLEL and plan.tasks:
+            try:
+                htr_results_early = run_htr_parallel(plan.tasks)
+            except Exception as exc:  # noqa: BLE001
+                warnings.append(f"HTR runner error: {exc}")
+            else:
+                hint_extra = _htr_results_to_line_hint(htr_results_early)
+                if hint_extra:
+                    job.line_hint = (
+                        f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
+                    )
+        elif plan.kind == HtrPlanKind.BEFORE_LLM_ORDERED and plan.ordered:
+            try:
+                htr_results_early = run_htr_ordered(plan.ordered)
+            except Exception as exc:  # noqa: BLE001
+                warnings.append(f"HTR ordered runner error: {exc}")
+            else:
+                hint_extra = _htr_results_to_line_hint(htr_results_early)
+                if hint_extra:
+                    job.line_hint = (
+                        f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
+                    )
 
     llm_usage: dict[str, int] | None = None
     try:
@@ -258,6 +360,9 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            htr_results=_finalize_htr_results(
+                htr_results_early, htr_future, htr_executor, warnings
+            ),
         )
     except TimeoutError as e:
         errors.append(
@@ -270,6 +375,9 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            htr_results=_finalize_htr_results(
+                htr_results_early, htr_future, htr_executor, warnings
+            ),
         )
     except OSError as e:
         if getattr(e, "errno", None) == errno.ETIMEDOUT:
@@ -283,6 +391,9 @@ def run_pipeline(
                 text_line_count,
                 errors=errors,
                 warnings=warnings,
+                htr_results=_finalize_htr_results(
+                    htr_results_early, htr_future, htr_executor, warnings
+                ),
             )
         errors.append(
             f"LLM transcription failed ({job.provider}): {e}. "
@@ -295,6 +406,9 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            htr_results=_finalize_htr_results(
+                htr_results_early, htr_future, htr_executor, warnings
+            ),
         )
     except httpx.TimeoutException as e:
         errors.append(
@@ -308,6 +422,9 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            htr_results=_finalize_htr_results(
+                htr_results_early, htr_future, htr_executor, warnings
+            ),
         )
     except Exception as e:
         errors.append(
@@ -321,6 +438,9 @@ def run_pipeline(
             text_line_count,
             errors=errors,
             warnings=warnings,
+            htr_results=_finalize_htr_results(
+                htr_results_early, htr_future, htr_executor, warnings
+            ),
         )
 
     raw = strip_yaml_fence(raw)
@@ -339,15 +459,6 @@ def run_pipeline(
             f"Model returned text that is not valid YAML: {e}. "
             "Retry or switch model; ensure the prompt asks for YAML matching the Academic Transcription Protocol."
         )
-        _htr: dict = {}
-        if htr_future is not None:
-            try:
-                _htr = htr_future.result(timeout=300)
-            except Exception:  # noqa: BLE001
-                pass
-            finally:
-                if htr_executor is not None:
-                    htr_executor.shutdown(wait=False)
         return PipelineResult(
             job.job_id,
             lines_out,
@@ -356,7 +467,9 @@ def run_pipeline(
             errors=errors,
             warnings=warnings,
             llm_usage=llm_usage,
-            htr_results=_htr,
+            htr_results=_finalize_htr_results(
+                htr_results_early, htr_future, htr_executor, warnings
+            ),
         )
 
     val_ok, val_errs, val_warns = validate_transcript_file(out_yaml, settings=s)
@@ -364,16 +477,9 @@ def run_pipeline(
     if not val_ok:
         errors.extend(val_errs)
 
-    # Collect HTR results (LLM call is done; HTR should be done too or close).
-    htr_results: dict = {}
-    if htr_future is not None:
-        try:
-            htr_results = htr_future.result(timeout=300)
-        except Exception as exc:  # noqa: BLE001
-            warnings.append(f"HTR parallel runner error: {exc}")
-        finally:
-            if htr_executor is not None:
-                htr_executor.shutdown(wait=False)
+    htr_results = _finalize_htr_results(
+        htr_results_early, htr_future, htr_executor, warnings
+    )
 
     return PipelineResult(
         job.job_id,

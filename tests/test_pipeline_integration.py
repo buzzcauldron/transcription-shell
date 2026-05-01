@@ -312,3 +312,104 @@ def test_run_pipeline_lineation_failure_continues_when_continue_enabled(
     assert res.transcription_yaml_path is not None
     assert any("Continuing without lines XML" in w for w in res.warnings)
     assert job.line_hint and "infer layout" in job.line_hint.lower()
+
+
+def test_run_pipeline_htr_sequential_runs_before_llm_and_appends_hint(
+    tmp_path: Path, tmp_artifacts: Path
+) -> None:
+    """Sequential lineup: lines XML → HTR → LLM (htr_parallel=False)."""
+    from transcriber_shell.htr.base import HtrResult
+
+    lines = tmp_path / "lines.xml"
+    lines.write_text(MINIMAL_LINES_XML, encoding="utf-8")
+    image = tmp_path / "page.jpg"
+    image.write_bytes(b"\xff\xd8\xff")
+
+    job = TranscribeJob(
+        job_id="t_htr_seq",
+        image_path=image,
+        prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1", "targetLanguage": "lat-Latn"},
+        provider="anthropic",
+    )
+    settings = Settings(artifacts_dir=tmp_artifacts, htr_parallel=False)
+
+    fake_tasks = {
+        "kraken-htr": lambda: HtrResult(
+            text="luna\nsol", backend="kraken-htr", line_count=2, confidence="medium"
+        )
+    }
+
+    with (
+        patch("transcriber_shell.htr.parallel.build_htr_tasks", return_value=fake_tasks),
+        patch(
+            "transcriber_shell.pipeline.run.run_transcribe",
+            return_value=TranscribeResult("transcriptionOutput: {}\n", None),
+        ) as mock_tx,
+        patch(
+            "transcriber_shell.pipeline.run.validate_transcript_file",
+            return_value=(True, [], []),
+        ),
+    ):
+        res = run_pipeline(
+            job,
+            skip_gm=True,
+            lines_xml_path=lines,
+            require_text_line=True,
+            settings=settings,
+        )
+
+    assert res.errors == []
+    mock_tx.assert_called_once()
+    call_job = mock_tx.call_args[0][0]
+    assert call_job is job
+    assert call_job.line_hint and "luna" in call_job.line_hint
+    assert call_job.line_hint and "HTR machine-readable drafts" in call_job.line_hint
+    assert "kraken-htr" in res.htr_results
+    kr = res.htr_results["kraken-htr"]
+    assert isinstance(kr, HtrResult)
+    assert kr.text == "luna\nsol"
+
+
+def test_run_pipeline_htr_shell_skips_htr_with_warning(
+    tmp_path: Path, tmp_artifacts: Path
+) -> None:
+    """shell = original transcriber-shell LLM path only; HTR skipped with a warning if tasks exist."""
+    lines = tmp_path / "lines.xml"
+    lines.write_text(MINIMAL_LINES_XML, encoding="utf-8")
+    image = tmp_path / "page.jpg"
+    image.write_bytes(b"\xff\xd8\xff")
+
+    job = TranscribeJob(
+        job_id="t_shell",
+        image_path=image,
+        prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1", "targetLanguage": "lat-Latn"},
+        provider="anthropic",
+    )
+    settings = Settings(artifacts_dir=tmp_artifacts, htr_combination="shell")
+
+    fake_tasks = {
+        "kraken-htr": lambda: (_ for _ in ()).throw(AssertionError("HTR must not run")),
+    }
+
+    with (
+        patch("transcriber_shell.htr.parallel.build_htr_tasks", return_value=fake_tasks),
+        patch(
+            "transcriber_shell.pipeline.run.run_transcribe",
+            return_value=TranscribeResult("transcriptionOutput: {}\n", None),
+        ),
+        patch(
+            "transcriber_shell.pipeline.run.validate_transcript_file",
+            return_value=(True, [], []),
+        ),
+    ):
+        res = run_pipeline(
+            job,
+            skip_gm=True,
+            lines_xml_path=lines,
+            require_text_line=True,
+            settings=settings,
+        )
+
+    assert res.errors == []
+    assert res.htr_results == {}
+    assert any("htr_combination=" in w and "skipped" in w for w in res.warnings)

@@ -29,6 +29,19 @@ def test_resolved_model_ollama():
     assert s.resolved_model("ollama") == "llava-phi3"
 
 
+def test_ollama_timeout_default_is_generous_for_local_cpu(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    env = {k: v for k, v in os.environ.items() if k in ("PATH", "HOME", "USER")}
+    for k in (
+        "TRANSCRIBER_SHELL_OLLAMA_TIMEOUT_S",
+        "TRANSCRIBER_SHELL_OLLAMA_TIMEOUT",
+    ):
+        env.pop(k, None)
+    with patch.dict(os.environ, env, clear=True):
+        s = Settings()
+    assert s.ollama_timeout_seconds == 3_600.0
+
+
 def test_lines_xml_xsd_and_require_text_line_defaults():
     s = Settings()
     assert s.lines_xml_xsd is None

@@ -65,6 +65,16 @@ class Settings(BaseSettings):
             "TRANSCRIBER_SHELL_OLLAMA_BASE_URL", "OLLAMA_BASE_URL"
         ),
     )
+    ollama_timeout_seconds: float = Field(
+        default=3_600.0,
+        ge=30.0,
+        le=21_600.0,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_OLLAMA_TIMEOUT_S",
+            "TRANSCRIBER_SHELL_OLLAMA_TIMEOUT",
+        ),
+        description="HTTP timeout (seconds) for Ollama /api/chat; local vision models are often slow on CPU.",
+    )
 
     anthropic_timeout_seconds: float = Field(
         default=600.0,
@@ -357,9 +367,20 @@ class Settings(BaseSettings):
             "TRANSCRIBER_SHELL_GM_HTR_REPO_PATH", "GM_HTR_REPO_PATH"
         ),
         description=(
-            "Path to a clone of ideasrule/glyph_machina_public containing run_line_image_generator.py "
-            "and run_htr.py. When set, GM HTR is run as a parallel backend alongside the LLM. "
+            "Path to a clone of ideasrule/glyph_machina_public (GPL-3.0). "
+            "Used for both local segmentation (seg.mlmodel replaces Playwright website call) "
+            "and HTR (run_line_image_generator.py + run_htr.py alongside the LLM). "
             "Credit: ideasrule/glyph_machina_public; training data: mzzhang2014/glyph_machina (HuggingFace)"
+        ),
+    )
+    gm_website_fallback: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_GM_WEBSITE_FALLBACK", "GM_WEBSITE_FALLBACK"
+        ),
+        description=(
+            "When gm_htr_repo_path is set and the local segmentation fails, fall back to the "
+            "Playwright website call. Set false to disable the website call entirely."
         ),
     )
     htr_parallel: bool = Field(
@@ -367,7 +388,25 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "TRANSCRIBER_SHELL_HTR_PARALLEL", "HTR_PARALLEL"
         ),
-        description="Run HTR backends in parallel with the LLM call (default true).",
+        description=(
+            "If true, run kraken-htr / gm-htr in parallel with the LLM. "
+            "If false, run HTR first (after lineation), append drafts to the lineation hint, then call the LLM "
+            "(lineation → HTR → LLM). Ignored when htr_combination is not default."
+        ),
+    )
+    htr_combination: str = Field(
+        default="default",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_HTR_COMBINATION",
+            "HTR_COMBINATION",
+        ),
+        description=(
+            "Combine Glyph Machina HTR (best), Zenodo kraken-htr (second), and LLM-only shell: "
+            "default (follow htr_parallel), shell (original shell: LLM only, no HTR), off, "
+            "kraken_htr, gm_htr, parallel (all HTR with LLM), sequential (all HTR then LLM), "
+            "gm_then_kraken, kraken_then_gm. Aliases: zenodo→kraken_htr, glyph_machina|gm→gm_htr, "
+            "none|llm_only→shell|off."
+        ),
     )
 
     artifacts_dir: Path = Field(
@@ -495,6 +534,45 @@ class Settings(BaseSettings):
         if x not in allowed:
             raise ValueError(f"lineation_backend must be one of {allowed}")
         return x
+
+    @field_validator("htr_combination", mode="before")
+    @classmethod
+    def _normalize_htr_combination(cls, v: object) -> str:
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return "default"
+        if not isinstance(v, str):
+            raise ValueError("htr_combination must be a string")
+        s = v.strip().lower()
+        aliases = {
+            "none": "off",
+            "llm_only": "shell",
+            "zenodo": "kraken_htr",
+            "glyph_machina": "gm_htr",
+            "gm": "gm_htr",
+            "gm_then_zenodo": "gm_then_kraken",
+            "best_then_second": "gm_then_kraken",
+            "zenodo_then_gm": "kraken_then_gm",
+            "second_then_best": "kraken_then_gm",
+        }
+        s = aliases.get(s, s)
+        allowed = frozenset(
+            {
+                "default",
+                "off",
+                "shell",
+                "kraken_htr",
+                "gm_htr",
+                "parallel",
+                "sequential",
+                "gm_then_kraken",
+                "kraken_then_gm",
+            }
+        )
+        if s not in allowed:
+            raise ValueError(
+                f"htr_combination must be one of {sorted(allowed)}; got {s!r}"
+            )
+        return s
 
     def resolved_protocol_root(self, package_root: Path | None = None) -> Path:
         if self.protocol_root is not None:

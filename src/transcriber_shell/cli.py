@@ -125,6 +125,10 @@ def _pipeline_settings(args: argparse.Namespace) -> Settings:
         updates["continue_on_lineation_failure"] = True
     if getattr(args, "xml_only", False):
         updates["xml_only"] = True
+    if getattr(args, "htr_combination", None):
+        updates["htr_combination"] = args.htr_combination
+    elif getattr(args, "htr_sequential", False):
+        updates["htr_parallel"] = False
     if updates:
         return s.model_copy(update=updates)
     return s
@@ -393,6 +397,37 @@ def main() -> None:
         ),
     )
     run.add_argument(
+        "--htr-sequential",
+        action="store_true",
+        dest="htr_sequential",
+        help=(
+            "Run kraken-htr / gm-htr before the LLM and attach drafts to the lineation hint "
+            "(lineation → HTR → LLM). Default is HTR in parallel with the LLM (env: TRANSCRIBER_SHELL_HTR_PARALLEL=false). "
+            "Ignored if --htr-combination is set."
+        ),
+    )
+    run.add_argument(
+        "--htr-combination",
+        dest="htr_combination",
+        default=None,
+        choices=[
+            "default",
+            "off",
+            "shell",
+            "kraken_htr",
+            "gm_htr",
+            "parallel",
+            "sequential",
+            "gm_then_kraken",
+            "kraken_then_gm",
+        ],
+        help=(
+            "Glyph Machina HTR + Zenodo kraken-htr + LLM shell: shell=LLM only; kraken_htr|gm_htr=one backend; "
+            "parallel|sequential=all configured; gm_then_kraken|kraken_then_gm=ordered before LLM. "
+            "Overrides --htr-sequential when set (env: TRANSCRIBER_SHELL_HTR_COMBINATION)."
+        ),
+    )
+    run.add_argument(
         "--xml-only",
         action="store_true",
         help=(
@@ -460,6 +495,37 @@ def main() -> None:
         help=(
             "If automated lineation fails, continue to LLM without lines XML "
             "(env: TRANSCRIBER_SHELL_CONTINUE_ON_LINEATION_FAILURE)"
+        ),
+    )
+    batch.add_argument(
+        "--htr-sequential",
+        action="store_true",
+        dest="htr_sequential",
+        help=(
+            "Run kraken-htr / gm-htr before the LLM and attach drafts to the lineation hint "
+            "(lineation → HTR → LLM). Default is HTR in parallel with the LLM (env: TRANSCRIBER_SHELL_HTR_PARALLEL=false). "
+            "Ignored if --htr-combination is set."
+        ),
+    )
+    batch.add_argument(
+        "--htr-combination",
+        dest="htr_combination",
+        default=None,
+        choices=[
+            "default",
+            "off",
+            "shell",
+            "kraken_htr",
+            "gm_htr",
+            "parallel",
+            "sequential",
+            "gm_then_kraken",
+            "kraken_then_gm",
+        ],
+        help=(
+            "Glyph Machina HTR + Zenodo kraken-htr + LLM shell: shell=LLM only; kraken_htr|gm_htr=one backend; "
+            "parallel|sequential=all configured; gm_then_kraken|kraken_then_gm=ordered before LLM. "
+            "Overrides --htr-sequential when set (env: TRANSCRIBER_SHELL_HTR_COMBINATION)."
         ),
     )
     batch.add_argument(

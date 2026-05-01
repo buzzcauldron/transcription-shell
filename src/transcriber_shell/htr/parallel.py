@@ -1,4 +1,4 @@
-"""Run one or more HTR backends in parallel alongside the LLM call."""
+"""Run one or more HTR backends (threads). Invoked alongside the LLM or before it (see Settings.htr_parallel)."""
 
 from __future__ import annotations
 
@@ -32,6 +32,19 @@ def run_htr_parallel(
                 results[name] = future.result()
             except Exception as exc:  # noqa: BLE001
                 results[name] = exc
+    return results
+
+
+def run_htr_ordered(
+    ordered: list[tuple[str, Callable[[], HtrResult]]],
+) -> dict[str, HtrResult | Exception]:
+    """Run HTR backends strictly in list order (single-threaded)."""
+    results: dict[str, HtrResult | Exception] = {}
+    for name, fn in ordered:
+        try:
+            results[name] = fn()
+        except Exception as exc:  # noqa: BLE001
+            results[name] = exc
     return results
 
 
