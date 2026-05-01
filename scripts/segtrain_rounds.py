@@ -24,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import platform
 import random
 import subprocess
@@ -54,8 +55,10 @@ def main() -> None:
                    help="Final output model path")
     p.add_argument("--device", default="cuda:0",
                    help="ketos device string: cpu | mps | cuda:0 (default: cuda:0)")
-    p.add_argument("--workers", type=int, default=4,
-                   help="DataLoader workers (default 4)")
+    p.add_argument("--workers", type=int, default=2,
+                   help="DataLoader workers (default 2)")
+    p.add_argument("--precision", default="bf16-mixed",
+                   help="ketos --precision flag; bf16-mixed halves GPU memory (default: bf16-mixed)")
     p.add_argument("--batch-size", type=int, default=100,
                    help="Vatlib pages per round (default 100)")
     p.add_argument("--epochs", type=int, default=50,
@@ -121,6 +124,7 @@ def main() -> None:
             "ketos",
             "-d", args.device,
             "--workers", str(args.workers),
+            "--precision", args.precision,
             "segtrain",
             "-i", str(current_model),
             "--resize", "union",
@@ -130,10 +134,12 @@ def main() -> None:
             "-o", str(round_out),
         ] + xml_args
 
-        print(f"  ketos -d {args.device} segtrain -i {current_model.name} ... ({len(xml_args)} XMLs)")
+        print(f"  ketos -d {args.device} --precision {args.precision} segtrain -i {current_model.name} ... ({len(xml_args)} XMLs)")
         print()
 
-        result = subprocess.run(cmd)
+        env = os.environ.copy()
+        env.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
+        result = subprocess.run(cmd, env=env)
         if result.returncode != 0:
             print(f"\nRound {round_idx + 1} failed (exit {result.returncode}). Stopping.")
             print(f"\nResume with:")
