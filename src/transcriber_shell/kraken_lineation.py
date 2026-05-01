@@ -221,4 +221,8 @@ def fetch_lines_xml_kraken(
     out_xml.write_text(xml_contents, encoding="utf-8")
     if not out_xml.stat().st_size:
         raise KrakenLineationError("Kraken produced empty lines.xml")
+
+    from transcriber_shell.xml_tools.tag_margins import tag_margin_lines
+    tag_margin_lines(out_xml)
+
     return out_xml

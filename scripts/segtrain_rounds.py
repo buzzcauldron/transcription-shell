@@ -118,16 +118,14 @@ def main() -> None:
         xml_args = [str(x) for x in batch] + [str(x) for x in deed_xmls]
 
         cmd = [
-            sys.executable, __file__,  # re-invoke self? No — invoke ketos directly
-        ]
-        # Build ketos command directly
-        cmd = [
             "ketos",
             "-d", args.device,
             "--workers", str(args.workers),
             "segtrain",
             "-i", str(current_model),
-            "--resize", "add",
+            "--resize", "union",
+            "-q", "early",
+            "--min-epochs", "5",
             "-N", str(args.epochs),
             "-o", str(round_out),
         ] + xml_args
@@ -145,7 +143,15 @@ def main() -> None:
             print(f"    --device {args.device}")
             sys.exit(result.returncode)
 
-        current_model = round_out
+        # ketos saves best checkpoint as {output}_best.mlmodel
+        best = round_out.parent / (round_out.name + "_best.mlmodel")
+        if best.is_file():
+            current_model = best
+        elif round_out.is_file():
+            current_model = round_out
+        else:
+            print(f"Warning: neither {round_out} nor {best} found after round {round_idx + 1}")
+            current_model = round_out
         print(f"\nRound {round_idx + 1} done → {current_model}\n")
 
     print(f"\nAll {n_rounds} rounds complete.")
