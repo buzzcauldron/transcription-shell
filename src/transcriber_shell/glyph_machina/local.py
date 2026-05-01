@@ -112,3 +112,7 @@ def fetch_lines_xml_gm_local(
         return out_xml
     except KrakenLineationError as e:
         raise GlyphMachinaLocalError(str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        # Device errors (CUDA unavailable, OOM), model load failures, etc. — convert so
+        # workflow.py can fall back to the website rather than propagating uncaught.
+        raise GlyphMachinaLocalError(f"Local segmentation error ({type(e).__name__}): {e}") from e
