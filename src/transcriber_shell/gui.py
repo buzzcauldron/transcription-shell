@@ -133,10 +133,6 @@ class TranscriberGui:
         self._efficient_mode = tk.BooleanVar(value=False)
         self._model_custom = tk.StringVar(value="")
         self._skip_gm = tk.BooleanVar(value=False)
-        _lb_init = str(self._settings.lineation_backend)
-        if _lb_init == "kraken":
-            _lb_init = "michael-lineator"
-        self._lineation_backend = tk.StringVar(value=_lb_init)
         self._xsd_path = tk.StringVar(
             value=str(self._settings.lines_xml_xsd) if self._settings.lines_xml_xsd else ""
         )
@@ -151,10 +147,20 @@ class TranscriberGui:
         self._persist_keys_after_run = tk.BooleanVar(value=False)
         self._skip_successful = tk.BooleanVar(value=False)
         self._llm_use_proxy = tk.BooleanVar(value=self._settings.llm_use_proxy)
+
         self._llm_http_proxy = tk.StringVar(value=(self._settings.llm_http_proxy or ""))
         self._gm_persistent_profile = tk.BooleanVar(value=self._settings.gm_persistent_profile)
         self._gm_auto_install_browser = tk.BooleanVar(value=self._settings.gm_auto_install_browser)
         self._gm_user_data_dir = tk.StringVar(value=str(self._settings.gm_user_data_dir))
+        self._gm_htr_repo_path = tk.StringVar(value=str(self._settings.gm_htr_repo_path or ""))
+        self._gm_website_fallback = tk.BooleanVar(value=self._settings.gm_website_fallback)
+        self._kraken_seg_model_path = tk.StringVar(value=str(self._settings.kraken_model_path or ""))
+        self._kraken_htr_model_path = tk.StringVar(value=str(self._settings.kraken_htr_model_path or ""))
+        self._htr_parallel = tk.BooleanVar(value=self._settings.htr_parallel)
+        self._htr_combination = tk.StringVar(value=self._settings.htr_combination)
+        self._keys_expanded = tk.BooleanVar(value=True)
+        self._htr_section_expanded = tk.BooleanVar(value=False)
+        self._advanced_expanded = tk.BooleanVar(value=False)
         self._status = tk.StringVar(value="Ready.")
         self._metrics_elapsed = tk.StringVar(value="Elapsed: —")
         self._metrics_tokens = tk.StringVar(value="LLM tokens: —")
@@ -239,8 +245,6 @@ class TranscriberGui:
             wraplength=540,
         ).pack(anchor=tk.W, pady=(0, 8))
 
-        self._build_keys_section(outer)
-        self._build_llm_section(outer)
         self._build_images_section(outer)
 
         # Prompt file row
@@ -251,9 +255,6 @@ class TranscriberGui:
             side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8)
         )
         ttk.Button(pf, text="Browse…", command=self._browse_prompt).pack(side=tk.RIGHT)
-
-        self._build_lineation_section(outer)
-        self._build_advanced_section(outer)
 
         # Job ID
         job_block = ttk.Frame(outer, style="Main.TFrame")
@@ -269,13 +270,19 @@ class TranscriberGui:
         self._job_hint = ttk.Label(job_hint_row, text="", style="Muted.TLabel", wraplength=480)
         self._job_hint.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
+        self._build_log_section(outer)
+
         ttk.Label(
             outer,
-            text="Outputs: artifacts/<job_id>/  ·  .env still used when fields above are empty.",
+            text="Outputs: artifacts/<job_id>/  ·  .env still used when fields below are empty.",
             style="Muted.TLabel",
-        ).pack(anchor=tk.W, pady=(4, 4))
+        ).pack(anchor=tk.W, pady=(4, 8))
 
-        self._build_log_section(outer)
+        self._build_keys_section(outer)
+        self._build_llm_section(outer)
+        self._build_lineation_section(outer)
+        self._build_htr_section(outer)
+        self._build_advanced_section(outer)
 
         # Bottom bar
         bottom_bar = ttk.Frame(self.root, padding=(16, 10, 16, 14), style="Main.TFrame")
@@ -298,25 +305,20 @@ class TranscriberGui:
         )
         self._banner_inner.pack(fill=tk.X, padx=14, pady=8)
 
-        eff_bottom = ttk.Frame(bottom_bar, style="Main.TFrame")
-        eff_bottom.pack(fill=tk.X, pady=(0, 6))
+        mode_row = ttk.Frame(bottom_bar, style="Main.TFrame")
+        mode_row.pack(fill=tk.X, pady=(0, 6))
         ttk.Checkbutton(
-            eff_bottom,
+            mode_row,
             text="Efficient mode (protocol §2.9 — single pass, core tokens only)",
             variable=self._efficient_mode,
         ).pack(side=tk.LEFT)
-        ttk.Label(
-            eff_bottom,
-            text="Sets runMode: efficient on the prompt for this run.",
-            style="Muted.TLabel",
-        ).pack(side=tk.LEFT, padx=(12, 0))
-        btn_row = ttk.Frame(bottom_bar, style="Main.TFrame")
-        btn_row.pack(fill=tk.X)
         ttk.Checkbutton(
-            btn_row,
+            mode_row,
             text="XML only (lines XML; no LLM)",
             variable=self._xml_only,
-        ).pack(side=tk.LEFT, padx=(0, 12))
+        ).pack(side=tk.LEFT, padx=(20, 0))
+        btn_row = ttk.Frame(bottom_bar, style="Main.TFrame")
+        btn_row.pack(fill=tk.X)
         ttk.Button(
             btn_row,
             text="Transcribe",
@@ -326,10 +328,12 @@ class TranscriberGui:
         ttk.Button(btn_row, text="Open artifacts folder", command=self._open_artifacts).pack(
             side=tk.LEFT, padx=(12, 0)
         )
-        ttk.Button(btn_row, text="HTTP API docs (browser)", command=self._open_api_docs).pack(
+        ttk.Button(btn_row, text="Save log…", command=self._save_run_log).pack(
             side=tk.LEFT, padx=(12, 0)
         )
-        ttk.Button(btn_row, text="Save log…", command=self._save_run_log).pack(side=tk.RIGHT)
+        ttk.Button(btn_row, text="HTTP API docs", command=self._open_api_docs).pack(
+            side=tk.RIGHT
+        )
         prog_row = ttk.Frame(bottom_bar, style="Main.TFrame")
         prog_row.pack(fill=tk.X, pady=(8, 0))
         ttk.Label(prog_row, textvariable=self._status, style="Muted.TLabel").pack(
@@ -351,9 +355,57 @@ class TranscriberGui:
         self._refresh_image_list()
         self._refresh_ui_state()
 
+    def _collapsible_section(
+        self,
+        outer: ttk.Frame,
+        title: str,
+        expanded_var: tk.BooleanVar,
+        *,
+        pady: tuple[int, int] = (0, 8),
+    ) -> tuple[ttk.Frame, "Callable[[], None]"]:
+        """Build a clickable header + collapsible body. Returns (body_frame, apply_fn)."""
+        container = ttk.Frame(outer, style="Main.TFrame")
+        container.pack(fill=tk.X, pady=pady)
+        hdr = tk.Frame(container, bg=_BG, cursor="hand2")
+        hdr.pack(fill=tk.X)
+        arrow = tk.Label(
+            hdr,
+            text="▼" if expanded_var.get() else "▶",
+            bg=_BG,
+            fg=_ACCENT,
+            cursor="hand2",
+            font=self._content_font,
+        )
+        arrow.pack(side=tk.LEFT, padx=(0, 6))
+        title_lbl = tk.Label(hdr, text=title, bg=_BG, fg=_ACCENT, cursor="hand2", font=self._content_font)
+        title_lbl.pack(side=tk.LEFT)
+        ttk.Separator(container, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(3, 0))
+        body = ttk.Frame(container, style="Main.TFrame", padding=(4, 6, 4, 4))
+
+        def apply_fn() -> None:
+            if expanded_var.get():
+                body.pack(fill=tk.X)
+                arrow.configure(text="▼")
+            else:
+                body.pack_forget()
+                arrow.configure(text="▶")
+
+        if expanded_var.get():
+            body.pack(fill=tk.X)
+
+        def on_click(_e: object) -> None:
+            expanded_var.set(not expanded_var.get())
+            apply_fn()
+
+        for w in (hdr, arrow, title_lbl):
+            w.bind("<Button-1>", on_click)
+
+        return body, apply_fn
+
     def _build_keys_section(self, outer: ttk.Frame) -> None:
-        cred = ttk.LabelFrame(outer, text="Provider keys (LLM)", padding=(10, 8))
-        cred.pack(fill=tk.X, pady=(0, 10))
+        cred, self._keys_section_apply = self._collapsible_section(
+            outer, "Provider keys (LLM)", self._keys_expanded, pady=(0, 10)
+        )
 
         ttk.Label(
             cred,
@@ -550,25 +602,28 @@ class TranscriberGui:
     def _build_lineation_section(self, outer: ttk.Frame) -> None:
         lineation_src = ttk.LabelFrame(outer, text="Lineation source", padding=(8, 6))
         lineation_src.pack(fill=tk.X, pady=(4, 6))
-        lb_row = ttk.Frame(lineation_src, style="Main.TFrame")
-        lb_row.pack(fill=tk.X, pady=(0, 4))
-        ttk.Label(lb_row, text="Draw baselines", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        self._lineation_combo = ttk.Combobox(
-            lb_row,
-            textvariable=self._lineation_backend,
-            values=("michael-lineator", "glyph_machina", "mask"),
-            state="readonly",
-            width=22,
-        )
-        self._lineation_combo.pack(side=tk.LEFT)
-        self._lineation_combo.bind("<<ComboboxSelected>>", self._on_lineation_backend_changed)
-        self._lineation_backend_hint = ttk.Label(
+        self._lineation_auto_hint = ttk.Label(
             lineation_src,
             text="",
             style="Muted.TLabel",
             wraplength=520,
         )
-        self._lineation_backend_hint.pack(anchor=tk.W, pady=(0, 6))
+        self._lineation_auto_hint.pack(anchor=tk.W, pady=(0, 4))
+
+        seg_row = ttk.Frame(lineation_src, style="Main.TFrame")
+        seg_row.pack(fill=tk.X, pady=(0, 2))
+        ttk.Label(seg_row, text="Seg model", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        ttk.Entry(seg_row, textvariable=self._kraken_seg_model_path).pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8)
+        )
+        ttk.Button(seg_row, text="Browse…", command=self._browse_kraken_seg_model).pack(side=tk.RIGHT)
+        ttk.Label(
+            lineation_src,
+            text="Your trained .mlmodel for baseline segmentation — runs first, before GM local or website.",
+            style="Muted.TLabel",
+            wraplength=500,
+        ).pack(anchor=tk.W, pady=(0, 6))
+
         ttk.Checkbutton(
             lineation_src,
             text="Skip automated lineation — use existing lines XML from disk (no browser)",
@@ -577,10 +632,7 @@ class TranscriberGui:
         ).pack(anchor=tk.W)
         ttk.Label(
             lineation_src,
-            text=(
-                "Unchecked: run the selected backend. "
-                "Checked: set Lines XML file/dir below — no automated lineation."
-            ),
+            text="Unchecked: run automatic lineation. Checked: set Lines XML file/dir below.",
             style="Muted.TLabel",
             wraplength=500,
         ).pack(anchor=tk.W, pady=(6, 0))
@@ -613,13 +665,14 @@ class TranscriberGui:
         self._lines_help.pack(anchor=tk.W, pady=(0, 2))
 
     def _build_advanced_section(self, outer: ttk.Frame) -> None:
-        """Always-visible advanced settings: proxy, Chromium profile, XML validation."""
-        self._advanced_content = ttk.Frame(outer, style="Main.TFrame")
-        self._advanced_content.pack(fill=tk.X, pady=(4, 0))
+        """Collapsible advanced settings: proxy, Chromium profile, XML validation."""
+        body, self._advanced_section_apply = self._collapsible_section(
+            outer, "Advanced (proxy, browser, XML validation)", self._advanced_expanded, pady=(4, 0)
+        )
 
         # Network / proxy subsection
         net = ttk.LabelFrame(
-            self._advanced_content,
+            body,
             text="Network & proxy (LLM APIs) — Glyph Machina browser settings",
             padding=(10, 8),
         )
@@ -697,7 +750,7 @@ class TranscriberGui:
         self._gm_profile_hint.pack(anchor=tk.W, pady=(4, 0))
 
         # Validation subsection
-        val = ttk.LabelFrame(self._advanced_content, text="XML validation", padding=(10, 8))
+        val = ttk.LabelFrame(body, text="XML validation", padding=(10, 8))
         val.pack(fill=tk.X, pady=(8, 0))
         xsd_row = ttk.Frame(val, style="Main.TFrame")
         xsd_row.pack(fill=tk.X, pady=4)
@@ -740,6 +793,84 @@ class TranscriberGui:
             variable=self._continue_on_lineation_failure,
         ).pack(side=tk.LEFT)
 
+    def _build_htr_section(self, outer: ttk.Frame) -> None:
+        """Collapsible HTR backends section (default collapsed)."""
+        htr, self._htr_section_apply = self._collapsible_section(
+            outer, "HTR backends (optional)", self._htr_section_expanded, pady=(0, 6)
+        )
+        ttk.Label(
+            htr,
+            text=(
+                "Optional machine-draft HTR runs alongside the LLM to inform transcription. "
+                "Set GM repo path for local Glyph Machina lineation (no browser) and/or HTR. "
+                "Set Kraken HTR model for the Zenodo medieval-documentary model (CC BY 4.0)."
+            ),
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(0, 6))
+
+        gm_repo_row = ttk.Frame(htr, style="Main.TFrame")
+        gm_repo_row.pack(fill=tk.X, pady=4)
+        ttk.Label(gm_repo_row, text="GM repo path", width=16, anchor=tk.W).pack(side=tk.LEFT)
+        ttk.Entry(gm_repo_row, textvariable=self._gm_htr_repo_path).pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8)
+        )
+        ttk.Button(gm_repo_row, text="Browse…", command=self._browse_gm_htr_repo).pack(side=tk.RIGHT)
+        ttk.Label(
+            htr,
+            text="Path to a clone of ideasrule/glyph_machina_public. Enables local seg.mlmodel lineation and GM-HTR.",
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(0, 4))
+        ttk.Checkbutton(
+            htr,
+            text="Fall back to Glyph Machina website when local segmentation fails",
+            variable=self._gm_website_fallback,
+        ).pack(anchor=tk.W)
+
+        kraken_htr_row = ttk.Frame(htr, style="Main.TFrame")
+        kraken_htr_row.pack(fill=tk.X, pady=(8, 4))
+        ttk.Label(kraken_htr_row, text="Kraken HTR model", width=16, anchor=tk.W).pack(side=tk.LEFT)
+        ttk.Entry(kraken_htr_row, textvariable=self._kraken_htr_model_path).pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8)
+        )
+        ttk.Button(kraken_htr_row, text="Browse…", command=self._browse_kraken_htr_model).pack(side=tk.RIGHT)
+        ttk.Label(
+            htr,
+            text="Path to a .mlmodel for kraken HTR (e.g. Zenodo HTR_medieval_documentary_best.mlmodel, CC BY 4.0).",
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(0, 4))
+
+        htr_combo_row = ttk.Frame(htr, style="Main.TFrame")
+        htr_combo_row.pack(fill=tk.X, pady=4)
+        ttk.Label(htr_combo_row, text="HTR combination", width=16, anchor=tk.W).pack(side=tk.LEFT)
+        self._htr_combination_combo = ttk.Combobox(
+            htr_combo_row,
+            textvariable=self._htr_combination,
+            values=(
+                "default", "shell", "parallel", "sequential",
+                "gm_htr", "kraken_htr", "gm_then_kraken", "kraken_then_gm", "off",
+            ),
+            state="readonly",
+            width=22,
+        )
+        self._htr_combination_combo.pack(side=tk.LEFT)
+        ttk.Label(
+            htr,
+            text=(
+                "default: follow HTR parallel checkbox  ·  shell / off: LLM only (no HTR)  ·  "
+                "parallel/sequential: all backends  ·  gm_htr / kraken_htr: one backend."
+            ),
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(4, 0))
+        ttk.Checkbutton(
+            htr,
+            text="Run HTR in parallel with LLM (default mode only; unchecked = HTR before LLM)",
+            variable=self._htr_parallel,
+        ).pack(anchor=tk.W, pady=(6, 0))
+
     def _build_log_section(self, outer: ttk.Frame) -> None:
         log_head = ttk.Frame(outer, style="Main.TFrame")
         log_head.pack(fill=tk.X, pady=(4, 0))
@@ -774,12 +905,9 @@ class TranscriberGui:
         """Single pass: read all relevant state, update all dependent widgets."""
         n = len(self._dedupe_sorted_images())
         skip = self._skip_gm.get()
-        backend = self._lineation_backend.get().strip().lower()
-        gm_ok = not skip and backend == "glyph_machina"
 
-        # Lines XML / lineation combo / job entry
+        # Lines XML / job entry
         if not skip:
-            self._lineation_combo.configure(state="readonly")
             self._lines_entry.configure(state="disabled")
             self._lines_btn.configure(state="disabled")
             self._lines_dir_entry.configure(state="disabled")
@@ -788,7 +916,6 @@ class TranscriberGui:
             self._job_entry.configure(state="normal")
             self._job_hint.configure(text="")
         else:
-            self._lineation_combo.configure(state="disabled")
             if n <= 1:
                 self._lines_entry.configure(state="normal")
                 self._lines_btn.configure(state="normal")
@@ -813,57 +940,38 @@ class TranscriberGui:
                 self._job_entry.configure(state="disabled")
                 self._job_hint.configure(text="Batch uses each filename as job id.")
 
-        # Lineation backend hint
-        kraken_model = str(self._settings.kraken_model_path or "").strip()
-        kraken_model_label = kraken_model.split("/")[-1] if kraken_model else ""
+        # Auto-lineation status hint
         if skip:
-            self._lineation_backend_hint.configure(
+            self._lineation_auto_hint.configure(
                 text="Baseline detection is skipped — supply an existing lines XML below."
             )
-        elif backend == "mask":
-            self._lineation_backend_hint.configure(
-                text=(
-                    "Mask (custom plugin): runs your own model to detect baselines. "
-                    "Set TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE in .env — see docs/mask-lineation-plugin.md."
-                )
-            )
-        elif backend == "michael-lineator":
-            if kraken_model_label:
-                self._lineation_backend_hint.configure(
-                    text=f"Michael Lineator (local model): detects baselines using {kraken_model_label}."
-                )
-            else:
-                self._lineation_backend_hint.configure(
-                    text=(
-                        "Michael Lineator (local model): detects baselines offline. "
-                        "Set TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH in .env."
-                    )
-                )
         else:
-            self._lineation_backend_hint.configure(
-                text=(
-                    "Glyph Machina (cloud): opens a browser and uploads the image to glyphmachina.com "
-                    "to detect baselines. Requires internet and a site login; "
-                    "use TRANSCRIBER_SHELL_GM_HEADLESS=false to log in once."
-                )
+            steps: list[str] = []
+            kseg = self._kraken_seg_model_path.get().strip()
+            gm_repo = self._gm_htr_repo_path.get().strip()
+            if kseg:
+                steps.append(Path(kseg).name)
+            if gm_repo:
+                steps.append(f"GM seg.mlmodel ({Path(gm_repo).name})")
+            if self._gm_website_fallback.get() or not steps:
+                steps.append("glyphmachina.com")
+            self._lineation_auto_hint.configure(
+                text="Auto order: " + " → ".join(steps) + "."
             )
 
-        # Glyph Machina profile controls (in Advanced section)
-        st = "normal" if gm_ok else "disabled"
+        # Glyph Machina profile controls (in Advanced section) — always relevant for auto backend
+        st = "normal" if not skip else "disabled"
         self._gm_auto_install_check.configure(state=st)
         self._gm_profile_check.configure(state=st)
         self._gm_user_data_entry.configure(state=st)
         self._gm_profile_browse_btn.configure(state=st)
-        if gm_ok:
+        if not skip:
             self._gm_profile_hint.configure(
                 text="Avoid parallel runs sharing one profile directory."
             )
         else:
             self._gm_profile_hint.configure(
-                text=(
-                    "Only when lineation backend is Glyph Machina and automated lineation is on. "
-                    "Not used for mask or Kraken lineation."
-                )
+                text="Profile is only used when automated lineation is on."
             )
 
         # LLM model / credentials
@@ -889,12 +997,6 @@ class TranscriberGui:
         self._refresh_ui_state()
 
     def _sync_model_credentials_state(self) -> None:
-        self._refresh_ui_state()
-
-    def _refresh_lineation_hints(self) -> None:
-        self._refresh_ui_state()
-
-    def _on_lineation_backend_changed(self, _event: object | None = None) -> None:
         self._refresh_ui_state()
 
     def _toggle_skip_gm(self) -> None:
@@ -1206,10 +1308,6 @@ class TranscriberGui:
                 "true" if self._gm_auto_install_browser.get() else "false"
             ),
             "TRANSCRIBER_SHELL_GM_USER_DATA_DIR": self._gm_user_data_dir.get().strip(),
-            "TRANSCRIBER_SHELL_LINEATION_BACKEND": (
-                "kraken" if self._lineation_backend.get().strip() == "michael-lineator"
-                else self._lineation_backend.get().strip()
-            ),
             "TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION": (
                 "true" if self._skip_lines_xml_validation.get() else "false"
             ),
@@ -1217,6 +1315,12 @@ class TranscriberGui:
                 "true" if self._continue_on_lineation_failure.get() else "false"
             ),
             "TRANSCRIBER_SHELL_XML_ONLY": "true" if self._xml_only.get() else "false",
+            "TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH": self._kraken_seg_model_path.get().strip(),
+            "TRANSCRIBER_SHELL_GM_HTR_REPO_PATH": self._gm_htr_repo_path.get().strip(),
+            "TRANSCRIBER_SHELL_GM_WEBSITE_FALLBACK": "true" if self._gm_website_fallback.get() else "false",
+            "TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH": self._kraken_htr_model_path.get().strip(),
+            "TRANSCRIBER_SHELL_HTR_PARALLEL": "true" if self._htr_parallel.get() else "false",
+            "TRANSCRIBER_SHELL_HTR_COMBINATION": self._htr_combination.get().strip(),
         }
 
     def _save_keys_to_dotenv(self) -> None:
@@ -1299,10 +1403,6 @@ class TranscriberGui:
         )
         if gd := self._gm_user_data_dir.get().strip():
             out["TRANSCRIBER_SHELL_GM_USER_DATA_DIR"] = gd
-        out["TRANSCRIBER_SHELL_LINEATION_BACKEND"] = (
-            "kraken" if self._lineation_backend.get().strip() == "michael-lineator"
-            else self._lineation_backend.get().strip()
-        )
         out["TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION"] = (
             "true" if self._skip_lines_xml_validation.get() else "false"
         )
@@ -1310,6 +1410,15 @@ class TranscriberGui:
             "true" if self._continue_on_lineation_failure.get() else "false"
         )
         out["TRANSCRIBER_SHELL_XML_ONLY"] = "true" if self._xml_only.get() else "false"
+        if ks := self._kraken_seg_model_path.get().strip():
+            out["TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH"] = ks
+        if rp := self._gm_htr_repo_path.get().strip():
+            out["TRANSCRIBER_SHELL_GM_HTR_REPO_PATH"] = rp
+        out["TRANSCRIBER_SHELL_GM_WEBSITE_FALLBACK"] = "true" if self._gm_website_fallback.get() else "false"
+        if kp := self._kraken_htr_model_path.get().strip():
+            out["TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH"] = kp
+        out["TRANSCRIBER_SHELL_HTR_PARALLEL"] = "true" if self._htr_parallel.get() else "false"
+        out["TRANSCRIBER_SHELL_HTR_COMBINATION"] = self._htr_combination.get().strip()
         return out
 
     # ── Discovery ─────────────────────────────────────────────────────────────
@@ -1362,6 +1471,27 @@ class TranscriberGui:
         d = filedialog.askdirectory(title="Chromium user data directory for Glyph Machina")
         if d:
             self._gm_user_data_dir.set(d)
+
+    def _browse_gm_htr_repo(self) -> None:
+        d = filedialog.askdirectory(title="glyph_machina_public repo directory")
+        if d:
+            self._gm_htr_repo_path.set(d)
+
+    def _browse_kraken_seg_model(self) -> None:
+        p = filedialog.askopenfilename(
+            title="Kraken segmentation model (.mlmodel)",
+            filetypes=[("Kraken model", "*.mlmodel"), ("All", "*.*")],
+        )
+        if p:
+            self._kraken_seg_model_path.set(p)
+
+    def _browse_kraken_htr_model(self) -> None:
+        p = filedialog.askopenfilename(
+            title="Kraken HTR model (.mlmodel)",
+            filetypes=[("Kraken model", "*.mlmodel"), ("All", "*.*")],
+        )
+        if p:
+            self._kraken_htr_model_path.set(p)
 
     def _save_run_log(self) -> None:
         art = self._settings.artifacts_dir.expanduser().resolve()
@@ -1423,7 +1553,9 @@ class TranscriberGui:
         try:
             while True:
                 kind, payload = self._q.get_nowait()
-                if kind == "discovery":
+                if kind == "open_folder":
+                    self._open_folder(str(payload))
+                elif kind == "discovery":
                     self._discovered_ollama = list(payload) if isinstance(payload, list) else []
                     self._refresh_model_combos()
                 elif kind == "log":
@@ -1566,10 +1698,6 @@ class TranscriberGui:
                 env_overrides=env_overrides,
                 eff_mode=eff_mode,
                 skip=skip,
-                lineation_backend_str=(
-                    "kraken" if self._lineation_backend.get() == "michael-lineator"
-                    else self._lineation_backend.get()
-                ),
                 n=n,
                 job_id_str=self._job_id.get().strip(),
                 model_override=model_override,
@@ -1595,7 +1723,6 @@ class TranscriberGui:
         env_overrides: dict[str, str],
         eff_mode: bool,
         skip: bool,
-        lineation_backend_str: str,
         n: int,
         job_id_str: str,
         model_override: str | None,
@@ -1616,8 +1743,6 @@ class TranscriberGui:
                 cfg["runMode"] = "efficient"
             with patch.dict(os.environ, env_overrides, clear=False):
                 s = Settings()
-                if not skip:
-                    s = s.model_copy(update={"lineation_backend": lineation_backend_str})
                 if n == 1:
                     img = images[0]
                     job = TranscribeJob(
@@ -1634,6 +1759,7 @@ class TranscriberGui:
                         self._put_log(f"skipped job_id={job.job_id} (existing valid transcription)")
                         self._put_log(f"transcription_yaml={out}")
                         self._q.put(("metrics", {"llm_usage": None}))
+                        self._q.put(("open_folder", str(out.parent)))
                         self._q.put(("status", "Succeeded (skipped existing)."))
                         self._q.put(("done", None))
                         return
@@ -1659,6 +1785,7 @@ class TranscriberGui:
                         require_text_line=req_tl,
                         skip_lines_xml_validation=skip_xml_val,
                         settings=s,
+                        log_fn=self._put_log,
                     )
                     if rid != self._run_id:
                         return
@@ -1669,7 +1796,20 @@ class TranscriberGui:
                         self._put_log(f"lines_xml={res.lines_xml_path}")
                     if res.transcription_yaml_path:
                         self._put_log(f"transcription_yaml={res.transcription_yaml_path}")
+                        txt_path = res.transcription_yaml_path.with_suffix(".txt")
+                        if txt_path.exists():
+                            self._put_log(f"transcription_txt={txt_path}")
                     self._put_log(f"text_line_count={res.text_line_count}")
+                    if res.timings:
+                        total = sum(s for _, s in res.timings)
+                        max_s = max(s for _, s in res.timings) or 1.0
+                        parts = []
+                        for label, s in res.timings:
+                            bar = "█" * max(1, int(s / max_s * 20))
+                            parts.append(f"  {label:<12} {s:>5.1f}s  {bar}")
+                        self._put_log(
+                            f"timings (total {total:.1f}s):\n" + "\n".join(parts)
+                        )
                     if res.errors:
                         for e in res.errors:
                             self._put_log(f"error: {e}")
@@ -1681,6 +1821,8 @@ class TranscriberGui:
                                 merge_dotenv(Path(".env"), persist_snapshot)
                             except OSError as err:
                                 self._put_log(f"warning: could not save keys to .env: {err}")
+                        if res.transcription_yaml_path:
+                            self._q.put(("open_folder", str(res.transcription_yaml_path.parent)))
                         self._q.put(("status", "Succeeded."))
                         self._q.put(("done", None))
                 else:
@@ -1745,6 +1887,7 @@ class TranscriberGui:
                             merge_dotenv(Path(".env"), persist_snapshot)
                         except OSError as err:
                             self._put_log(f"warning: could not save keys to .env: {err}")
+                    self._q.put(("open_folder", str(s.artifacts_dir.expanduser().resolve())))
                     self._q.put(
                         ("status", f"Finished {len(rows)} jobs ({ok_c} ok, {fail_c} failed).")
                     )
@@ -1757,8 +1900,8 @@ class TranscriberGui:
 
     # ── Utility actions ───────────────────────────────────────────────────────
 
-    def _open_artifacts(self) -> None:
-        d = self._settings.artifacts_dir.expanduser().resolve()
+    def _open_folder(self, path: str) -> None:
+        d = Path(path).expanduser().resolve()
         d.mkdir(parents=True, exist_ok=True)
         try:
             if sys.platform == "darwin":
@@ -1768,7 +1911,10 @@ class TranscriberGui:
             else:
                 subprocess.run(["xdg-open", str(d)], check=False)
         except Exception:
-            self._gui_notify(f"Artifacts folder: {d}", "info")
+            self._gui_notify(f"Folder: {d}", "info")
+
+    def _open_artifacts(self) -> None:
+        self._open_folder(str(self._settings.artifacts_dir))
 
     def _open_api_docs(self) -> None:
         host = self._settings.api_host
@@ -1789,7 +1935,6 @@ class TranscriberGui:
             "free_only": self._free_only.get(),
             "efficient_mode": self._efficient_mode.get(),
             "skip_gm": self._skip_gm.get(),
-            "lineation_backend": self._lineation_backend.get().strip(),
             "prompt_path": self._prompt_path.get().strip(),
             "lines_xml_path": self._lines_xml_path.get().strip(),
             "lines_xml_dir": self._lines_xml_dir.get().strip(),
@@ -1806,6 +1951,15 @@ class TranscriberGui:
             "gm_persistent_profile": self._gm_persistent_profile.get(),
             "gm_auto_install_browser": self._gm_auto_install_browser.get(),
             "gm_user_data_dir": self._gm_user_data_dir.get().strip(),
+            "kraken_seg_model_path": self._kraken_seg_model_path.get().strip(),
+            "gm_htr_repo_path": self._gm_htr_repo_path.get().strip(),
+            "gm_website_fallback": self._gm_website_fallback.get(),
+            "kraken_htr_model_path": self._kraken_htr_model_path.get().strip(),
+            "htr_parallel": self._htr_parallel.get(),
+            "htr_combination": self._htr_combination.get().strip(),
+            "keys_expanded": self._keys_expanded.get(),
+            "htr_section_expanded": self._htr_section_expanded.get(),
+            "advanced_expanded": self._advanced_expanded.get(),
             "persist_keys_after_run": self._persist_keys_after_run.get(),
             "skip_successful": self._skip_successful.get(),
             "image_paths": [str(p) for p in self._dedupe_sorted_images()],
@@ -1863,11 +2017,6 @@ class TranscriberGui:
                 self._efficient_mode.set(bool(data["efficient_mode"]))
             if "skip_gm" in data:
                 self._skip_gm.set(bool(data["skip_gm"]))
-            lb = str(data.get("lineation_backend", "")).strip().lower()
-            if lb == "kraken":
-                lb = "michael-lineator"
-            if lb in ("mask", "michael-lineator", "glyph_machina"):
-                self._lineation_backend.set(lb)
             for key, var in (
                 ("prompt_path", self._prompt_path),
                 ("lines_xml_path", self._lines_xml_path),
@@ -1903,6 +2052,31 @@ class TranscriberGui:
             gud = data.get("gm_user_data_dir")
             if isinstance(gud, str):
                 self._gm_user_data_dir.set(gud)
+            ksr = data.get("kraken_seg_model_path")
+            if isinstance(ksr, str):
+                self._kraken_seg_model_path.set(ksr)
+            ghr = data.get("gm_htr_repo_path")
+            if isinstance(ghr, str):
+                self._gm_htr_repo_path.set(ghr)
+            if "gm_website_fallback" in data:
+                self._gm_website_fallback.set(bool(data["gm_website_fallback"]))
+            khr = data.get("kraken_htr_model_path")
+            if isinstance(khr, str):
+                self._kraken_htr_model_path.set(khr)
+            if "htr_parallel" in data:
+                self._htr_parallel.set(bool(data["htr_parallel"]))
+            hc = data.get("htr_combination")
+            if isinstance(hc, str) and hc.strip():
+                self._htr_combination.set(hc.strip())
+            if "keys_expanded" in data:
+                self._keys_expanded.set(bool(data["keys_expanded"]))
+                self._keys_section_apply()
+            if "htr_section_expanded" in data:
+                self._htr_section_expanded.set(bool(data["htr_section_expanded"]))
+                self._htr_section_apply()
+            if "advanced_expanded" in data:
+                self._advanced_expanded.set(bool(data["advanced_expanded"]))
+                self._advanced_section_apply()
             if "persist_keys_after_run" in data:
                 self._persist_keys_after_run.set(bool(data["persist_keys_after_run"]))
             if "skip_successful" in data:
@@ -1936,7 +2110,6 @@ class TranscriberGui:
             self._free_only,
             self._efficient_mode,
             self._skip_gm,
-            self._lineation_backend,
             self._prompt_path,
             self._lines_xml_path,
             self._lines_xml_dir,
@@ -1953,6 +2126,15 @@ class TranscriberGui:
             self._gm_persistent_profile,
             self._gm_auto_install_browser,
             self._gm_user_data_dir,
+            self._kraken_seg_model_path,
+            self._gm_htr_repo_path,
+            self._gm_website_fallback,
+            self._kraken_htr_model_path,
+            self._htr_parallel,
+            self._htr_combination,
+            self._keys_expanded,
+            self._htr_section_expanded,
+            self._advanced_expanded,
             self._persist_keys_after_run,
             self._skip_successful,
         ):

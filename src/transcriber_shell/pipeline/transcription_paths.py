@@ -9,3 +9,9 @@ def transcription_yaml_path(artifacts_dir: Path, job_id: str, image_path: Path) 
     """LLM output file: ``artifacts/<job_id>/<image_stem>_transcription.yaml``."""
     name = f"{image_path.stem}_transcription.yaml"
     return (artifacts_dir / job_id / name).resolve()
+
+
+def transcription_txt_path(artifacts_dir: Path, job_id: str, image_path: Path) -> Path:
+    """Plain-text companion: ``artifacts/<job_id>/<image_stem>_transcription.txt``."""
+    name = f"{image_path.stem}_transcription.txt"
+    return (artifacts_dir / job_id / name).resolve()

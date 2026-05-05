@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import errno
 import json
+import time
 from typing import Any
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
@@ -28,9 +29,23 @@ from transcriber_shell.llm.validate_output import (
     validate_transcript_file,
 )
 from transcriber_shell.models.job import PipelineResult, TranscribeJob
-from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path
+from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path, transcription_txt_path
 from transcriber_shell.xml_tools.lines_validate import validate_lines_xml
 from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
+
+
+def _extract_plain_text(data: dict) -> str:
+    """Extract segment text from a normalized transcription YAML dict."""
+    root = data.get("transcriptionOutput", data)
+    if not isinstance(root, dict):
+        return ""
+    segs = root.get("segments") or []
+    texts = [
+        seg["text"].strip()
+        for seg in segs
+        if isinstance(seg, dict) and isinstance(seg.get("text"), str) and seg["text"].strip()
+    ]
+    return "\n\n".join(texts)
 
 
 def _approximate_text_line_count(lines_xml: Path) -> int:
@@ -130,7 +145,11 @@ def run_pipeline(
     skip_lines_xml_validation: bool | None = None,
     settings: Settings | None = None,
     lineation_backend: LineationBackend | None = None,
+    log_fn=None,
 ) -> PipelineResult:
+    def _log(msg: str) -> None:
+        if log_fn is not None:
+            log_fn(msg)
     s = settings or Settings()
     if lineation_backend is not None:
         s = s.model_copy(update={"lineation_backend": lineation_backend})
@@ -141,11 +160,14 @@ def run_pipeline(
     )
     errors: list[str] = []
     warnings: list[str] = []
+    timings: list[tuple[str, float]] = []
 
     lines_out: Path | None = None
     text_line_count = 0
 
+    _t = time.perf_counter()
     if skip_gm:
+        _log("lineation: skipped (using existing lines XML)")
         if not lines_xml_path or not lines_xml_path.is_file():
             p = lines_xml_path if lines_xml_path else "(not set)"
             errors.append(
@@ -162,8 +184,9 @@ def run_pipeline(
             )
         lines_out = lines_xml_path.resolve()
     else:
+        backend = s.lineation_backend
+        _log(f"lineation: starting ({backend})…")
         try:
-            backend = s.lineation_backend
             if backend == "mask":
                 lines_out = fetch_lines_xml_mask(job.image_path, job.job_id, settings=s)
             elif backend == "kraken":
@@ -217,6 +240,11 @@ def run_pipeline(
                     errors=errors,
                     warnings=warnings,
                 )
+
+    _lineation_s = time.perf_counter() - _t
+    timings.append(("lineation", _lineation_s))
+    if not skip_gm:
+        _log(f"lineation: done ({_lineation_s:.1f}s)")
 
     if lines_out is None and not skip_gm:
         # continue_on_lineation_failure path: no lines file to validate
@@ -315,9 +343,12 @@ def run_pipeline(
                     f"htr_combination={s.htr_combination!r} runs the original shell (LLM) only; HTR was skipped."
                 )
         elif plan.kind == HtrPlanKind.WITH_LLM_PARALLEL and plan.tasks:
+            _log("htr: starting (parallel with LLM)…")
             htr_executor = ThreadPoolExecutor(max_workers=1)
             htr_future = htr_executor.submit(run_htr_parallel, plan.tasks)
         elif plan.kind == HtrPlanKind.BEFORE_LLM_PARALLEL and plan.tasks:
+            _log("htr: starting (before LLM)…")
+            _t_htr = time.perf_counter()
             try:
                 htr_results_early = run_htr_parallel(plan.tasks)
             except Exception as exc:  # noqa: BLE001
@@ -328,7 +359,12 @@ def run_pipeline(
                     job.line_hint = (
                         f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
                     )
+            _htr_s = time.perf_counter() - _t_htr
+            timings.append(("htr", _htr_s))
+            _log(f"htr: done ({_htr_s:.1f}s)")
         elif plan.kind == HtrPlanKind.BEFORE_LLM_ORDERED and plan.ordered:
+            _log("htr: starting (before LLM)…")
+            _t_htr = time.perf_counter()
             try:
                 htr_results_early = run_htr_ordered(plan.ordered)
             except Exception as exc:  # noqa: BLE001
@@ -339,8 +375,13 @@ def run_pipeline(
                     job.line_hint = (
                         f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
                     )
+            _htr_s = time.perf_counter() - _t_htr
+            timings.append(("htr", _htr_s))
+            _log(f"htr: done ({_htr_s:.1f}s)")
 
+    _log(f"llm: starting ({job.provider}/{job.model_override or 'default'})…")
     llm_usage: dict[str, int] | None = None
+    _t = time.perf_counter()
     try:
         tx = run_transcribe(job, settings=s)
         if isinstance(tx, TranscribeResult):
@@ -443,6 +484,10 @@ def run_pipeline(
             ),
         )
 
+    _llm_s = time.perf_counter() - _t
+    timings.append(("llm", _llm_s))
+    _log(f"llm: done ({_llm_s:.1f}s)")
+
     raw = strip_yaml_fence(raw)
     out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
     out_yaml.parent.mkdir(parents=True, exist_ok=True)
@@ -454,6 +499,11 @@ def run_pipeline(
         if isinstance(data, dict):
             normalize_transcription_yaml_data(data)
             out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            out_txt = transcription_txt_path(s.artifacts_dir, job.job_id, job.image_path)
+            try:
+                out_txt.write_text(_extract_plain_text(data), encoding="utf-8")
+            except OSError:
+                pass
     except yaml.YAMLError as e:
         errors.append(
             f"Model returned text that is not valid YAML: {e}. "
@@ -490,6 +540,7 @@ def run_pipeline(
         warnings=warnings,
         llm_usage=llm_usage,
         htr_results=htr_results,
+        timings=timings,
     )
 
 

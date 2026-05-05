@@ -221,9 +221,10 @@ def fetch_lines_xml(
     """Segment ``image_path`` and save a PageXML lines file under artifacts.
 
     Preference order:
-    1. Local seg.mlmodel via kraken API (when gm_htr_repo_path is set) — no browser, no network.
-    2. Playwright website fallback (glyphmachina.com) — used when local is unavailable or fails
-       and gm_website_fallback is true (the default).
+    1. User's trained Kraken seg model (kraken_model_path) — no browser, no network.
+    2. GM local seg.mlmodel via kraken API (gm_htr_repo_path) — no browser, no network.
+    3. Playwright website fallback (glyphmachina.com) — used when local backends are unavailable
+       or fail and gm_website_fallback is true (the default).
 
     Raises GlyphMachinaError on unrecoverable failure.
     """
@@ -235,7 +236,23 @@ def fetch_lines_xml(
             "Choose a pre-cropped page image (jpg/png/webp/tiff, etc.)."
         )
 
-    # --- Local path (preferred) ---
+    # --- 1. User's trained Kraken seg model (highest priority) ---
+    if s.kraken_model_path:
+        from transcriber_shell.kraken_lineation import (
+            KrakenLineationError,
+            fetch_lines_xml_kraken,
+        )
+        try:
+            return fetch_lines_xml_kraken(image_path, job_id, settings=s)
+        except KrakenLineationError as e:
+            has_next = s.gm_htr_repo_path or s.gm_website_fallback
+            if not has_next:
+                raise GlyphMachinaError(
+                    f"Kraken seg model failed and no fallback configured: {e}"
+                ) from e
+            _log.warning("Kraken seg model failed (%s); trying next backend.", e)
+
+    # --- 2. GM local seg.mlmodel ---
     if s.gm_htr_repo_path:
         from transcriber_shell.glyph_machina.local import (
             GlyphMachinaLocalError,

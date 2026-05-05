@@ -2,7 +2,7 @@
 # Pin base to a Playwright image that bundles browser deps (similar stack to CI).
 # Build requires: git submodule update --init vendor/transcription-protocol
 
-ARG PLAYWRIGHT_BASE=mcr.microsoft.com/playwright/python:v1.49.1-jammy
+ARG PLAYWRIGHT_BASE=mcr.microsoft.com/playwright/python:v1.49.1-noble
 FROM ${PLAYWRIGHT_BASE}
 
 LABEL org.opencontainers.image.title="transcriber-shell"

@@ -32,3 +32,5 @@ class PipelineResult:
     llm_usage: dict[str, int] | None = None
     # HTR backend results (backend_name → HtrResult or Exception); populated when HTR backends are configured.
     htr_results: dict[str, Any] = field(default_factory=dict)
+    # Per-stage wall-clock timings: [(label, elapsed_s), ...] in execution order.
+    timings: list[tuple[str, float]] = field(default_factory=list)

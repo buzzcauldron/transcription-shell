@@ -88,7 +88,7 @@ case "$MODE" in
     docker run --rm "${TTY_OPTS[@]}" \
       --name "${CONTAINER_NAME}-api" \
       --platform "$PLATFORM" \
-      "${ENV_OPTS[@]}" \
+      ${ENV_OPTS[@]+"${ENV_OPTS[@]}"} \
       -p "${HOST_PORT}:8765" \
       "${VOL_OPTS[@]}" \
       -w /workspace \
@@ -99,7 +99,7 @@ case "$MODE" in
     docker run --rm "${TTY_OPTS[@]}" \
       --name "${CONTAINER_NAME}-shell" \
       --platform "$PLATFORM" \
-      "${ENV_OPTS[@]}" \
+      ${ENV_OPTS[@]+"${ENV_OPTS[@]}"} \
       "${VOL_OPTS[@]}" \
       -w /workspace \
       "$IMAGE_NAME" bash
