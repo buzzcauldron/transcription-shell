@@ -16,6 +16,17 @@
 #   CMU_PRECISION     ketos precision flag (default: bf16-mixed)
 #   CMU_WORKERS       DataLoader workers (default: 4)
 #   SKIP_SYNC         Set to 1 to skip rsync (GT already on server)
+#   CMU_LRATE         Learning rate (default: 0.0001 — good for fine-tuning)
+#   CMU_LAG           Early-stopping patience in epochs (default: 20)
+#   CMU_FREEZE        Freeze backbone for first N samples (default: 3603)
+#
+# Round-2 example (continue from HF-trained model on new GT):
+#   CMU_HOST=seth@akdeniz.lan.cmu.edu \
+#   CMU_BASE_MODEL=~/src/gm-hf-htr_best.mlmodel \
+#   LOCAL_GT_DIR=~/src/round2-gt \
+#   CMU_GT_DIR=~/src/round2-gt \
+#   CMU_OUT_MODEL=~/src/gm-hf-htr-r2.mlmodel \
+#   ./scripts/htr_train_cmu.sh
 
 set -euo pipefail
 
@@ -29,6 +40,9 @@ CMU_EPOCHS="${CMU_EPOCHS:-150}"
 CMU_PRECISION="${CMU_PRECISION:-bf16-mixed}"
 CMU_WORKERS="${CMU_WORKERS:-4}"
 SKIP_SYNC="${SKIP_SYNC:-0}"
+CMU_LRATE="${CMU_LRATE:-0.0001}"
+CMU_LAG="${CMU_LAG:-20}"
+CMU_FREEZE="${CMU_FREEZE:-3603}"
 
 echo "CMU host:     $CMU_HOST"
 echo "Remote GT:    $CMU_GT_DIR"
@@ -50,33 +64,41 @@ if [[ "$SKIP_SYNC" != "1" ]]; then
   echo ""
 fi
 
-# ── 2. Compile on server if .arrow files are absent ───────────────────────
+# ── 2. Verify GT directory exists on server ──────────────────────────────
 
-ssh "$CMU_HOST" bash <<REMOTE_COMPILE
+ssh "$CMU_HOST" bash <<REMOTE_CHECK
 set -euo pipefail
 cd "$CMU_GT_DIR" 2>/dev/null || { echo "GT dir not found on server: $CMU_GT_DIR"; exit 1; }
-
-if [[ ! -f train.arrow ]]; then
-  echo "Compiling train split …"
-  ketos compile -o train.arrow --workers $CMU_WORKERS \$(ls train/*.png 2>/dev/null | head -1 > /dev/null && echo train/*.png || echo "*.png")
-else
-  echo "train.arrow already exists, skipping compile."
+train_count=\$(ls train/*.xml 2>/dev/null | wc -l)
+echo "Train XMLs: \$train_count"
+if [[ "\$train_count" -eq 0 ]]; then
+  echo "No train/*.xml files found in $CMU_GT_DIR/train/" >&2; exit 1
 fi
-
-if [[ ! -f validation.arrow ]] && [[ -d validation ]]; then
-  echo "Compiling validation split …"
-  ketos compile -o validation.arrow --workers $CMU_WORKERS validation/*.png
-fi
-REMOTE_COMPILE
+REMOTE_CHECK
 
 # ── 3. Train ─────────────────────────────────────────────────────────────
 
 echo ""
 echo "Launching ketos train on $CMU_HOST …"
 
+# Build validation file list on server (test/ or validation/ subdirectory)
 VAL_FLAG=""
-ssh "$CMU_HOST" bash -c "test -f $CMU_GT_DIR/validation.arrow" 2>/dev/null && \
-  VAL_FLAG="--evaluation-files '$CMU_GT_DIR/validation.arrow'"
+ssh "$CMU_HOST" bash <<REMOTE_VALCHECK
+set -euo pipefail
+val_list="$CMU_GT_DIR/val_list.txt"
+{ ls "$CMU_GT_DIR/test/"*.xml 2>/dev/null; ls "$CMU_GT_DIR/validation/"*.xml 2>/dev/null; } > "\$val_list" || true
+count=\$(wc -l < "\$val_list")
+if [[ "\$count" -gt 0 ]]; then
+  echo "Validation XMLs: \$count (written to \$val_list)"
+else
+  rm -f "\$val_list"
+  echo "No validation XMLs found — will split from train set."
+fi
+REMOTE_VALCHECK
+
+if ssh "$CMU_HOST" "test -f '$CMU_GT_DIR/val_list.txt'" 2>/dev/null; then
+  VAL_FLAG="-e '$CMU_GT_DIR/val_list.txt'"
+fi
 
 ssh "$CMU_HOST" bash <<REMOTE_TRAIN
 set -euo pipefail
@@ -91,7 +113,7 @@ fi
 
 echo "Base model:  $CMU_BASE_MODEL"
 echo "Output:      $CMU_OUT_MODEL"
-echo "Arrow files: $CMU_GT_DIR/train.arrow"
+echo "Train XML:   $CMU_GT_DIR/train/*.xml"
 echo ""
 
 export PYTORCH_ALLOC_CONF=expandable_segments:True
@@ -99,16 +121,22 @@ export PYTORCH_ALLOC_CONF=expandable_segments:True
 ketos train \
   -i "$CMU_BASE_MODEL" \
   --resize union \
+  -f page \
   -q early \
+  --lag $CMU_LAG \
   --min-epochs 10 \
   -N $CMU_EPOCHS \
-  --precision $CMU_PRECISION \
+  -B 32 \
+  -r $CMU_LRATE \
+  --schedule reduceonplateau \
+  --sched-patience 5 \
+  --freeze-backbone $CMU_FREEZE \
+  --augment \
   -d $CMU_DEVICE \
   --workers $CMU_WORKERS \
   $VAL_FLAG \
   -o "$CMU_OUT_MODEL" \
-  -f binary \
-  "$CMU_GT_DIR/train.arrow"
+  "$CMU_GT_DIR/train"/*.xml
 
 echo ""
 echo "Training complete."

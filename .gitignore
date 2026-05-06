@@ -17,3 +17,4 @@ test-results/
 
 # Local agent / IDE (may contain machine-specific paths)
 .claude/
+.tdad/logs/
