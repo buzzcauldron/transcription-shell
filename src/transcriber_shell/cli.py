@@ -24,6 +24,36 @@ from transcriber_shell.xml_tools.validate_gt_pagexml import validate_gt_pagexml
 from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
 
 
+def cmd_test_htr(args: argparse.Namespace) -> int:
+    from transcriber_shell.htr.eval import evaluate, format_eval_report
+
+    model = Path(args.model).expanduser().resolve()
+    gt = Path(args.gt).expanduser().resolve()
+    seg_model = Path(args.seg_model).expanduser().resolve() if args.seg_model else None
+
+    if not model.exists():
+        print(f"error: model not found: {model}", file=sys.stderr)
+        return 1
+    if not gt.exists():
+        print(f"error: ground-truth path not found: {gt}", file=sys.stderr)
+        return 1
+
+    try:
+        result = evaluate(
+            model,
+            gt,
+            seg_model=seg_model,
+            device=args.device,
+            centroid_match_px=args.centroid_match_px,
+        )
+    except (FileNotFoundError, RuntimeError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    print(format_eval_report(result, as_json=args.json), end="")
+    return 0 if result.transcription is not None else 1
+
+
 def cmd_compare_lines_xml(args: argparse.Namespace) -> int:
     try:
         result = compare_lines_xml(
@@ -282,6 +312,40 @@ def main() -> None:
         epilog="Minimal path: docs/simple-workflow.md  ·  Full setup: docs/local-setup.md",
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    th = sub.add_parser(
+        "test-htr",
+        help=(
+            "Evaluate a Kraken HTR model against ground truth. "
+            "PAGE/ALTO XML → transcription + optional baseline accuracy. "
+            "PNG+.gt.txt pairs → transcription accuracy only."
+        ),
+    )
+    th.add_argument(
+        "--model", "-m", required=True,
+        help="Kraken HTR model (.mlmodel or .safetensors)",
+    )
+    th.add_argument(
+        "--gt", "-g", required=True,
+        help="Ground-truth directory or file (PAGE XML, ALTO XML, or PNG+.gt.txt)",
+    )
+    th.add_argument(
+        "--seg-model", "-s", default=None,
+        help="Kraken segmentation model for baseline accuracy (XML ground truth only)",
+    )
+    th.add_argument(
+        "--device", "-d", default="cpu",
+        help="Device for ketos/kraken (e.g. cpu, cuda:0) [default: cpu]",
+    )
+    th.add_argument(
+        "--centroid-match-px", type=float, default=120.0,
+        help="Max centroid distance to pair baselines (default: 120)",
+    )
+    th.add_argument(
+        "--json", action="store_true",
+        help="Print JSON report",
+    )
+    th.set_defaults(func=cmd_test_htr)
 
     cmp = sub.add_parser(
         "compare-lines-xml",
