@@ -131,6 +131,7 @@ class TranscriberGui:
         self._provider = tk.StringVar(value=self._settings.default_provider)
         self._model_selected = tk.StringVar(value=_NONE_LABEL)
         self._efficient_mode = tk.BooleanVar(value=False)
+        self._diplomatic = tk.BooleanVar(value=True)
         self._model_custom = tk.StringVar(value="")
         self._skip_gm = tk.BooleanVar(value=False)
         self._xsd_path = tk.StringVar(
@@ -154,6 +155,7 @@ class TranscriberGui:
         self._gm_user_data_dir = tk.StringVar(value=str(self._settings.gm_user_data_dir))
         self._gm_htr_repo_path = tk.StringVar(value=str(self._settings.gm_htr_repo_path or ""))
         self._gm_website_fallback = tk.BooleanVar(value=self._settings.gm_website_fallback)
+        self._doc_type = tk.StringVar(value="medieval_latin_legal")
         self._kraken_seg_model_path = tk.StringVar(value=str(self._settings.kraken_model_path or ""))
         self._kraken_htr_model_path = tk.StringVar(value=str(self._settings.kraken_htr_model_path or ""))
         self._htr_parallel = tk.BooleanVar(value=self._settings.htr_parallel)
@@ -309,9 +311,14 @@ class TranscriberGui:
         mode_row.pack(fill=tk.X, pady=(0, 6))
         ttk.Checkbutton(
             mode_row,
+            text="Diplomatic (normalizationMode=diplomatic)",
+            variable=self._diplomatic,
+        ).pack(side=tk.LEFT)
+        ttk.Checkbutton(
+            mode_row,
             text="Efficient mode (protocol §2.9 — single pass, core tokens only)",
             variable=self._efficient_mode,
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, padx=(20, 0))
         ttk.Checkbutton(
             mode_row,
             text="XML only (lines XML; no LLM)",
@@ -510,6 +517,27 @@ class TranscriberGui:
             variable=self._free_only,
             command=self._refresh_model_combos,
         ).pack(anchor=tk.W, pady=(0, 6))
+
+        doc_row = ttk.Frame(llm, style="Main.TFrame")
+        doc_row.pack(fill=tk.X, pady=4)
+        ttk.Label(doc_row, text="Document type", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        self._cb_doc_type = ttk.Combobox(
+            doc_row,
+            textvariable=self._doc_type,
+            values=(
+                "medieval_latin_legal",
+                "medieval_latin_ecclesiastical",
+                "early_modern_english",
+            ),
+            state="readonly",
+            width=28,
+        )
+        self._cb_doc_type.pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Label(
+            doc_row,
+            text="sets HTR model, seg model, prompt (document_types/)",
+            style="Muted.TLabel",
+        ).pack(side=tk.LEFT)
 
         prov_row = ttk.Frame(llm, style="Main.TFrame")
         prov_row.pack(fill=tk.X, pady=4)
@@ -1668,7 +1696,10 @@ class TranscriberGui:
         model_override = self._effective_model_override()
         prov = self._provider.get().strip().lower()
         env_overrides = self._env_overrides_from_form()
+        if dt := self._doc_type.get().strip():
+            env_overrides["LATIN_MS_DOC_TYPE"] = dt
         eff_mode = self._efficient_mode.get()
+        diplomatic = self._diplomatic.get()
         persist_after = self._persist_keys_after_run.get()
         skip_successful = self._skip_successful.get()
         persist_snapshot = self._env_persist_dict()
@@ -1684,6 +1715,9 @@ class TranscriberGui:
         self._q.put(("status", "Running…"))
         self._put_log("---")
         self._put_log(
+            f"normalizationMode={'diplomatic' if diplomatic else 'normalized'} (from Diplomatic checkbox)"
+        )
+        self._put_log(
             f"runMode={'efficient' if eff_mode else 'standard'} (from prompt + Efficient mode checkbox)"
         )
         self._put_log(
@@ -1697,6 +1731,7 @@ class TranscriberGui:
                 pr=pr,
                 env_overrides=env_overrides,
                 eff_mode=eff_mode,
+                diplomatic=diplomatic,
                 skip=skip,
                 n=n,
                 job_id_str=self._job_id.get().strip(),
@@ -1722,6 +1757,7 @@ class TranscriberGui:
         pr: str,
         env_overrides: dict[str, str],
         eff_mode: bool,
+        diplomatic: bool,
         skip: bool,
         n: int,
         job_id_str: str,
@@ -1739,6 +1775,7 @@ class TranscriberGui:
     ) -> None:
         try:
             cfg = copy.deepcopy(load_prompt_cfg(Path(pr).expanduser()))
+            cfg["normalizationMode"] = "diplomatic" if diplomatic else "normalized"
             if eff_mode:
                 cfg["runMode"] = "efficient"
             with patch.dict(os.environ, env_overrides, clear=False):
@@ -1934,6 +1971,7 @@ class TranscriberGui:
             "model_custom": self._model_custom.get(),
             "free_only": self._free_only.get(),
             "efficient_mode": self._efficient_mode.get(),
+            "diplomatic": self._diplomatic.get(),
             "skip_gm": self._skip_gm.get(),
             "prompt_path": self._prompt_path.get().strip(),
             "lines_xml_path": self._lines_xml_path.get().strip(),
@@ -2015,6 +2053,8 @@ class TranscriberGui:
                 self._free_only.set(bool(data["free_only"]))
             if "efficient_mode" in data:
                 self._efficient_mode.set(bool(data["efficient_mode"]))
+            if "diplomatic" in data:
+                self._diplomatic.set(bool(data["diplomatic"]))
             if "skip_gm" in data:
                 self._skip_gm.set(bool(data["skip_gm"]))
             for key, var in (
@@ -2109,6 +2149,7 @@ class TranscriberGui:
             self._model_custom,
             self._free_only,
             self._efficient_mode,
+            self._diplomatic,
             self._skip_gm,
             self._prompt_path,
             self._lines_xml_path,
