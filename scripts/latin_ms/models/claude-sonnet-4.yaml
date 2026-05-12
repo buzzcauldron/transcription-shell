@@ -1,0 +1,9 @@
+# Model: claude-sonnet-4-20250514
+# Priority: 1 (highest — use when ANTHROPIC_API_KEY present)
+provider: anthropic
+model_id: claude-sonnet-4-20250514
+key_env: ANTHROPIC_API_KEY
+notes: >
+  Best overall accuracy on 14th-c. Latin anglicana cursiva.
+  Preferred model for production runs.
+  ~$3/MTok input, ~$15/MTok output.

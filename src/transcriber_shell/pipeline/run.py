@@ -11,6 +11,7 @@ from __future__ import annotations
 import errno
 import json
 import time
+from datetime import datetime, timezone
 from typing import Any
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
@@ -498,6 +499,13 @@ def run_pipeline(
         data = yaml.safe_load(raw)
         if isinstance(data, dict):
             normalize_transcription_yaml_data(data)
+            # Overwrite whatever model ID the LLM put in the metadata with the
+            # actual runtime model so records are trustworthy.
+            _actual_model = job.model_override or s.resolved_model(job.provider)
+            _meta = (data.get("transcriptionOutput") or {}).get("metadata")
+            if isinstance(_meta, dict):
+                _meta["modelId"] = _actual_model
+                _meta["timestamp"] = datetime.now(timezone.utc).isoformat()
             out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
             out_txt = transcription_txt_path(s.artifacts_dir, job.job_id, job.image_path)
             try:

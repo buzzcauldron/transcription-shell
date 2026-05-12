@@ -49,3 +49,8 @@ include = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "live_llm: requires ANTHROPIC_API_KEY and a running LLM (skipped in CI)",
+    "live_expand: requires GEMINI_API_KEY and expand-diplomatic (skipped in CI)",
+    "live_lineation: requires U-Net weights on disk (skipped if absent)",
+]

@@ -1,0 +1,26 @@
+# transcriber-shell prompt config for Latin manuscripts.
+# Pass to --prompt in stages 3 and 4.
+# sourcePageId is overridden per-image by transcriber-shell batch.
+
+targetLanguage: "lat-Latn"
+targetEra: "medieval"
+eraRange: "1300-1400"
+diplomaticProfile: "layout_aware"
+diplomaticToggles: "{\"preserveLineBreaks\": true, \"preserveOriginalAbbreviations\": true, \"captureUnclearGlyphShape\": true}"
+normalizationMode: "diplomatic"
+languageSet: "[]"
+scriptNotesOptional: >
+  Gothic anglicana cursiva, 14th-century English legal hand (King's Bench / Common Pleas / Eyre rolls).
+  SEGMENTATION: produce one segment per TextLine from the supplied PageXML — the TextLine count is given
+  in the lineation hint; your segment count must match it exactly. Set lineRange to the single line number
+  for each segment (e.g. lineRange: \"1\", \"2\", ...).
+  ABBREVIATIONS: preserve all suspension/contraction marks verbatim using Unicode combining characters
+  (macron = U+0305, tilde = U+0303, superscript letters, etc.). Do NOT silently expand.
+  PILCROWS: transcribe ¶ marks exactly where present.
+  UNCERTAINTY: use [uncertain: X] freely for ambiguous letterforms — these hands have dense abbreviation;
+  confidence should default to medium; use low for damaged or heavily abbreviated passages.
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "standard"
+sourcePageId: "PLACEHOLDER"
+protocolVersion: "1.1.0"
