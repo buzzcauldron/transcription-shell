@@ -1,0 +1,24 @@
+# Document type: medieval Latin ecclesiastical / charter hands
+name: medieval_latin_ecclesiastical
+language: lat-Latn
+era: 1100-1400
+script: textualis_gothic
+
+llm:
+  primary: claude-sonnet-4
+  fallback: gemini-2.5-pro
+
+htr:
+  model: Tridis_Medieval_EarlyModern
+  path: "${LATIN_MS_WORKSPACE}/training/Tridis_Medieval_EarlyModern.mlmodel"
+
+segmentation:
+  model: model_249
+  path: "${HOME}/Projects/latin_documents-1/model_249.mlmodel"
+
+prompt: prompt_ecclesiastical.yaml   # TODO: create
+
+notes: >
+  Charter hands, papal letters, monastic records. Gothic textualis.
+  Fewer abbreviations than cursive legal hand but expanded forms of standard
+  formulae (dilecto filio, salutem in domino, etc.) differ.

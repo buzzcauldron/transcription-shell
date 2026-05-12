@@ -1,0 +1,23 @@
+# Document type: early modern English secretary hand (16th-17th c.)
+name: early_modern_english
+language: en-Latn
+era: 1500-1700
+script: secretary_hand
+
+llm:
+  primary: claude-sonnet-4
+  fallback: gemini-2.5-pro
+
+htr:
+  model: transfer_learned_1k_lines
+  path: "${HOME}/Projects/latin_documents-1/transfer_learned_1k_lines.mlmodel"
+
+segmentation:
+  model: model_249
+  path: "${HOME}/Projects/latin_documents-1/model_249.mlmodel"
+
+prompt: prompt_secretary.yaml     # TODO: create
+
+notes: >
+  Secretary hand with mixed Latin formulae. Less abbreviation than medieval.
+  HTR model: transfer_learned_1k_lines — trained on 1k mixed lines.

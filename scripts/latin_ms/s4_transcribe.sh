@@ -15,7 +15,10 @@ JOB_DIR="${LATIN_MS_WORKSPACE}/jobs/${LATIN_MS_JOB_ID}"
 PAGES_DIR="${JOB_DIR}/01_pages"
 LINES_DIR="${JOB_DIR}/02_lines"
 ARTIFACTS_DIR="${JOB_DIR}/03_artifacts"
-PROMPT="${SCRIPT_DIR}/prompt_latin.yaml"
+DOC_TYPE="${LATIN_MS_DOC_TYPE:-medieval_latin_legal}"
+_PROMPT_FILE="$(bash "${SCRIPT_DIR}/best_model.sh" --doc-type "$DOC_TYPE" --component prompt 2>/dev/null || echo prompt_latin.yaml)"
+PROMPT="${SCRIPT_DIR}/${_PROMPT_FILE}"
+[[ ! -f "$PROMPT" ]] && PROMPT="${SCRIPT_DIR}/prompt_latin.yaml"
 mkdir -p "$ARTIFACTS_DIR"
 
 export TRANSCRIBER_SHELL_ARTIFACTS_DIR="$ARTIFACTS_DIR"
@@ -23,10 +26,19 @@ export TRANSCRIBER_SHELL_ARTIFACTS_DIR="$ARTIFACTS_DIR"
 SKIP_ARG="--skip-successful"
 [[ "${1:-}" == "--force" ]] && SKIP_ARG=""
 
-read -r PROVIDER _MODEL < <(bash "${SCRIPT_DIR}/best_model.sh")
+read -r PROVIDER _MODEL < <(bash "${SCRIPT_DIR}/best_model.sh" --doc-type "$DOC_TYPE")
 MODEL_ARGS=(--model "$_MODEL")
 
-echo "==> Stage 4: transcription (provider: ${PROVIDER}, model: ${_MODEL})"
+# Pull HTR model path from doc-type spec unless already set in env
+if [[ -z "${TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH:-}" ]]; then
+    _HTR="$(bash "${SCRIPT_DIR}/best_model.sh" --doc-type "$DOC_TYPE" --component htr 2>/dev/null || true)"
+    [[ -n "$_HTR" ]] && export TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH="$_HTR"
+fi
+
+echo "==> Stage 4: transcription"
+echo "    doc type: ${DOC_TYPE}  |  provider: ${PROVIDER}  |  model: ${_MODEL}"
+echo "    prompt:   $(basename "$PROMPT")"
+echo "    htr:      ${TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH:-off}"
 echo "    pages:    ${PAGES_DIR}"
 echo "    lines:    ${LINES_DIR}"
 echo "    artifacts: ${ARTIFACTS_DIR}"

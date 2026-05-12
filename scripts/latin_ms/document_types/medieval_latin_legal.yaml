@@ -1,0 +1,25 @@
+# Document type: medieval Latin legal hands (14th-c. English plea rolls)
+# King's Bench, Common Pleas, Eyre rolls — Anglicana cursiva
+name: medieval_latin_legal
+language: lat-Latn
+era: 1280-1420
+script: anglicana_cursiva
+
+llm:
+  primary: claude-sonnet-4      # models/claude-sonnet-4.yaml
+  fallback: gemini-2.5-pro      # models/gemini-2.5-pro.yaml
+
+htr:
+  model: Tridis_Medieval_EarlyModern   # trained on medieval/early-modern
+  path: "${LATIN_MS_WORKSPACE}/training/Tridis_Medieval_EarlyModern.mlmodel"
+
+segmentation:
+  model: model_249              # base Kraken seg; swap for kraken_seg_updated when ready
+  path: "${HOME}/Projects/latin_documents-1/model_249.mlmodel"
+
+prompt: prompt_latin.yaml
+
+notes: >
+  Primary test corpus: JUST1, KB27, CP40 rolls.
+  Abbreviation density: very high. Use diplomatic profile layout_aware.
+  Pilcrows frequent at case breaks.
