@@ -172,7 +172,7 @@ if $RUN_SEG; then
         "${SUPPRESS_ARG[@]}" \
         "${LRATE_ARG[@]}" \
         "${GT_XMLS[@]}" 2>&1 | tee "${TRAIN_DIR}/training_seg.log" | \
-        grep --line-buffered -E "epoch|loss|best|Saving|Error|OOM|Killed"
+        grep --line-buffered -aE "epoch|loss|best|Saving|Error|OOM|Killed|stage [0-9]|early_stopp"
     echo "  segtrain done."
 fi
 
@@ -195,7 +195,7 @@ if $RUN_HTR; then
             --augment \
             "${LRATE_ARG[@]}" \
             "${GT_XMLS[@]}" 2>&1 | tee "${TRAIN_DIR}/training_htr.log" | \
-            grep --line-buffered -E "epoch|loss|best|Saving|Error|CER"
+            grep --line-buffered -aE "epoch|loss|best|Saving|Error|CER|stage [0-9]"
         echo "  ketos train done."
     fi
 fi
@@ -216,7 +216,7 @@ if $RUN_UNET; then
             --out "$UNET_OUT" \
             --device "$DEVICE" \
             $RESUME_FLAG 2>&1 | tee "${TRAIN_DIR}/training_unet.log" | \
-            grep --line-buffered -E "epoch|loss|val|best|saved|Error"
+            grep --line-buffered -aE "epoch|loss|val|best|saved|Error"
         echo "  U-Net train done."
     fi
 fi
