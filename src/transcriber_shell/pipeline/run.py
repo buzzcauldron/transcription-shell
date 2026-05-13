@@ -85,10 +85,20 @@ def _extract_plain_text(data: dict) -> str:
 def _approximate_text_line_count(lines_xml: Path) -> int:
     """Best-effort TextLine count when full validation is skipped."""
     try:
+        import xml.etree.ElementTree as ET
+        root = ET.parse(str(lines_xml)).getroot()
+        count = sum(
+            1 for el in root.iter()
+            if (el.tag.split("}")[-1] if "}" in el.tag else el.tag) == "TextLine"
+        )
+        return count
+    except Exception:
+        pass
+    try:
         text = lines_xml.read_text(encoding="utf-8", errors="replace")
+        return max(text.count("<TextLine"), text.count(":TextLine"))
     except OSError:
         return 0
-    return text.count("<TextLine")
 
 
 def _llm_network_timeout_hint(job: TranscribeJob) -> str:
