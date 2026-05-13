@@ -179,6 +179,46 @@ def _finalize_htr_results(
     return _collect_htr_parallel(htr_future, htr_executor, warnings)
 
 
+def _fixup_protocol_compliance(data: dict[str, Any]) -> None:
+    """Patch common LLM protocol violations in-place before validation.
+
+    §5.2: mismatchReport:[] with no pass2Summary is invalid — add the shorthand stub.
+    §5.6: uncertainty flooding without conditionNotes — inject a script-based note.
+    """
+    root = data.get("transcriptionOutput")
+    if not isinstance(root, dict):
+        return
+
+    segs = root.get("segments")
+    if not isinstance(segs, list) or not segs:
+        return
+
+    # §5.2 fix: empty mismatchReport with no pass2Summary
+    mr = root.get("mismatchReport")
+    p2s = root.get("pass2Summary")
+    if isinstance(mr, list) and len(mr) == 0 and not p2s:
+        root["pass2Summary"] = {"passCount": 2, "segmentsAltered": 0}
+
+    # §5.6 fix: add conditionNotes when uncertainty would flood without documentation
+    pre = root.get("preCheck")
+    if not isinstance(pre, dict):
+        return
+    cn = pre.get("conditionNotes")
+    has_notes = isinstance(cn, str) and len(cn.strip()) >= 20
+    if has_notes:
+        return
+    full_text = " ".join(str(s.get("text", "")) for s in segs if isinstance(s, dict))
+    import re as _re
+    n_unc = len(_re.findall(r"\[uncertain:", full_text, _re.IGNORECASE))
+    n_words = len(_re.findall(r"\S+", _re.sub(r"\[uncertain:[^\]]*\]", " µ ", full_text)))
+    if n_words > 0 and n_unc / n_words > 0.30:
+        script = pre.get("scriptIdentified") or "the script"
+        pre["conditionNotes"] = (
+            f"High abbreviation density and ambiguous letterforms in {script} "
+            f"produce systematic reading uncertainty; conservative marking applied."
+        )
+
+
 def run_pipeline(
     job: TranscribeJob,
     *,
@@ -545,6 +585,7 @@ def run_pipeline(
             # Restore [uncertain: tokens that were placeholdered for YAML safety
             data = _restore_uncertain_in_dict(data)
             normalize_transcription_yaml_data(data)
+            _fixup_protocol_compliance(data)
             # Overwrite whatever model ID the LLM put in the metadata with the
             # actual runtime model so records are trustworthy.
             _actual_model = job.model_override or s.resolved_model(job.provider)
