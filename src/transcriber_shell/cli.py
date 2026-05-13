@@ -78,6 +78,40 @@ def _apply_doc_type(
     return new_settings, resolved_prompt
 
 
+def _auto_doc_type_for_image(
+    image: Path,
+    library_path: Path,
+    *,
+    lines_xml_dir: Path | None,
+    min_similarity: float,
+    top_k: int,
+) -> tuple[str | None, list[dict]]:
+    """Return (suggested_doc_type, top_matches) for an image via fingerprint match.
+
+    Resolves the lines XML in `lines_xml_dir/<stem>.xml`, or falls back to the
+    canonical `<image.parent.parent>/02_lines/<stem>.xml`.
+    """
+    from transcriber_shell.paleography.fingerprint import (
+        extract_doc_heights,
+        build_fingerprint,
+        suggest_doc_type,
+        load_fingerprint_json,
+    )
+
+    if lines_xml_dir is not None:
+        xml = lines_xml_dir / f"{image.stem}.xml"
+    else:
+        xml = image.parent.parent / "02_lines" / f"{image.stem}.xml"
+    if not xml.is_file():
+        raise FileNotFoundError(f"lines XML not found for {image.name}: {xml}")
+
+    library = load_fingerprint_json(library_path)
+    heights, n_lines, n_seen = extract_doc_heights(image, xml)
+    target = build_fingerprint(heights, image.stem, n_lines=n_lines, n_components=n_seen)
+    result = suggest_doc_type(target, library, top_k=top_k, min_similarity=min_similarity)
+    return result.get("suggested_doc_type"), result.get("matches", [])
+
+
 def cmd_test_htr(args: argparse.Namespace) -> int:
     from transcriber_shell.htr.eval import evaluate, format_eval_report
 
@@ -244,8 +278,32 @@ def cmd_run(args: argparse.Namespace) -> int:
         settings = settings.model_copy(
             update={"lineation_backend": args.lineation_backend}
         )
+
+    doc_type = getattr(args, "doc_type", None)
+    auto_lib = getattr(args, "auto_doc_type", None)
+    if auto_lib and not doc_type:
+        try:
+            xml_dir = _expand_resolve_cli_path(getattr(args, "lines_xml_dir", None))
+            suggested, matches = _auto_doc_type_for_image(
+                Path(args.image), Path(auto_lib).expanduser().resolve(),
+                lines_xml_dir=xml_dir,
+                min_similarity=getattr(args, "auto_min_similarity", 0.5),
+                top_k=3,
+            )
+        except FileNotFoundError as e:
+            print(f"error: --auto-doc-type: {e}", file=sys.stderr)
+            return 1
+        if suggested:
+            doc_type = suggested
+            top = matches[0] if matches else {}
+            print(f"auto-doc-type: {suggested} (best match: {top.get('b','?')}, "
+                  f"similarity={top.get('similarity','?')})", file=sys.stderr)
+        else:
+            print(f"auto-doc-type: no confident match above {getattr(args,'auto_min_similarity',0.5)}; "
+                  f"proceeding without doc-type", file=sys.stderr)
+
     settings, prompt_path = _apply_doc_type(
-        getattr(args, "doc_type", None), settings, getattr(args, "prompt", None)
+        doc_type, settings, getattr(args, "prompt", None)
     )
     if not prompt_path:
         print("error: --prompt is required (or set --doc-type with a spec that includes a prompt)", file=sys.stderr)
@@ -298,42 +356,84 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_batch(args: argparse.Namespace) -> int:
-    settings = _pipeline_settings(args)
+    base_settings = _pipeline_settings(args)
     if getattr(args, "lineation_backend", None):
-        settings = settings.model_copy(
+        base_settings = base_settings.model_copy(
             update={"lineation_backend": args.lineation_backend}
         )
-    settings, prompt_path = _apply_doc_type(
-        getattr(args, "doc_type", None), settings, getattr(args, "prompt", None)
-    )
-    if not prompt_path:
-        print("error: --prompt is required (or set --doc-type with a spec that includes a prompt)", file=sys.stderr)
-        return 1
+
     images = discover_images(args.path)
     if not images:
         print("No images found (supported: .jpg, .jpeg, .png, .webp, …)", file=sys.stderr)
         return 2
-    cfg = load_prompt_cfg(Path(prompt_path))
-    if getattr(args, "diplomatic", None) is not None:
-        cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
-    provider = _resolve_provider(args.provider, settings)
+
     lines_xml = _expand_resolve_cli_path(args.lines_xml)
     lines_xml_dir = _expand_resolve_cli_path(args.lines_xml_dir)
-    xsd = _resolve_xsd_path(args.xsd, settings)
-    rows = run_batch(
-        images,
-        cfg,
-        provider=provider,
-        model_override=args.model,
-        skip_gm=args.skip_gm,
-        lines_xml=lines_xml,
-        lines_xml_dir=lines_xml_dir,
-        xsd_path=xsd,
-        require_text_line=_require_text_line_from_cli(args, settings),
-        skip_lines_xml_validation=_skip_lines_xml_validation_from_cli(args, settings),
-        skip_successful=args.skip_successful,
-        settings=settings,
-    )
+    xsd = _resolve_xsd_path(args.xsd, base_settings)
+
+    # Group images by suggested doc-type when --auto-doc-type is in effect.
+    cli_doc_type = getattr(args, "doc_type", None)
+    auto_lib = getattr(args, "auto_doc_type", None)
+    if auto_lib and not cli_doc_type:
+        lib_path = Path(auto_lib).expanduser().resolve()
+        groups: dict[str | None, list[Path]] = {}
+        for img in images:
+            try:
+                suggested, _ = _auto_doc_type_for_image(
+                    img, lib_path,
+                    lines_xml_dir=lines_xml_dir,
+                    min_similarity=getattr(args, "auto_min_similarity", 0.5),
+                    top_k=3,
+                )
+            except FileNotFoundError as e:
+                print(f"  skip {img.name}: {e}", file=sys.stderr)
+                groups.setdefault(None, []).append(img)
+                continue
+            groups.setdefault(suggested, []).append(img)
+            print(f"  {img.name}: doc-type={suggested or '(none)'}", file=sys.stderr)
+    else:
+        groups = {cli_doc_type: list(images)}
+
+    all_rows: list[dict] = []
+    overall_ok = True
+    for group_doc_type, group_images in groups.items():
+        if not group_images:
+            continue
+        settings, prompt_path = _apply_doc_type(
+            group_doc_type, base_settings, getattr(args, "prompt", None)
+        )
+        if not prompt_path:
+            print(
+                f"error: --prompt is required (group doc-type={group_doc_type!r} has no prompt)",
+                file=sys.stderr,
+            )
+            overall_ok = False
+            continue
+        cfg = load_prompt_cfg(Path(prompt_path))
+        if getattr(args, "diplomatic", None) is not None:
+            cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
+        provider = _resolve_provider(args.provider, settings)
+        if len(groups) > 1:
+            print(f"\n== group doc-type={group_doc_type or '(none)'}, {len(group_images)} image(s) ==",
+                  file=sys.stderr)
+        rows = run_batch(
+            group_images,
+            cfg,
+            provider=provider,
+            model_override=args.model,
+            skip_gm=args.skip_gm,
+            lines_xml=lines_xml,
+            lines_xml_dir=lines_xml_dir,
+            xsd_path=xsd,
+            require_text_line=_require_text_line_from_cli(args, settings),
+            skip_lines_xml_validation=_skip_lines_xml_validation_from_cli(args, settings),
+            skip_successful=args.skip_successful,
+            settings=settings,
+        )
+        all_rows.extend(rows)
+        if not all(r.get("ok") for r in rows):
+            overall_ok = False
+    rows = all_rows
     if args.batch_report:
         write_batch_report(Path(args.batch_report), rows)
         print(f"batch_report={args.batch_report}")
@@ -866,6 +966,21 @@ def main() -> None:
         ),
     )
     run.add_argument(
+        "--auto-doc-type",
+        metavar="LIB.json",
+        default=None,
+        help=(
+            "Tagged fingerprint library JSON. Auto-selects --doc-type via fingerprint match. "
+            "Ignored if --doc-type is set explicitly."
+        ),
+    )
+    run.add_argument(
+        "--auto-min-similarity",
+        type=float,
+        default=0.5,
+        help="Min similarity threshold for --auto-doc-type voting (default 0.5)",
+    )
+    run.add_argument(
         "--continue-on-lineation-failure",
         action="store_true",
         help=(
@@ -992,6 +1107,21 @@ def main() -> None:
             "Sets prompt, HTR model, seg model, and provider from spec YAML. "
             "CLI args override. (env: TRANSCRIBER_SHELL_DOC_TYPE)"
         ),
+    )
+    batch.add_argument(
+        "--auto-doc-type",
+        metavar="LIB.json",
+        default=None,
+        help=(
+            "Tagged fingerprint library JSON. Auto-selects --doc-type per image via "
+            "fingerprint match and processes each suggested-type group separately."
+        ),
+    )
+    batch.add_argument(
+        "--auto-min-similarity",
+        type=float,
+        default=0.5,
+        help="Min similarity threshold for --auto-doc-type voting (default 0.5)",
     )
     batch.add_argument(
         "--continue-on-lineation-failure",
