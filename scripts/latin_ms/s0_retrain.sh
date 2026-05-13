@@ -63,6 +63,20 @@ HTR_OUT="${TRAIN_DIR}/htr_latin_updated"
 
 mkdir -p "$TRAIN_DIR"
 
+# ketos -d/--device is a GLOBAL flag on the parent `ketos` command — must come BEFORE subcommand.
+# auto → cuda if available, else cpu.
+KETOS_DEVICE_ARG=()
+if [[ "$DEVICE" == "cuda" || "$DEVICE" == "gpu" ]]; then
+    KETOS_DEVICE_ARG=(-d cuda:0)
+elif [[ "$DEVICE" == "cpu" ]]; then
+    KETOS_DEVICE_ARG=(-d cpu)
+elif [[ "$DEVICE" == "mps" ]]; then
+    KETOS_DEVICE_ARG=(-d mps)
+elif [[ "$DEVICE" =~ ^cuda:[0-9]+$ ]]; then
+    KETOS_DEVICE_ARG=(-d "$DEVICE")
+# else "auto" — omit flag, ketos defaults to cpu
+fi
+
 echo "========================================================"
 echo "  Stage 0: retrain lineation models"
 echo "  Ground truth pairs: $(find "$COMBINED" -name '*.xml' | wc -l | tr -d ' ')"
@@ -161,7 +175,7 @@ if $RUN_SEG; then
     SUPPRESS_ARG=()
     $BASELINE_ONLY && SUPPRESS_ARG=(--suppress-regions)
     $BASELINE_ONLY && echo "  (baseline-only mode: --suppress-regions)"
-    ketos segtrain \
+    ketos "${KETOS_DEVICE_ARG[@]}" segtrain \
         --load "$KRAKEN_BASE" \
         --resize union \
         --output "$KRAKEN_OUT" \
@@ -184,7 +198,7 @@ if $RUN_HTR; then
     else
         echo ""
         echo "==> Kraken ketos train (HTR fine-tune from ${HTR_BASE##*/})..."
-        ketos train \
+        ketos "${KETOS_DEVICE_ARG[@]}" train \
             -f page \
             -i "$HTR_BASE" \
             --resize add \
