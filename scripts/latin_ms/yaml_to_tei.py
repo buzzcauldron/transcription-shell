@@ -6,5 +6,22 @@ Usage:  python3 yaml_to_tei.py <input.yaml> [<output.xml>]
 
 Or equivalently:  transcriber-shell yaml-to-tei [same args]
 """
-import subprocess, sys
-sys.exit(subprocess.run(["transcriber-shell", "yaml-to-tei"] + sys.argv[1:]).returncode)
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+from transcriber_shell.xml_tools.tei import convert_dir, yaml_to_tei
+
+__all__ = ["convert_dir", "yaml_to_tei"]
+
+
+def main() -> int:
+    """CLI when run as a script (keeps ``transcriber-shell`` on PATH in sync)."""
+    proc = subprocess.run(["transcriber-shell", "yaml-to-tei", *sys.argv[1:]])
+    return int(proc.returncode)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

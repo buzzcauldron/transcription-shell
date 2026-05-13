@@ -46,9 +46,7 @@ def plan_htr_execution(
     c = _effective_combination(s)
 
     if c in ("off", "shell", "none", "llm_only"):
-        if all_tasks:
-            # Tasks are configured — run them sequentially before LLM regardless of combination opt-out.
-            return HtrExecutionPlan(kind=HtrPlanKind.BEFORE_LLM_PARALLEL, tasks=dict(all_tasks))
+        # LLM-only path: never run HTR backends, even when seg/HTR models are configured.
         return HtrExecutionPlan(kind=HtrPlanKind.NONE)
 
     if c in ("kraken_htr", "zenodo"):
