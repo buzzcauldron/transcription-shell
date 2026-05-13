@@ -467,6 +467,43 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_MODEL", "DEFAULT_MODEL"),
     )
 
+    # Document-type system (replaces best_model.sh)
+    doc_type: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_DOC_TYPE", "LATIN_MS_DOC_TYPE"),
+        description="Document type name (e.g. medieval_latin_legal). Loads matching spec YAML.",
+    )
+    document_types_dir: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_DOCUMENT_TYPES_DIR"),
+        description="Extra directory to search for <doc_type>.yaml specs.",
+    )
+
+    # Illustration masking (eynollah)
+    mask_illustrations: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_MASK_ILLUSTRATIONS"),
+        description="If true, white out eynollah class-2 (illustration) pixels before lineation.",
+    )
+    eynollah_model_path: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_EYNOLLAH_MODEL"),
+        description="Path to eynollah SBB SavedModel directory.",
+    )
+    mask_dilate_px: int = Field(
+        default=8,
+        ge=0,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_MASK_DILATE"),
+        description="Dilation radius in pixels applied to the illustration mask.",
+    )
+
+    # Ground-truth directory for scoring
+    gt_dir: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_GT_DIR", "LATIN_MS_GT_DIR"),
+        description="Directory of ground-truth PAGE XML files for transcriber-shell score.",
+    )
+
     api_host: str = Field(
         default="127.0.0.1",
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_API_HOST", "API_HOST"),

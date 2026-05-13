@@ -24,6 +24,60 @@ from transcriber_shell.xml_tools.validate_gt_pagexml import validate_gt_pagexml
 from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
 
 
+# ── doc-type helpers ─────────────────────────────────────────────────────────
+
+def _apply_doc_type(
+    doc_type: str | None,
+    settings: Settings,
+    prompt_arg: str | None,
+) -> tuple[Settings, str | None]:
+    """Load doc-type spec and apply it to settings + prompt path.
+
+    Returns (updated_settings, resolved_prompt_path_str).
+    CLI args always win over spec defaults.
+    """
+    if not doc_type:
+        return settings, prompt_arg
+
+    from transcriber_shell.document_types import load_doc_type, list_doc_types
+
+    extra = [settings.document_types_dir] if settings.document_types_dir else []
+    try:
+        spec = load_doc_type(doc_type, extra_dirs=extra)
+    except KeyError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1)
+
+    updates: dict = {}
+
+    # Provider / model — only override when not already set in env/cli
+    if not settings.default_model:
+        updates["default_provider"] = spec.primary_provider
+        updates["default_model"] = spec.primary_model
+
+    # HTR model — only when not already set in env
+    if spec.htr_path and not settings.kraken_htr_model_path:
+        updates["kraken_htr_model_path"] = spec.htr_path
+
+    # Seg model — only when not already set in env
+    if spec.seg_path and not settings.kraken_model_path:
+        updates["kraken_model_path"] = spec.seg_path
+
+    new_settings = settings.model_copy(update=updates) if updates else settings
+
+    # Prompt — CLI arg wins; otherwise resolve from spec
+    resolved_prompt = prompt_arg
+    if resolved_prompt is None:
+        pp = spec.prompt_path()
+        if pp:
+            resolved_prompt = str(pp)
+        else:
+            # fallback: look alongside the cli's own prompt default
+            resolved_prompt = spec.prompt
+
+    return new_settings, resolved_prompt
+
+
 def cmd_test_htr(args: argparse.Namespace) -> int:
     from transcriber_shell.htr.eval import evaluate, format_eval_report
 
@@ -190,7 +244,13 @@ def cmd_run(args: argparse.Namespace) -> int:
         settings = settings.model_copy(
             update={"lineation_backend": args.lineation_backend}
         )
-    cfg = load_prompt_cfg(Path(args.prompt))
+    settings, prompt_path = _apply_doc_type(
+        getattr(args, "doc_type", None), settings, getattr(args, "prompt", None)
+    )
+    if not prompt_path:
+        print("error: --prompt is required (or set --doc-type with a spec that includes a prompt)", file=sys.stderr)
+        return 1
+    cfg = load_prompt_cfg(Path(prompt_path))
     if getattr(args, "diplomatic", None) is not None:
         cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
     provider = _resolve_provider(args.provider, settings)
@@ -243,11 +303,17 @@ def cmd_batch(args: argparse.Namespace) -> int:
         settings = settings.model_copy(
             update={"lineation_backend": args.lineation_backend}
         )
+    settings, prompt_path = _apply_doc_type(
+        getattr(args, "doc_type", None), settings, getattr(args, "prompt", None)
+    )
+    if not prompt_path:
+        print("error: --prompt is required (or set --doc-type with a spec that includes a prompt)", file=sys.stderr)
+        return 1
     images = discover_images(args.path)
     if not images:
         print("No images found (supported: .jpg, .jpeg, .png, .webp, …)", file=sys.stderr)
         return 2
-    cfg = load_prompt_cfg(Path(args.prompt))
+    cfg = load_prompt_cfg(Path(prompt_path))
     if getattr(args, "diplomatic", None) is not None:
         cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
     provider = _resolve_provider(args.provider, settings)
@@ -303,6 +369,167 @@ def cmd_serve(args: argparse.Namespace) -> int:
         port=port,
         reload=args.reload,
     )
+    return 0
+
+
+def cmd_yaml_to_tei(args: argparse.Namespace) -> int:
+    from transcriber_shell.xml_tools.tei import yaml_to_tei, convert_dir
+
+    if args.dir:
+        out_dir = Path(args.out_dir) if args.out_dir else Path(args.dir).parent / "tei"
+        pairs = convert_dir(Path(args.dir), out_dir)
+        for src, dst in pairs:
+            print(f"  {src.name} → {dst.name}")
+        print(f"  {len(pairs)} file(s) converted")
+        return 0 if pairs else 1
+    if args.input:
+        src = Path(args.input)
+        dst = Path(args.output) if args.output else src.with_suffix(".tei.xml")
+        yaml_to_tei(src, dst)
+        print(f"  {src.name} → {dst.name}")
+        return 0
+    print("error: provide --dir or a file argument", file=sys.stderr)
+    return 1
+
+
+def cmd_score(args: argparse.Namespace) -> int:
+    from transcriber_shell.pipeline.score import score_expanded_vs_gt
+
+    expanded_dir = Path(args.expanded_dir).expanduser().resolve()
+    settings = Settings()
+    gt_dir = Path(args.gt).expanduser().resolve() if args.gt else (
+        settings.gt_dir.expanduser().resolve() if settings.gt_dir else None
+    )
+    if not gt_dir:
+        print("error: --gt required (or set TRANSCRIBER_SHELL_GT_DIR / LATIN_MS_GT_DIR)", file=sys.stderr)
+        return 1
+    if not expanded_dir.is_dir():
+        print(f"error: {expanded_dir} is not a directory", file=sys.stderr)
+        return 1
+
+    report = score_expanded_vs_gt(expanded_dir, gt_dir, verbose=not args.quiet)
+    if not report.cases:
+        print("No scoreable cases found.", file=sys.stderr)
+        return 1
+
+    agg = report.to_dict()["aggregate"]
+    print(f"\n{'─'*64}")
+    print(f"  AGGREGATE ({agg['n']} cases):  CER {agg['cer']:.2f}%   WER {agg['wer']:.2f}%   [{agg['disposition']}]")
+    print(f"{'─'*64}")
+
+    if args.report:
+        report.write(Path(args.report).expanduser())
+        print(f"  reports: {args.report}/score_report.{{json,txt}}")
+    if args.json:
+        import json
+        print(json.dumps(report.to_dict(), indent=2))
+    return 0
+
+
+def cmd_convert_images(args: argparse.Namespace) -> int:
+    from transcriber_shell.image_tools.convert import find_images, convert_file
+
+    sources = [Path(s) for s in args.sources]
+    images = find_images(sources, recurse=args.recurse)
+    if not images:
+        print("No images found.", file=sys.stderr)
+        return 1
+
+    out_dir = Path(args.out_dir).expanduser() if args.out_dir else None
+    fmt = args.format
+    print(f"==> convert-images: {len(images)} image(s) → {fmt.upper()}"
+          + ("  [DRY RUN]" if args.dry_run else ""))
+
+    counts: dict[str, int] = {"converted": 0, "skipped": 0, "error": 0, "dry-run": 0}
+    for src in images:
+        status, msg = convert_file(
+            src,
+            out_dir=out_dir,
+            fmt=fmt,
+            max_width=args.max_width,
+            max_height=args.max_height,
+            quality=args.quality,
+            keep_original=args.keep_original,
+            force=args.force,
+            dry_run=args.dry_run,
+            scale_xml=not args.no_scale_xml,
+        )
+        counts[status] = counts.get(status, 0) + 1
+        prefix = {"converted": "  ✓", "skipped": "  –", "error": "  ✗", "dry-run": "  ?"}[status]
+        print(f"{prefix} {msg}")
+
+    verb = "Would convert" if args.dry_run else "Converted"
+    key = "dry-run" if args.dry_run else "converted"
+    print(f"\n  {verb} {counts[key]}, skipped {counts['skipped']}, errors {counts['error']}")
+    return 1 if counts["error"] else 0
+
+
+def cmd_mask_illustrations(args: argparse.Namespace) -> int:
+    from transcriber_shell.image_tools.mask import load_model, mask_file
+    from transcriber_shell.image_tools.convert import find_images
+
+    settings = Settings()
+    model_path = Path(args.model).expanduser() if args.model else (
+        settings.eynollah_model_path or Path.home() / "eynollah_models" / "extract_images"
+    )
+    if not model_path.exists():
+        print(f"error: eynollah model not found at {model_path}", file=sys.stderr)
+        return 1
+
+    sources = [Path(s) for s in args.sources]
+    images = find_images(sources, recurse=args.recurse)
+    if not images:
+        print("No images found.", file=sys.stderr)
+        return 1
+
+    classes = [int(c.strip()) for c in args.classes.split(",")]
+    dilate_px = args.dilate if args.dilate is not None else settings.mask_dilate_px
+    out_dir = Path(args.out_dir).expanduser() if args.out_dir else None
+    suffix = args.suffix if not args.in_place else ""
+
+    print(f"==> mask-illustrations: {len(images)} image(s)  classes={classes}  dilate={dilate_px}px")
+    if not args.dry_run:
+        print("  Loading model...", flush=True)
+        infer = load_model(model_path)
+        print("  Ready.")
+
+    if out_dir:
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+    ok = err = 0
+    for src in images:
+        if args.dry_run:
+            print(f"  ? {src.name}")
+            ok += 1
+            continue
+        status, msg = mask_file(
+            src, infer,
+            out_dir=out_dir,
+            suffix=suffix,
+            in_place=args.in_place,
+            classes=classes,
+            dilate_px=dilate_px,
+        )
+        print(f"  {'✓' if status == 'ok' else '✗'} {msg}")
+        if status == "ok":
+            ok += 1
+        else:
+            err += 1
+
+    print(f"\n  Processed {ok}, errors {err}")
+    return 1 if err else 0
+
+
+def cmd_list_doc_types(_args: argparse.Namespace) -> int:
+    from transcriber_shell.document_types import list_doc_types
+    settings = Settings()
+    extra = [settings.document_types_dir] if settings.document_types_dir else []
+    names = list_doc_types(extra)
+    if not names:
+        print("No document type specs found.", file=sys.stderr)
+        return 1
+    for name in names:
+        print(f"  {name}")
     return 0
 
 
@@ -410,8 +637,8 @@ def main() -> None:
     run.add_argument("--image", required=True, help="Pre-cropped image path")
     run.add_argument(
         "--prompt",
-        required=True,
-        help="JSON or YAML file with prompt config (prompt-templates CONFIGURATION keys)",
+        default=None,
+        help="JSON or YAML file with prompt config (prompt-templates CONFIGURATION keys); optional when --doc-type is set",
     )
     run.add_argument(
         "--provider",
@@ -455,6 +682,17 @@ def main() -> None:
         "--skip-lines-xml-validation",
         action="store_true",
         help="Skip lines XML checks and optional PAGE XSD; still run LLM (env: TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION)",
+    )
+    run.add_argument(
+        "--doc-type",
+        dest="doc_type",
+        default=None,
+        metavar="NAME",
+        help=(
+            "Document type name (e.g. medieval_latin_legal). "
+            "Loads matching spec YAML to set prompt, HTR model, seg model, and provider defaults. "
+            "CLI args override spec values. (env: TRANSCRIBER_SHELL_DOC_TYPE)"
+        ),
     )
     run.add_argument(
         "--continue-on-lineation-failure",
@@ -532,8 +770,8 @@ def main() -> None:
     )
     batch.add_argument(
         "--prompt",
-        required=True,
-        help="JSON or YAML file with prompt config",
+        default=None,
+        help="JSON or YAML file with prompt config; optional when --doc-type is set",
     )
     batch.add_argument(
         "--provider",
@@ -572,6 +810,17 @@ def main() -> None:
         "--skip-lines-xml-validation",
         action="store_true",
         help="Skip lines XML checks and optional PAGE XSD; still run LLM (env: TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION)",
+    )
+    batch.add_argument(
+        "--doc-type",
+        dest="doc_type",
+        default=None,
+        metavar="NAME",
+        help=(
+            "Document type name (e.g. medieval_latin_legal). "
+            "Sets prompt, HTR model, seg model, and provider from spec YAML. "
+            "CLI args override. (env: TRANSCRIBER_SHELL_DOC_TYPE)"
+        ),
     )
     batch.add_argument(
         "--continue-on-lineation-failure",
@@ -659,6 +908,75 @@ def main() -> None:
         help="Uvicorn auto-reload (development)",
     )
     serve.set_defaults(func=cmd_serve)
+
+    # ── yaml-to-tei ──────────────────────────────────────────────────────────
+    ytt = sub.add_parser("yaml-to-tei", help="Convert protocol YAML transcription(s) to TEI XML")
+    ytt.add_argument("input", nargs="?", help="Single *_transcription.yaml file")
+    ytt.add_argument("output", nargs="?", help="Output .tei.xml path (single-file mode)")
+    ytt.add_argument("--dir", metavar="PATH", help="Batch: directory of *_transcription.yaml files")
+    ytt.add_argument("--out-dir", metavar="PATH", help="Output directory (batch mode)")
+    ytt.set_defaults(func=cmd_yaml_to_tei)
+
+    # ── score ────────────────────────────────────────────────────────────────
+    sc = sub.add_parser(
+        "score",
+        help="CER/WER: score *_tei_expanded.xml output against PAGE XML ground truth",
+    )
+    sc.add_argument("expanded_dir", help="Directory of *_tei_expanded.xml files (04_expanded/out/)")
+    sc.add_argument(
+        "--gt", metavar="PATH", default=None,
+        help="Ground-truth PAGE XML directory (env: TRANSCRIBER_SHELL_GT_DIR / LATIN_MS_GT_DIR)",
+    )
+    sc.add_argument(
+        "--report", metavar="DIR", default=None,
+        help="Write score_report.{json,txt} to this directory",
+    )
+    sc.add_argument("--json", action="store_true", help="Print full JSON report to stdout")
+    sc.add_argument("--quiet", action="store_true", help="Suppress per-file output")
+    sc.set_defaults(func=cmd_score)
+
+    # ── convert-images ───────────────────────────────────────────────────────
+    ci = sub.add_parser(
+        "convert-images",
+        help="Convert TIF/BMP/WebP/etc. to JPEG/PNG with optional PAGE XML coordinate scaling",
+    )
+    ci.add_argument("sources", nargs="+", help="Files or directories to convert")
+    ci.add_argument("--out-dir", metavar="PATH", default=None)
+    ci.add_argument("--format", choices=["jpeg", "png"], default="jpeg")
+    ci.add_argument("--max-width", type=int, default=3000, metavar="PX")
+    ci.add_argument("--max-height", type=int, default=None, metavar="PX")
+    ci.add_argument("--quality", type=int, default=90)
+    ci.add_argument("--keep-original", action="store_true")
+    ci.add_argument("--force", action="store_true")
+    ci.add_argument("--dry-run", action="store_true")
+    ci.add_argument("--recurse", action="store_true")
+    ci.add_argument("--no-scale-xml", action="store_true",
+                    help="Skip automatic PAGE XML coordinate scaling when image is resized")
+    ci.set_defaults(func=cmd_convert_images)
+
+    # ── mask-illustrations ───────────────────────────────────────────────────
+    mi = sub.add_parser(
+        "mask-illustrations",
+        help="White out illustration pixels (eynollah class 2) before lineation",
+    )
+    mi.add_argument("sources", nargs="+", help="Images or directories to process")
+    mi.add_argument("--model", metavar="PATH", default=None,
+                    help="eynollah SavedModel directory (env: TRANSCRIBER_SHELL_EYNOLLAH_MODEL)")
+    mi.add_argument("--out-dir", metavar="PATH", default=None)
+    mi.add_argument("--suffix", default="_masked",
+                    help="Output filename suffix (default: _masked). Ignored with --in-place.")
+    mi.add_argument("--in-place", action="store_true", help="Overwrite source files")
+    mi.add_argument("--classes", default="2",
+                    help="Comma-separated segmentation class indices to mask (default: 2)")
+    mi.add_argument("--dilate", type=int, default=None, metavar="PX",
+                    help="Dilation radius in pixels (env: TRANSCRIBER_SHELL_MASK_DILATE, default: 8)")
+    mi.add_argument("--recurse", action="store_true")
+    mi.add_argument("--dry-run", action="store_true")
+    mi.set_defaults(func=cmd_mask_illustrations)
+
+    # ── list-doc-types ───────────────────────────────────────────────────────
+    ldt = sub.add_parser("list-doc-types", help="List available document type specs")
+    ldt.set_defaults(func=cmd_list_doc_types)
 
     args = ap.parse_args()
     raise SystemExit(args.func(args))

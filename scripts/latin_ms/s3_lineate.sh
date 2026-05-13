@@ -35,12 +35,10 @@ EYNOLLAH_MODEL="${TRANSCRIBER_SHELL_EYNOLLAH_MODEL:-${HOME}/eynollah_models/extr
 if [[ "$MASK_ILLUSTRATIONS" == "true" ]]; then
     echo "==> Stage 3: masking illustrations (eynollah) → ${MASKED_PAGES_DIR}"
     mkdir -p "$MASKED_PAGES_DIR"
-    python3 "${SCRIPT_DIR}/mask_illustrations.py" \
-        "$PAGES_DIR" \
+    transcriber-shell mask-illustrations "$PAGES_DIR" \
         --model "$EYNOLLAH_MODEL" \
         --out-dir "$MASKED_PAGES_DIR" \
-        --suffix "" \
-        --dilate "${TRANSCRIBER_SHELL_MASK_DILATE:-8}"
+        --suffix ""
     PAGES_DIR="$MASKED_PAGES_DIR"
     echo "  Using masked pages for lineation."
 fi
