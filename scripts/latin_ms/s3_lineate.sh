@@ -25,6 +25,26 @@ mkdir -p "$LINES_DIR"
 MANUAL_CHECK=0
 [[ "${1:-}" == "--manual-check" ]] && MANUAL_CHECK=1
 
+# ── Optional illustration masking (eynollah) ──────────────────────────────────
+# Set TRANSCRIBER_SHELL_MASK_ILLUSTRATIONS=true in .env.latin-ms to enable.
+# Whited-out images are written to 01_pages_masked/ and used for lineation only.
+MASK_ILLUSTRATIONS="${TRANSCRIBER_SHELL_MASK_ILLUSTRATIONS:-false}"
+MASKED_PAGES_DIR="${JOB_DIR}/01_pages_masked"
+EYNOLLAH_MODEL="${TRANSCRIBER_SHELL_EYNOLLAH_MODEL:-${HOME}/eynollah_models/extract_images}"
+
+if [[ "$MASK_ILLUSTRATIONS" == "true" ]]; then
+    echo "==> Stage 3: masking illustrations (eynollah) → ${MASKED_PAGES_DIR}"
+    mkdir -p "$MASKED_PAGES_DIR"
+    python3 "${SCRIPT_DIR}/mask_illustrations.py" \
+        "$PAGES_DIR" \
+        --model "$EYNOLLAH_MODEL" \
+        --out-dir "$MASKED_PAGES_DIR" \
+        --suffix "" \
+        --dilate "${TRANSCRIBER_SHELL_MASK_DILATE:-8}"
+    PAGES_DIR="$MASKED_PAGES_DIR"
+    echo "  Using masked pages for lineation."
+fi
+
 # ── Validate existing XMLs only ───────────────────────────────────────────────
 if [[ "$MANUAL_CHECK" -eq 1 ]]; then
     echo "==> Stage 3: validating existing PageXML in ${LINES_DIR}"
