@@ -191,6 +191,8 @@ def cmd_run(args: argparse.Namespace) -> int:
             update={"lineation_backend": args.lineation_backend}
         )
     cfg = load_prompt_cfg(Path(args.prompt))
+    if getattr(args, "diplomatic", None) is not None:
+        cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
     provider = _resolve_provider(args.provider, settings)
     job = TranscribeJob(
         job_id=args.job_id,
@@ -246,6 +248,8 @@ def cmd_batch(args: argparse.Namespace) -> int:
         print("No images found (supported: .jpg, .jpeg, .png, .webp, …)", file=sys.stderr)
         return 2
     cfg = load_prompt_cfg(Path(args.prompt))
+    if getattr(args, "diplomatic", None) is not None:
+        cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
     provider = _resolve_provider(args.provider, settings)
     lines_xml = _expand_resolve_cli_path(args.lines_xml)
     lines_xml_dir = _expand_resolve_cli_path(args.lines_xml_dir)
@@ -499,6 +503,22 @@ def main() -> None:
             "(env: TRANSCRIBER_SHELL_XML_ONLY)"
         ),
     )
+    run_dipl = run.add_mutually_exclusive_group()
+    run_dipl.add_argument(
+        "--diplomatic",
+        dest="diplomatic",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Override normalizationMode=diplomatic in the prompt config (protocol default).",
+    )
+    run_dipl.add_argument(
+        "--no-diplomatic",
+        dest="diplomatic",
+        action="store_const",
+        const=False,
+        help="Override normalizationMode=normalized in the prompt config.",
+    )
     _add_pipeline_network_args(run)
     run.set_defaults(func=cmd_run)
 
@@ -604,6 +624,22 @@ def main() -> None:
         "--batch-report",
         metavar="PATH",
         help="Write JSON report of all jobs",
+    )
+    batch_dipl = batch.add_mutually_exclusive_group()
+    batch_dipl.add_argument(
+        "--diplomatic",
+        dest="diplomatic",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Override normalizationMode=diplomatic in the prompt config (protocol default).",
+    )
+    batch_dipl.add_argument(
+        "--no-diplomatic",
+        dest="diplomatic",
+        action="store_const",
+        const=False,
+        help="Override normalizationMode=normalized in the prompt config.",
     )
     _add_pipeline_network_args(batch)
     batch.set_defaults(func=cmd_batch)

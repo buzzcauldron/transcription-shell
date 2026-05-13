@@ -19,10 +19,15 @@ SCORES_DIR="${JOB_DIR}/06_scores"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --job-id) LATIN_MS_JOB_ID="$2"; shift 2 ;;
         --gt-dir) GT_DIR="$2"; shift 2 ;;
         *) echo "Unknown: $1" >&2; exit 1 ;;
     esac
 done
+
+JOB_DIR="${LATIN_MS_WORKSPACE}/jobs/${LATIN_MS_JOB_ID}"
+EXPANDED_DIR="${JOB_DIR}/04_expanded/out"
+SCORES_DIR="${JOB_DIR}/06_scores"
 
 mkdir -p "$SCORES_DIR"
 

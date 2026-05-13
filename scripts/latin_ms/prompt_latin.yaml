@@ -11,14 +11,40 @@ normalizationMode: "diplomatic"
 languageSet: "[]"
 scriptNotesOptional: >
   Gothic anglicana cursiva, 14th-century English legal hand (King's Bench / Common Pleas / Eyre rolls).
+
   SEGMENTATION: produce one segment per TextLine from the supplied PageXML — the TextLine count is given
   in the lineation hint; your segment count must match it exactly. Set lineRange to the single line number
   for each segment (e.g. lineRange: \"1\", \"2\", ...).
+
   ABBREVIATIONS: preserve all suspension/contraction marks verbatim using Unicode combining characters
   (macron = U+0305, tilde = U+0303, superscript letters, etc.). Do NOT silently expand.
+
   PILCROWS: transcribe ¶ marks exactly where present.
-  UNCERTAINTY: use [uncertain: X] freely for ambiguous letterforms — these hands have dense abbreviation;
-  confidence should default to medium; use low for damaged or heavily abbreviated passages.
+
+  UNCERTAINTY: use [uncertain: X / Y] freely for ambiguous letterforms — these hands have dense
+  abbreviation; confidence should default to medium; use low for damaged or heavily abbreviated passages.
+
+  ANTI-HALLUCINATION — PROPER NOUNS:
+  Personal names (grantors, grantees, witnesses) and place names are the highest-risk hallucination
+  points. You MUST transcribe only letterforms visibly present on the image.
+  Rules:
+  (1) Never supply a name from training data or from genre expectation. If you expect a typical
+      charter formula like \"A. filius B. de C.\" do not fill in A, B, or C from memory.
+  (2) Read each proper noun letter by letter. If any letter is unclear, use [uncertain: X / Y]
+      with both candidate readings. If wholly illegible, write [illegible].
+  (3) Do NOT substitute a plausible-sounding English or Latin name for one you cannot read clearly.
+  (4) Gender markers (filius/filia, meus/mea, suus/sua) must match the visible letterforms — do not
+      infer gender from a name you already guessed.
+  (5) Place names: transcribe the visible letters exactly; do not replace with a known toponym.
+
+  ANTI-HALLUCINATION — DOCUMENT SCOPE:
+  Transcribe only the deed or passage visible in the supplied image region. Do not blend content
+  from adjacent deeds, a verso, or any other document. If the image contains more than one deed,
+  transcribe the one whose opening words (\"Sciant presentes\", \"Omnibus\", etc.) appear first
+  in the supplied TextLine region. Do not invent witness lists, dates, or sealing clauses.
+
+  GROUND RULE: every word in your output must be anchored to a visible letterform. When in doubt,
+  mark uncertain or illegible — never guess to produce fluent Latin.
 englishHandwritingModality: ""
 epistemicNotesOptional: ""
 runMode: "standard"

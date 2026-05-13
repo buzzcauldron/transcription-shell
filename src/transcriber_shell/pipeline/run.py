@@ -16,6 +16,8 @@ from typing import Any
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
+import re
+
 import httpx
 import yaml
 
@@ -33,6 +35,37 @@ from transcriber_shell.models.job import PipelineResult, TranscribeJob
 from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path, transcription_txt_path
 from transcriber_shell.xml_tools.lines_validate import validate_lines_xml
 from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
+
+
+_UNCERTAIN_PLACEHOLDER = "UNCERTAIN_COLON"
+_UNCERTAIN_TOKEN_RE = re.compile(r"\[uncertain:")
+
+
+def _repair_yaml_uncertain_tokens(raw: str) -> str:
+    """Pre-process raw YAML to survive [uncertain: X / Y] tokens.
+
+    The ': ' inside [uncertain: ...] brackets confuses the YAML parser when
+    the value is an unquoted plain scalar (YAML reads 'uncertain' as a key).
+    Strategy:
+      1. Replace '[uncertain:' with a placeholder that contains no YAML
+         special characters.
+      2. Parse with yaml.safe_load (caller's responsibility).
+      3. Caller must call _restore_uncertain_tokens() on the parsed dict
+         before writing back, or call yaml.safe_dump which quotes strings.
+    Note: the placeholder must be restored; see _restore_uncertain_in_dict().
+    """
+    return _UNCERTAIN_TOKEN_RE.sub(_UNCERTAIN_PLACEHOLDER, raw)
+
+
+def _restore_uncertain_in_dict(obj: Any) -> Any:
+    """Walk a parsed YAML structure and restore [uncertain: placeholders."""
+    if isinstance(obj, str):
+        return obj.replace(_UNCERTAIN_PLACEHOLDER, "[uncertain:")
+    if isinstance(obj, dict):
+        return {k: _restore_uncertain_in_dict(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_restore_uncertain_in_dict(v) for v in obj]
+    return obj
 
 
 def _extract_plain_text(data: dict) -> str:
@@ -490,6 +523,7 @@ def run_pipeline(
     _log(f"llm: done ({_llm_s:.1f}s)")
 
     raw = strip_yaml_fence(raw)
+    raw = _repair_yaml_uncertain_tokens(raw)
     out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
     out_yaml.parent.mkdir(parents=True, exist_ok=True)
     out_yaml.write_text(raw, encoding="utf-8")
@@ -498,6 +532,8 @@ def run_pipeline(
     try:
         data = yaml.safe_load(raw)
         if isinstance(data, dict):
+            # Restore [uncertain: tokens that were placeholdered for YAML safety
+            data = _restore_uncertain_in_dict(data)
             normalize_transcription_yaml_data(data)
             # Overwrite whatever model ID the LLM put in the metadata with the
             # actual runtime model so records are trustworthy.

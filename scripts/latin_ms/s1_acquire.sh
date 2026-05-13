@@ -27,5 +27,22 @@ strigil --url $URLS \
     --no-progress \
     ${STRIGIL_FLAGS:-}
 
-IMAGE_COUNT=$(find "$OUT_DIR" -maxdepth 2 -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.tif" -o -iname "*.tiff" | wc -l | tr -d ' ')
+IMAGE_COUNT=$(find "$OUT_DIR" -maxdepth 2 \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.tif" -o -iname "*.tiff" \) | wc -l | tr -d ' ')
 echo "==> Stage 1 done: ${IMAGE_COUNT} image(s) in ${OUT_DIR}"
+
+# Auto-convert non-JPEG/PNG images (TIF, BMP, WebP, etc.) → JPEG in 01_pages/
+NON_JPEG=$(find "$OUT_DIR" -maxdepth 2 \( -iname "*.tif" -o -iname "*.tiff" -o -iname "*.bmp" -o -iname "*.webp" \) | wc -l | tr -d ' ')
+JPEG_PNG=$(find "$OUT_DIR" -maxdepth 2 \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | wc -l | tr -d ' ')
+PAGES_DIR="${JOB_DIR}/01_pages"
+mkdir -p "$PAGES_DIR"
+
+if [[ "$NON_JPEG" -gt 0 || "$JPEG_PNG" -gt 0 ]]; then
+    echo ""
+    echo "==> Converting/copying images → ${PAGES_DIR}"
+    python3 "${SCRIPT_DIR}/convert_images.py" \
+        "$OUT_DIR" \
+        --out-dir "$PAGES_DIR" \
+        --format jpeg \
+        --max-width "${LATIN_MS_IMAGE_MAX_WIDTH:-3000}" \
+        --quality "${LATIN_MS_IMAGE_QUALITY:-90}"
+fi
