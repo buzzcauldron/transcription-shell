@@ -73,26 +73,32 @@ $RSYNC \
     "${LOCAL_SCRIPTS}/" \
     "${SERVER}:${REMOTE_WS}/scripts/latin_ms/"
 
-# ── 4. Create venv + install Kraken on server ────────────────────────────────
-VENV_PATH="${REMOTE_WS}/venv"
-echo "==> Setting up Python venv at ${VENV_PATH}..."
+# ── 4. Locate or create Kraken venv; install cuCIM ───────────────────────────
+echo "==> Setting up Kraken venv and cuCIM on server..."
 ssh "$SERVER" "
 set -e
-VENV=${REMOTE_WS}/venv
+# Use existing .venv-kraken if present (has Kraken 6.0.3 + PyTorch 2.9)
+VENV=\${HOME}/.venv-kraken
 if [[ ! -d \"\$VENV\" ]]; then
-    echo '  Creating venv...'
+    echo '  Creating venv at ~/.venv-kraken...'
     python3 -m venv \"\$VENV\"
 fi
 source \"\$VENV/bin/activate\"
-if python3 -c 'import kraken' 2>/dev/null; then
-    echo '  Kraken already installed in venv.'
-else
-    echo '  Installing Kraken (this may take a few minutes)...'
+if ! python3 -c 'import kraken' 2>/dev/null; then
+    echo '  Installing Kraken...'
     pip install --quiet 'kraken' 2>&1 | tail -4
-    echo '  Kraken installed.'
 fi
 python3 -c 'import kraken; print(\"  Kraken version:\", kraken.__version__)'
+# Install cuCIM for GPU-accelerated image preprocessing
+if ! python3 -c 'import cucim' 2>/dev/null; then
+    echo '  Installing cuCIM (RAPIDS CUDA 12)...'
+    pip install --quiet 'cucim-cu12' 'cupy-cuda12x' 2>&1 | tail -4 || \
+        echo '  WARNING: cuCIM install failed — training will use CPU preprocessing'
+else
+    python3 -c 'import cucim; print(\"  cuCIM version:\", cucim.__version__)'
+fi
 "
+VENV_PATH="\${HOME}/.venv-kraken"
 
 # ── 5. Write .env.latin-ms on server ─────────────────────────────────────────
 echo "==> Writing .env.latin-ms on server..."
@@ -122,7 +128,7 @@ echo "==> Launching training in tmux session 'train'..."
 # Kill existing session if present to start fresh
 ssh "$SERVER" "tmux kill-session -t train 2>/dev/null || true"
 ssh "$SERVER" "tmux new-session -d -s train \
-    'source ${REMOTE_WS}/venv/bin/activate && \
+    'source \${HOME}/.venv-kraken/bin/activate && \
      cd ${REMOTE_WS} && \
      bash scripts/latin_ms/s0_retrain.sh --device cuda${TRAIN_FLAGS} \
      2>&1 | tee training.log; echo TRAINING_DONE; read'"

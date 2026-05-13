@@ -91,7 +91,22 @@ def _target_path(src: Path, out_dir: Path | None, fmt: OutputFormat) -> Path:
     return base / (src.stem + ext)
 
 
-def _resize(img: Image.Image, max_width: int | None, max_height: int | None) -> Image.Image:
+def _cucim_available() -> bool:
+    try:
+        import cucim.skimage.transform  # noqa: F401
+        import cupy  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _resize(
+    img: Image.Image,
+    max_width: int | None,
+    max_height: int | None,
+    *,
+    use_cucim: bool = False,
+) -> Image.Image:
     w, h = img.size
     if max_width and w > max_width:
         h = int(h * max_width / w)
@@ -99,9 +114,23 @@ def _resize(img: Image.Image, max_width: int | None, max_height: int | None) -> 
     if max_height and h > max_height:
         w = int(w * max_height / h)
         h = max_height
-    if (w, h) != img.size:
-        return img.resize((w, h), Image.LANCZOS)
-    return img
+    if (w, h) == img.size:
+        return img
+
+    if use_cucim and _cucim_available():
+        import cupy as cp
+        import cucim.skimage.transform as cst
+        import numpy as np
+
+        arr = np.array(img.convert("RGB") if img.mode not in ("RGB", "L") else img)
+        gpu = cp.asarray(arr)
+        out_shape = (h, w) if arr.ndim == 2 else (h, w, arr.shape[2])
+        resized = cp.asnumpy(
+            cst.resize(gpu, out_shape, anti_aliasing=True, preserve_range=True).astype(cp.uint8)
+        )
+        return Image.fromarray(resized)
+
+    return img.resize((w, h), Image.LANCZOS)
 
 
 def convert_file(
@@ -116,6 +145,7 @@ def convert_file(
     force: bool = False,
     dry_run: bool = False,
     scale_xml: bool = True,
+    use_cucim: bool = False,
 ) -> tuple[str, str]:
     """Convert one image. Returns (status, message). Status: converted | skipped | error."""
     src_ext = src.suffix.lower()
@@ -149,7 +179,7 @@ def convert_file(
             img = img.convert("RGB")
 
         orig_size = img.size
-        img = _resize(img, max_width, max_height)
+        img = _resize(img, max_width, max_height, use_cucim=use_cucim)
 
         save_kwargs: dict = {}
         if fmt == "jpeg":

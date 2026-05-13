@@ -453,6 +453,7 @@ def cmd_convert_images(args: argparse.Namespace) -> int:
             force=args.force,
             dry_run=args.dry_run,
             scale_xml=not args.no_scale_xml,
+            use_cucim=getattr(args, "use_cucim", False),
         )
         counts[status] = counts.get(status, 0) + 1
         prefix = {"converted": "  ✓", "skipped": "  –", "error": "  ✗", "dry-run": "  ?"}[status]
@@ -952,6 +953,8 @@ def main() -> None:
     ci.add_argument("--recurse", action="store_true")
     ci.add_argument("--no-scale-xml", action="store_true",
                     help="Skip automatic PAGE XML coordinate scaling when image is resized")
+    ci.add_argument("--use-cucim", action="store_true",
+                    help="Use cuCIM (GPU) for image resizing; falls back to Pillow if unavailable")
     ci.set_defaults(func=cmd_convert_images)
 
     # ── mask-illustrations ───────────────────────────────────────────────────
