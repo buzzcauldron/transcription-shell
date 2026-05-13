@@ -91,7 +91,7 @@ def _auto_doc_type_for_image(
     Resolves the lines XML in `lines_xml_dir/<stem>.xml`, or falls back to the
     canonical `<image.parent.parent>/02_lines/<stem>.xml`.
     """
-    from transcriber_shell.paleography.fingerprint import (
+    from manuscript_fingerprint import (
         extract_doc_heights,
         build_fingerprint,
         suggest_doc_type,
@@ -643,7 +643,7 @@ def _resolve_image_xml_pairs(job_dir: Path) -> list[tuple[Path, Path]]:
 
 def cmd_fingerprint(args: argparse.Namespace) -> int:
     import json
-    from transcriber_shell.paleography.fingerprint import (
+    from manuscript_fingerprint import (
         extract_doc_heights,
         build_fingerprint,
     )
@@ -694,7 +694,7 @@ def cmd_fingerprint(args: argparse.Namespace) -> int:
 def cmd_fingerprint_compare(args: argparse.Namespace) -> int:
     import json
     import math
-    from transcriber_shell.paleography.fingerprint import (
+    from manuscript_fingerprint import (
         compare,
         compare_batch,
         load_fingerprint_json,
@@ -741,7 +741,7 @@ def cmd_fingerprint_compare(args: argparse.Namespace) -> int:
 def cmd_fingerprint_match(args: argparse.Namespace) -> int:
     """Compute fingerprint of a target doc and match against a library."""
     import json
-    from transcriber_shell.paleography.fingerprint import (
+    from manuscript_fingerprint import (
         extract_doc_heights,
         build_fingerprint,
         match_against_library,
