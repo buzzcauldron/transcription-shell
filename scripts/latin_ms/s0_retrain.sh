@@ -36,6 +36,13 @@ RUN_UNET=true
 RUN_HTR=true
 USE_CUCIM=false
 BASELINE_ONLY=false
+# HTR stability: previous run diverged to NaN at epoch 5 with default Adam@1e-3
+# and --augment. New defaults: lower LR, cosine anneal, warmup, augment opt-in.
+HTR_LRATE=0.0003
+HTR_SCHEDULE=cosine
+HTR_COS_MIN_LR=0.00005
+HTR_WARMUP=100
+HTR_AUGMENT=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -43,6 +50,10 @@ while [[ $# -gt 0 ]]; do
         --device)           DEVICE="$2"; shift 2 ;;
         --batch-size)       BATCH_SIZE="$2"; shift 2 ;;
         --lrate)            LRATE="$2"; shift 2 ;;
+        --htr-lrate)        HTR_LRATE="$2"; shift 2 ;;
+        --htr-schedule)     HTR_SCHEDULE="$2"; shift 2 ;;
+        --htr-warmup)       HTR_WARMUP="$2"; shift 2 ;;
+        --htr-augment)      HTR_AUGMENT=true; shift ;;
         --seg-only)         RUN_UNET=false; RUN_HTR=false; shift ;;
         --htr-only)         RUN_SEG=false; RUN_UNET=false; shift ;;
         --no-htr)           RUN_HTR=false; shift ;;
@@ -198,6 +209,13 @@ if $RUN_HTR; then
     else
         echo ""
         echo "==> Kraken ketos train (HTR fine-tune from ${HTR_BASE##*/})..."
+        # NaN guard rails: lower LR (0.0003 vs Adam default 0.001), cosine
+        # anneal, warmup, no-augment by default. --htr-lrate / --htr-augment
+        # can override. --lrate (global) still wins if set.
+        HTR_AUGMENT_ARG=()
+        $HTR_AUGMENT && HTR_AUGMENT_ARG=(--augment)
+        HTR_LRATE_FINAL="${LRATE:-$HTR_LRATE}"
+        echo "  HTR: lrate=${HTR_LRATE_FINAL}  schedule=${HTR_SCHEDULE}  warmup=${HTR_WARMUP}  augment=${HTR_AUGMENT}"
         ketos "${KETOS_DEVICE_ARG[@]}" train \
             -f page \
             -i "$HTR_BASE" \
@@ -206,10 +224,13 @@ if $RUN_HTR; then
             --epochs "$EPOCHS" \
             --quit early \
             --lag 5 \
-            --augment \
-            "${LRATE_ARG[@]}" \
+            -r "$HTR_LRATE_FINAL" \
+            --schedule "$HTR_SCHEDULE" \
+            --cos-min-lr "$HTR_COS_MIN_LR" \
+            --warmup "$HTR_WARMUP" \
+            "${HTR_AUGMENT_ARG[@]}" \
             "${GT_XMLS[@]}" 2>&1 | tee "${TRAIN_DIR}/training_htr.log" | \
-            grep --line-buffered -aE "epoch|loss|best|Saving|Error|CER|stage [0-9]"
+            grep --line-buffered -aE "epoch|loss|best|Saving|Error|CER|stage [0-9]|nan|NaN"
         echo "  ketos train done."
     fi
 fi

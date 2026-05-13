@@ -23,9 +23,15 @@ transcriber-shell yaml-to-tei --dir "$ARTIFACTS_DIR" --out-dir "$TEI_DIR"
 TEI_COUNT=$(find "$TEI_DIR" -name "*_tei.xml" | wc -l | tr -d ' ')
 [[ "$TEI_COUNT" -eq 0 ]] && { echo "ERROR: no YAML in ${ARTIFACTS_DIR}. Run s4_transcribe.sh first." >&2; exit 1; }
 
-# Propagate Google key from transcriber-shell config
+# Propagate Google key from transcriber-shell config.
+# magic-elise calls load_dotenv() on its own .env which can hold a stale
+# GEMINI_API_KEY. load_dotenv defaults to override=False, so an already-set
+# env var wins — set BOTH names to the same valid key here.
 _GKEY="$(python3 -c "from transcriber_shell.config import Settings; s=Settings(); print(s.google_api_key or '')" 2>/dev/null)"
-[[ -n "$_GKEY" ]] && export GOOGLE_API_KEY="$_GKEY" && unset GEMINI_API_KEY 2>/dev/null || true
+if [[ -n "$_GKEY" ]]; then
+    export GOOGLE_API_KEY="$_GKEY"
+    export GEMINI_API_KEY="$_GKEY"
+fi
 
 echo "==> Stage 5: expand-diplomatic (${EXPAND_DIPLOMATIC_BACKEND:-gemini}) → ${EXPANDED_DIR}"
 EXPAND_ARGS=(
