@@ -35,6 +35,7 @@ RUN_SEG=true
 RUN_UNET=true
 RUN_HTR=true
 USE_CUCIM=false
+BASELINE_ONLY=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -46,6 +47,7 @@ while [[ $# -gt 0 ]]; do
         --htr-only)         RUN_SEG=false; RUN_UNET=false; shift ;;
         --no-htr)           RUN_HTR=false; shift ;;
         --preprocess-cucim) USE_CUCIM=true; shift ;;
+        --baseline-only)    BASELINE_ONLY=true; shift ;;
         *) echo "Unknown: $1" >&2; exit 1 ;;
     esac
 done
@@ -156,6 +158,9 @@ LRATE_ARG=()
 if $RUN_SEG; then
     echo ""
     echo "==> Kraken segtrain (fine-tune from ${KRAKEN_BASE##*/})..."
+    SUPPRESS_ARG=()
+    $BASELINE_ONLY && SUPPRESS_ARG=(--suppress-regions)
+    $BASELINE_ONLY && echo "  (baseline-only mode: --suppress-regions)"
     ketos segtrain \
         --load "$KRAKEN_BASE" \
         --resize union \
@@ -164,6 +169,7 @@ if $RUN_SEG; then
         --quit early \
         --lag 5 \
         --augment \
+        "${SUPPRESS_ARG[@]}" \
         "${LRATE_ARG[@]}" \
         "${GT_XMLS[@]}" 2>&1 | tee "${TRAIN_DIR}/training_seg.log" | \
         grep --line-buffered -E "epoch|loss|best|Saving|Error|OOM|Killed"

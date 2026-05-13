@@ -25,11 +25,13 @@ DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --epochs)   EPOCHS="$2"; TRAIN_FLAGS+=" --epochs $2"; shift 2 ;;
-        --htr-only) TRAIN_FLAGS+=" --htr-only"; shift ;;
-        --seg-only) TRAIN_FLAGS+=" --seg-only"; shift ;;
-        --no-htr)   TRAIN_FLAGS+=" --no-htr"; shift ;;
-        --dry-run)  DRY_RUN=true; shift ;;
+        --epochs)        EPOCHS="$2"; TRAIN_FLAGS+=" --epochs $2"; shift 2 ;;
+        --htr-only)      TRAIN_FLAGS+=" --htr-only"; shift ;;
+        --seg-only)      TRAIN_FLAGS+=" --seg-only"; shift ;;
+        --no-htr)        TRAIN_FLAGS+=" --no-htr"; shift ;;
+        --baseline-only) TRAIN_FLAGS+=" --baseline-only"; shift ;;
+        --cucim)         TRAIN_FLAGS+=" --preprocess-cucim"; shift ;;
+        --dry-run)       DRY_RUN=true; shift ;;
         *) echo "Unknown: $1" >&2; exit 1 ;;
     esac
 done
