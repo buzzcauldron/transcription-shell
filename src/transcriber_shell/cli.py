@@ -521,6 +521,176 @@ def cmd_mask_illustrations(args: argparse.Namespace) -> int:
     return 1 if err else 0
 
 
+def _resolve_image_xml_pairs(job_dir: Path) -> list[tuple[Path, Path]]:
+    pages_dir = job_dir / "01_pages"
+    lines_dir = job_dir / "02_lines"
+    if not pages_dir.is_dir():
+        raise FileNotFoundError(f"{pages_dir} does not exist")
+    if not lines_dir.is_dir():
+        raise FileNotFoundError(f"{lines_dir} does not exist")
+    image_exts = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
+    pairs: list[tuple[Path, Path]] = []
+    for img in sorted(pages_dir.iterdir()):
+        if img.suffix.lower() not in image_exts:
+            continue
+        xml = lines_dir / f"{img.stem}.xml"
+        if not xml.is_file():
+            print(f"  skip {img.name}: no matching {xml.name}", file=sys.stderr)
+            continue
+        pairs.append((img, xml))
+    return pairs
+
+
+def cmd_fingerprint(args: argparse.Namespace) -> int:
+    import json
+    from transcriber_shell.paleography.fingerprint import (
+        extract_doc_heights,
+        build_fingerprint,
+    )
+
+    job_dir = Path(args.job_dir).expanduser().resolve()
+    try:
+        pairs = _resolve_image_xml_pairs(job_dir)
+    except FileNotFoundError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    if not pairs:
+        print("error: no (image, xml) pairs found", file=sys.stderr)
+        return 1
+
+    out_path = Path(args.out) if args.out else (job_dir / "fingerprints.json")
+    fps: list[dict] = []
+    for img, xml in pairs:
+        doc_id = img.stem
+        print(f"  fingerprint {doc_id} ...", file=sys.stderr, flush=True)
+        try:
+            heights, n_lines, n_seen = extract_doc_heights(
+                img, xml,
+                min_height_px=args.min_height_px,
+                max_height_px=args.max_height_px,
+            )
+        except Exception as e:
+            print(f"    failed: {e}", file=sys.stderr)
+            continue
+        fp = build_fingerprint(
+            heights, doc_id,
+            n_lines=n_lines,
+            n_components=n_seen,
+            doc_type=args.doc_type,
+        )
+        fps.append(fp.to_dict())
+        print(
+            f"    n_lines={fp.n_lines} components={fp.n_components} kept={fp.n_components_kept} "
+            f"mean={fp.height_mean} std={fp.height_std}",
+            file=sys.stderr,
+        )
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(fps, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"wrote {len(fps)} fingerprints → {out_path}")
+    return 0
+
+
+def cmd_fingerprint_compare(args: argparse.Namespace) -> int:
+    import json
+    import math
+    from transcriber_shell.paleography.fingerprint import (
+        compare,
+        compare_batch,
+        load_fingerprint_json,
+    )
+
+    fps_a = load_fingerprint_json(Path(args.a))
+    fps_b = load_fingerprint_json(Path(args.b)) if args.b else None
+
+    if fps_b is None:
+        if len(fps_a) < 2:
+            print("error: single-batch compare needs ≥2 fingerprints in A", file=sys.stderr)
+            return 1
+        matrix = compare_batch(fps_a)
+        ids = [fp.doc_id for fp in fps_a]
+        if args.json:
+            print(json.dumps({"docs": ids, "matrix": matrix}, indent=2))
+        else:
+            col_w = max(14, max(len(i) for i in ids) + 2)
+            print(" " * col_w + " ".join(f"{i:>10.10s}" for i in ids))
+            for i, row in enumerate(matrix):
+                cells = " ".join(("    inf  " if math.isinf(v) else f"{v:>10.3f}") for v in row)
+                print(f"{ids[i]:<{col_w}.{col_w}s}{cells}")
+        return 0
+
+    results = []
+    for a in fps_a:
+        for b in fps_b:
+            results.append(compare(a, b))
+    results.sort(key=lambda r: r["combined_distance"])
+
+    if args.json:
+        print(json.dumps(results, indent=2))
+    else:
+        print(f"{'A':<24} {'B':<24} {'script':>8} {'shape':>8} {'combined':>10} {'sim':>6}")
+        for r in results:
+            print(
+                f"{r['a']:<24.24s} {r['b']:<24.24s} "
+                f"{r['script_distance']:>8.3f} {r['shape_distance']:>8.3f} "
+                f"{r['combined_distance']:>10.3f} {r['similarity']:>6.3f}"
+            )
+    return 0
+
+
+def cmd_fingerprint_match(args: argparse.Namespace) -> int:
+    """Compute fingerprint of a target doc and match against a library."""
+    import json
+    from transcriber_shell.paleography.fingerprint import (
+        extract_doc_heights,
+        build_fingerprint,
+        match_against_library,
+        suggest_doc_type,
+        load_fingerprint_json,
+    )
+
+    library = load_fingerprint_json(Path(args.library))
+    if not library:
+        print(f"error: library {args.library} is empty", file=sys.stderr)
+        return 1
+
+    img = Path(args.image).expanduser().resolve()
+    xml = Path(args.lines_xml).expanduser().resolve() if args.lines_xml else \
+        img.parent.parent / "02_lines" / f"{img.stem}.xml"
+    if not xml.is_file():
+        print(f"error: lines XML not found: {xml}", file=sys.stderr)
+        return 1
+
+    print(f"fingerprinting {img.name}...", file=sys.stderr)
+    heights, n_lines, n_seen = extract_doc_heights(img, xml)
+    target = build_fingerprint(heights, img.stem, n_lines=n_lines, n_components=n_seen)
+
+    if args.suggest_doc_type:
+        result = suggest_doc_type(target, library, top_k=args.top_k, min_similarity=args.min_similarity)
+        if args.json:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        else:
+            sugg = result["suggested_doc_type"]
+            print(f"\nsuggested doc-type: {sugg or '(none — no confident match)'}")
+            if sugg:
+                print(f"  vote_score: {result['vote_score']}")
+            print(f"\ntop {len(result['matches'])} matches:")
+            for m in result["matches"]:
+                print(f"  {m['b']:<28.28s}  sim={m['similarity']:.3f}  combined={m['combined_distance']:.3f}  type={m.get('doc_type') or '-'}")
+        return 0
+
+    matches = match_against_library(target, library, top_k=args.top_k)
+    if args.json:
+        print(json.dumps(matches, indent=2, ensure_ascii=False))
+    else:
+        print(f"\ntop {len(matches)} matches for {target.doc_id}:")
+        print(f"  {'doc':<28} {'sim':>6} {'script':>8} {'shape':>8} {'combined':>10} {'type':<20}")
+        for m in matches:
+            print(f"  {m['b']:<28.28s} {m['similarity']:>6.3f} {m['script_distance']:>8.3f} "
+                  f"{m['shape_distance']:>8.3f} {m['combined_distance']:>10.3f} {(m.get('doc_type') or '-'):<20}")
+    return 0
+
+
 def cmd_list_doc_types(_args: argparse.Namespace) -> int:
     from transcriber_shell.document_types import list_doc_types
     settings = Settings()
@@ -976,6 +1146,51 @@ def main() -> None:
     mi.add_argument("--recurse", action="store_true")
     mi.add_argument("--dry-run", action="store_true")
     mi.set_defaults(func=cmd_mask_illustrations)
+
+    # ── fingerprint ──────────────────────────────────────────────────────────
+    fp = sub.add_parser(
+        "fingerprint",
+        help="Build paleographic fingerprint from ink-component heights in PAGE XML lines",
+    )
+    fp.add_argument("job_dir", help="Job dir containing 01_pages/ and 02_lines/")
+    fp.add_argument("--out", metavar="PATH", default=None,
+                    help="Output JSON path (default: <job_dir>/fingerprints.json)")
+    fp.add_argument("--doc-type", default=None,
+                    help="Tag every fingerprint with this doc-type (for use as a library)")
+    fp.add_argument("--min-height-px", type=int, default=4,
+                    help="Drop components shorter than this in pixels (default 4)")
+    fp.add_argument("--max-height-px", type=int, default=400,
+                    help="Drop components taller than this in pixels (default 400)")
+    fp.set_defaults(func=cmd_fingerprint)
+
+    # ── fingerprint-compare ──────────────────────────────────────────────────
+    fc = sub.add_parser(
+        "fingerprint-compare",
+        help="Compare fingerprint JSONs (single docs or batches)",
+    )
+    fc.add_argument("a", help="First fingerprint JSON (single or batch)")
+    fc.add_argument("b", nargs="?", default=None,
+                    help="Second JSON. Omit to emit pairwise matrix for a single batch JSON.")
+    fc.add_argument("--json", action="store_true",
+                    help="Print full JSON instead of pretty table")
+    fc.set_defaults(func=cmd_fingerprint_compare)
+
+    # ── fingerprint-match ────────────────────────────────────────────────────
+    fm = sub.add_parser(
+        "fingerprint-match",
+        help="Fingerprint one doc and rank against a library; optional doc-type suggestion",
+    )
+    fm.add_argument("image", help="Target image (e.g. 01_pages/page.jpg)")
+    fm.add_argument("library", help="Library fingerprint JSON (batch)")
+    fm.add_argument("--lines-xml", default=None,
+                    help="Path to PAGE XML for image (default: ../02_lines/<stem>.xml)")
+    fm.add_argument("--top-k", type=int, default=5)
+    fm.add_argument("--suggest-doc-type", action="store_true",
+                    help="Suggest a doc-type by majority vote over top-K typed matches")
+    fm.add_argument("--min-similarity", type=float, default=0.5,
+                    help="Min similarity for doc-type vote (0–1, default 0.5)")
+    fm.add_argument("--json", action="store_true")
+    fm.set_defaults(func=cmd_fingerprint_match)
 
     # ── list-doc-types ───────────────────────────────────────────────────────
     ldt = sub.add_parser("list-doc-types", help="List available document type specs")
