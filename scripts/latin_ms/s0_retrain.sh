@@ -48,6 +48,8 @@ HTR_SCHEDULE=cosine
 HTR_COS_MIN_LR=0.00005
 HTR_WARMUP=100
 HTR_AUGMENT=false
+HTR_OPTIMIZER=Adam
+HTR_WEIGHT_DECAY=0.0
 # Use `--quit fixed --epochs N` instead of early-stopping on val_loss because
 # ketos's default monitor saves "best" at epoch 0 when fine-tuning from a
 # strong base (loss stops moving after the first pass). Fixed-budget training
@@ -71,6 +73,9 @@ while [[ $# -gt 0 ]]; do
         --htr-quit)         HTR_QUIT="$2"; shift 2 ;;
         --htr-train-files)  HTR_TRAIN_FILES="$2"; shift 2 ;;
         --htr-val-files)    HTR_VAL_FILES="$2"; shift 2 ;;
+        --htr-optimizer)    HTR_OPTIMIZER="$2"; shift 2 ;;
+        --htr-weight-decay) HTR_WEIGHT_DECAY="$2"; shift 2 ;;
+        --htr-base)         HTR_BASE_OVERRIDE="$2"; shift 2 ;;
         --seg-only)         RUN_UNET=false; RUN_HTR=false; shift ;;
         --htr-only)         RUN_SEG=false; RUN_UNET=false; shift ;;
         --no-htr)           RUN_HTR=false; shift ;;
@@ -86,7 +91,7 @@ COMBINED="${LATIN_MS_GT_DIR:-${TRAIN_DIR}/combined_gt}"
 UNET_OUT="${TRAIN_DIR}/line_mask_unet.pt"
 KRAKEN_BASE="${TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH:-/Users/halxiii/Projects/latin_documents-1/model_249.mlmodel}"
 KRAKEN_OUT="${TRAIN_DIR}/kraken_seg_updated"
-HTR_BASE="${TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH:-${TRAIN_DIR}/Tridis_Medieval_EarlyModern.mlmodel}"
+HTR_BASE="${HTR_BASE_OVERRIDE:-${TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH:-${TRAIN_DIR}/Tridis_Medieval_EarlyModern.mlmodel}}"
 HTR_OUT="${TRAIN_DIR}/htr_latin_updated"
 
 mkdir -p "$TRAIN_DIR"
@@ -246,7 +251,8 @@ if $RUN_HTR; then
         else
             HTR_GT_INPUT=("${GT_XMLS[@]}")
         fi
-        echo "  HTR: lrate=${HTR_LRATE_FINAL}  schedule=${HTR_SCHEDULE}  warmup=${HTR_WARMUP}  augment=${HTR_AUGMENT}  quit=${HTR_QUIT}"
+        echo "  HTR: lrate=${HTR_LRATE_FINAL}  schedule=${HTR_SCHEDULE}  warmup=${HTR_WARMUP}  augment=${HTR_AUGMENT}  quit=${HTR_QUIT}  optimizer=${HTR_OPTIMIZER}  wd=${HTR_WEIGHT_DECAY}"
+        echo "  HTR: base=${HTR_BASE##*/}"
         ketos "${KETOS_DEVICE_ARG[@]}" train \
             -f page \
             -i "$HTR_BASE" \
@@ -258,6 +264,8 @@ if $RUN_HTR; then
             --schedule "$HTR_SCHEDULE" \
             --cos-min-lr "$HTR_COS_MIN_LR" \
             --warmup "$HTR_WARMUP" \
+            --optimizer "$HTR_OPTIMIZER" \
+            -w "$HTR_WEIGHT_DECAY" \
             "${HTR_AUGMENT_ARG[@]}" \
             "${HTR_FILE_ARGS[@]}" \
             "${HTR_GT_INPUT[@]}" 2>&1 | tee "${TRAIN_DIR}/training_htr.log" | \
