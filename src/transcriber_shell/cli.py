@@ -791,6 +791,95 @@ def cmd_fingerprint_match(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_gt_template(args: argparse.Namespace) -> int:
+    from transcriber_shell.xml_tools.gt_text import write_template
+
+    src = Path(args.xml).expanduser().resolve()
+    if not src.exists():
+        print(f"error: not found: {src}", file=sys.stderr)
+        return 1
+
+    xmls: list[Path] = []
+    if src.is_dir():
+        xmls = sorted(src.glob("*.xml"))
+    else:
+        xmls = [src]
+    if not xmls:
+        print("error: no XML files found", file=sys.stderr)
+        return 1
+
+    out_dir = Path(args.out_dir).expanduser().resolve() if args.out_dir else None
+    pages_dir = Path(args.pages_dir).expanduser().resolve() if args.pages_dir else None
+
+    for xml in xmls:
+        stem = xml.stem
+        txt_out = (out_dir / f"{stem}.gt.txt") if out_dir else xml.with_suffix(".gt.txt")
+        tiles_dir = None
+        image_path = None
+        if pages_dir is not None and args.crop_tiles:
+            tiles_dir = (out_dir or xml.parent) / f"{stem}.gt_tiles"
+            # find matching image
+            for ext in (".jpg", ".jpeg", ".png", ".tif", ".tiff"):
+                cand = pages_dir / f"{stem}{ext}"
+                if cand.is_file():
+                    image_path = cand
+                    break
+            if image_path is None:
+                print(f"  skip tiles for {stem}: no matching image in {pages_dir}", file=sys.stderr)
+                tiles_dir = None
+        try:
+            n = write_template(xml, txt_out, image_path=image_path, crop_tiles_dir=tiles_dir)
+        except Exception as e:
+            print(f"  {xml.name}: failed: {e}", file=sys.stderr)
+            continue
+        msg = f"  {xml.name}: {n} TextLines → {txt_out.name}"
+        if tiles_dir is not None:
+            msg += f" + tiles → {tiles_dir.name}/"
+        print(msg)
+    return 0
+
+
+def cmd_gt_inject(args: argparse.Namespace) -> int:
+    from transcriber_shell.xml_tools.gt_text import inject_text
+
+    src = Path(args.xml).expanduser().resolve()
+    if not src.exists():
+        print(f"error: not found: {src}", file=sys.stderr)
+        return 1
+
+    xmls: list[Path] = []
+    if src.is_dir():
+        xmls = sorted(src.glob("*.xml"))
+    else:
+        xmls = [src]
+    if not xmls:
+        print("error: no XML files found", file=sys.stderr)
+        return 1
+
+    out_dir = Path(args.out_dir).expanduser().resolve() if args.out_dir else None
+
+    n_total = 0
+    n_filled_total = 0
+    for xml in xmls:
+        txt = xml.with_suffix(".gt.txt")
+        if args.txt_dir:
+            txt = Path(args.txt_dir).expanduser().resolve() / f"{xml.stem}.gt.txt"
+        if not txt.is_file():
+            print(f"  skip {xml.name}: no template {txt.name}", file=sys.stderr)
+            continue
+        out_path = (out_dir / xml.name) if out_dir else None
+        try:
+            n_lines, n_filled = inject_text(xml, txt, out_path=out_path)
+        except Exception as e:
+            print(f"  {xml.name}: failed: {e}", file=sys.stderr)
+            continue
+        n_total += n_lines
+        n_filled_total += n_filled
+        print(f"  {xml.name}: filled {n_filled}/{n_lines} lines")
+    print(f"total: {n_filled_total}/{n_total} TextLines now have ground-truth text")
+    return 0
+
+
 def cmd_list_doc_types(_args: argparse.Namespace) -> int:
     from transcriber_shell.document_types import list_doc_types
     settings = Settings()
@@ -1321,6 +1410,33 @@ def main() -> None:
                     help="Min similarity for doc-type vote (0–1, default 0.5)")
     fm.add_argument("--json", action="store_true")
     fm.set_defaults(func=cmd_fingerprint_match)
+
+    # ── gt-template ──────────────────────────────────────────────────────────
+    gt = sub.add_parser(
+        "gt-template",
+        help="Emit a numbered .gt.txt template (and optional line-crop tiles) "
+             "for manual text-level GT annotation",
+    )
+    gt.add_argument("xml", help="Single PAGE XML or a directory of XMLs")
+    gt.add_argument("--out-dir", metavar="PATH", default=None,
+                    help="Write templates here (default: alongside each XML)")
+    gt.add_argument("--pages-dir", metavar="PATH", default=None,
+                    help="Image dir for --crop-tiles (matches by stem)")
+    gt.add_argument("--crop-tiles", action="store_true",
+                    help="Also save one PNG per TextLine alongside the template")
+    gt.set_defaults(func=cmd_gt_template)
+
+    # ── gt-inject ────────────────────────────────────────────────────────────
+    gi = sub.add_parser(
+        "gt-inject",
+        help="Inject text from .gt.txt template(s) into TextEquiv/Unicode of PAGE XML",
+    )
+    gi.add_argument("xml", help="Single PAGE XML or a directory of XMLs")
+    gi.add_argument("--txt-dir", metavar="PATH", default=None,
+                    help="Find <stem>.gt.txt in this dir (default: alongside each XML)")
+    gi.add_argument("--out-dir", metavar="PATH", default=None,
+                    help="Write updated XMLs here (default: overwrite in place)")
+    gi.set_defaults(func=cmd_gt_inject)
 
     # ── list-doc-types ───────────────────────────────────────────────────────
     ldt = sub.add_parser("list-doc-types", help="List available document type specs")
