@@ -43,6 +43,15 @@ HTR_SCHEDULE=cosine
 HTR_COS_MIN_LR=0.00005
 HTR_WARMUP=100
 HTR_AUGMENT=false
+# Use `--quit fixed --epochs N` instead of early-stopping on val_loss because
+# ketos's default monitor saves "best" at epoch 0 when fine-tuning from a
+# strong base (loss stops moving after the first pass). Fixed-budget training
+# lets the cosine schedule actually anneal; pick the trained checkpoint by
+# external CER comparison (transcriber-shell htr-compare).
+HTR_QUIT=fixed
+# Stratified train/val files (preempts --partition skew on imbalanced GT).
+HTR_TRAIN_FILES=""
+HTR_VAL_FILES=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -54,6 +63,9 @@ while [[ $# -gt 0 ]]; do
         --htr-schedule)     HTR_SCHEDULE="$2"; shift 2 ;;
         --htr-warmup)       HTR_WARMUP="$2"; shift 2 ;;
         --htr-augment)      HTR_AUGMENT=true; shift ;;
+        --htr-quit)         HTR_QUIT="$2"; shift 2 ;;
+        --htr-train-files)  HTR_TRAIN_FILES="$2"; shift 2 ;;
+        --htr-val-files)    HTR_VAL_FILES="$2"; shift 2 ;;
         --seg-only)         RUN_UNET=false; RUN_HTR=false; shift ;;
         --htr-only)         RUN_SEG=false; RUN_UNET=false; shift ;;
         --no-htr)           RUN_HTR=false; shift ;;
@@ -215,21 +227,35 @@ if $RUN_HTR; then
         HTR_AUGMENT_ARG=()
         $HTR_AUGMENT && HTR_AUGMENT_ARG=(--augment)
         HTR_LRATE_FINAL="${LRATE:-$HTR_LRATE}"
-        echo "  HTR: lrate=${HTR_LRATE_FINAL}  schedule=${HTR_SCHEDULE}  warmup=${HTR_WARMUP}  augment=${HTR_AUGMENT}"
+        # --quit fixed bypasses the loss-monitor early-stop pathology
+        # (best=epoch 0 problem). With --lag still given, but for the chosen
+        # quit mode only "fixed" or "early" matter; --lag is ignored for fixed.
+        HTR_QUIT_ARGS=(--quit "$HTR_QUIT")
+        [[ "$HTR_QUIT" == "early" ]] && HTR_QUIT_ARGS+=(--lag 5)
+        # Stratified train/val files (preempts --partition source skew).
+        HTR_FILE_ARGS=()
+        if [[ -n "$HTR_TRAIN_FILES" && -n "$HTR_VAL_FILES" ]]; then
+            HTR_FILE_ARGS=(-t "$HTR_TRAIN_FILES" -e "$HTR_VAL_FILES")
+            HTR_GT_INPUT=()
+            echo "  HTR: stratified split (train=$HTR_TRAIN_FILES, eval=$HTR_VAL_FILES)"
+        else
+            HTR_GT_INPUT=("${GT_XMLS[@]}")
+        fi
+        echo "  HTR: lrate=${HTR_LRATE_FINAL}  schedule=${HTR_SCHEDULE}  warmup=${HTR_WARMUP}  augment=${HTR_AUGMENT}  quit=${HTR_QUIT}"
         ketos "${KETOS_DEVICE_ARG[@]}" train \
             -f page \
             -i "$HTR_BASE" \
             --resize add \
             -o "$HTR_OUT" \
             --epochs "$EPOCHS" \
-            --quit early \
-            --lag 5 \
+            "${HTR_QUIT_ARGS[@]}" \
             -r "$HTR_LRATE_FINAL" \
             --schedule "$HTR_SCHEDULE" \
             --cos-min-lr "$HTR_COS_MIN_LR" \
             --warmup "$HTR_WARMUP" \
             "${HTR_AUGMENT_ARG[@]}" \
-            "${GT_XMLS[@]}" 2>&1 | tee "${TRAIN_DIR}/training_htr.log" | \
+            "${HTR_FILE_ARGS[@]}" \
+            "${HTR_GT_INPUT[@]}" 2>&1 | tee "${TRAIN_DIR}/training_htr.log" | \
             grep --line-buffered -aE "epoch|loss|best|Saving|Error|CER|stage [0-9]|nan|NaN"
         echo "  ketos train done."
     fi

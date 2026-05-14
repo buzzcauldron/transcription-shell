@@ -880,6 +880,61 @@ def cmd_gt_inject(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_gt_filter(args: argparse.Namespace) -> int:
+    from transcriber_shell.xml_tools.gt_filter import filter_directory
+    src = Path(args.src_dir).expanduser().resolve()
+    dst = Path(args.dst_dir).expanduser().resolve()
+    if not src.is_dir():
+        print(f"error: {src} is not a directory", file=sys.stderr)
+        return 1
+    stats = filter_directory(src, dst, copy_images=not args.no_copy_images)
+    drop_pct = stats["drop_ratio"] * 100
+    print(f"filtered {stats['n_files_in']} XMLs → {stats['n_files_kept']} kept")
+    print(f"  TextLines: {stats['lines_before']} → {stats['lines_after']} ({drop_pct:.1f}% dropped)")
+    if args.verbose:
+        for row in stats["rows"]:
+            err = f" ERR={row['error']}" if "error" in row else ""
+            print(f"  {row['stem']:<32} {row['before']:>4} → {row['after']:>4}{err}")
+    return 0
+
+
+def cmd_gt_split(args: argparse.Namespace) -> int:
+    from transcriber_shell.xml_tools.gt_split import write_split_files
+    src = Path(args.src_dir).expanduser().resolve()
+    train_txt = Path(args.train_out).expanduser().resolve() if args.train_out else src / "train_files.txt"
+    val_txt = Path(args.val_out).expanduser().resolve() if args.val_out else src / "val_files.txt"
+    if not src.is_dir():
+        print(f"error: {src} is not a directory", file=sys.stderr)
+        return 1
+    stats = write_split_files(
+        src, train_txt, val_txt,
+        val_fraction=args.val_fraction, seed=args.seed,
+    )
+    print(f"split: {stats['n_train']} train / {stats['n_val']} val")
+    print(f"  train: {train_txt}")
+    print(f"  val:   {val_txt}")
+    print(f"\n  {'source':<16} {'total':>6} {'train':>6} {'val':>4}")
+    for src_key, d in sorted(stats["by_source"].items(), key=lambda kv: -kv[1]["total"]):
+        print(f"  {src_key:<16} {d['total']:>6} {d['train']:>6} {d['val']:>4}")
+    return 0
+
+
+def cmd_htr_compare(args: argparse.Namespace) -> int:
+    from transcriber_shell.htr.compare import compare_models, format_compare_report
+    base = Path(args.base).expanduser().resolve()
+    cand = Path(args.candidate).expanduser().resolve()
+    gt = Path(args.gt).expanduser().resolve()
+    seg = Path(args.seg_model).expanduser().resolve() if args.seg_model else None
+    for p, name in [(base, "base"), (cand, "candidate"), (gt, "gt")]:
+        if not p.exists():
+            print(f"error: {name} not found: {p}", file=sys.stderr)
+            return 1
+    result = compare_models(base, cand, gt, seg_model=seg, device=args.device,
+                            centroid_match_px=args.centroid_match_px)
+    print(format_compare_report(result, as_json=args.json), end="")
+    return 0
+
+
 def cmd_list_doc_types(_args: argparse.Namespace) -> int:
     from transcriber_shell.document_types import list_doc_types
     settings = Settings()
@@ -1437,6 +1492,47 @@ def main() -> None:
     gi.add_argument("--out-dir", metavar="PATH", default=None,
                     help="Write updated XMLs here (default: overwrite in place)")
     gi.set_defaults(func=cmd_gt_inject)
+
+    # ── gt-filter ────────────────────────────────────────────────────────────
+    gf = sub.add_parser(
+        "gt-filter",
+        help="Drop TextLines without transcribed text from a PAGE XML GT corpus",
+    )
+    gf.add_argument("src_dir", help="Source GT directory of *.xml + matching images")
+    gf.add_argument("dst_dir", help="Filtered output directory")
+    gf.add_argument("--no-copy-images", action="store_true",
+                    help="Skip copying matching image files into dst_dir")
+    gf.add_argument("--verbose", action="store_true")
+    gf.set_defaults(func=cmd_gt_filter)
+
+    # ── gt-split ─────────────────────────────────────────────────────────────
+    gs = sub.add_parser(
+        "gt-split",
+        help="Stratified train/val split by source prefix → ketos -t/-e files",
+    )
+    gs.add_argument("src_dir", help="GT directory of *.xml files")
+    gs.add_argument("--train-out", default=None,
+                    help="Path to train_files.txt (default: <src_dir>/train_files.txt)")
+    gs.add_argument("--val-out", default=None,
+                    help="Path to val_files.txt (default: <src_dir>/val_files.txt)")
+    gs.add_argument("--val-fraction", type=float, default=0.1)
+    gs.add_argument("--seed", type=int, default=0)
+    gs.set_defaults(func=cmd_gt_split)
+
+    # ── htr-compare ──────────────────────────────────────────────────────────
+    hc = sub.add_parser(
+        "htr-compare",
+        help="Compare two Kraken HTR models on a shared GT set (per-page Δ CER)",
+    )
+    hc.add_argument("base", help="Base / reference Kraken HTR model")
+    hc.add_argument("candidate", help="Candidate (fine-tuned) Kraken HTR model")
+    hc.add_argument("gt", help="GT directory (PAGE/ALTO XMLs with matching images)")
+    hc.add_argument("--seg-model", default=None,
+                    help="Optional seg model for baseline accuracy comparison")
+    hc.add_argument("--device", default="cpu")
+    hc.add_argument("--centroid-match-px", type=int, default=8)
+    hc.add_argument("--json", action="store_true")
+    hc.set_defaults(func=cmd_htr_compare)
 
     # ── list-doc-types ───────────────────────────────────────────────────────
     ldt = sub.add_parser("list-doc-types", help="List available document type specs")
