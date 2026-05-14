@@ -49,8 +49,11 @@ if $WAIT; then
             echo "  training complete."
             break
         fi
-        # Also exit if no ketos process is alive (covers manual kill / crash).
-        if ! ssh "$SERVER" "pgrep -f 'ketos.*train' >/dev/null 2>&1"; then
+        # Also exit if no ketos python process is alive (covers manual kill /
+        # crash). pgrep -f matches its own argv, so pattern must be specific
+        # enough not to match our SSH wrapper. The .venv-kraken/bin/ketos
+        # path is unique to the python process.
+        if ! ssh "$SERVER" "pgrep -f '/\\.venv-kraken/bin/ketos' >/dev/null 2>&1"; then
             echo "  no ketos process running — assuming done or killed."
             break
         fi

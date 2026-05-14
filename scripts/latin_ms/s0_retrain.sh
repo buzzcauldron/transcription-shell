@@ -27,7 +27,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${SCRIPT_DIR}/.env.latin-ms"
 [[ -f "$ENV_FILE" ]] && { set -a; source "$ENV_FILE"; set +a; }
 
-EPOCHS=30
+# Default budget chosen from the 2026-05-14 run: fine-tuning Tridis on ~200
+# horizontal-line GT pairs reached its sweet spot at epoch 2; epochs 5+
+# overcooked into 0 chars/line. Five epochs is safer than 30 — pick the best
+# checkpoint after the fact with `transcriber-shell htr-compare`. Override
+# with --epochs N when training from scratch or with much larger GT.
+EPOCHS=5
 DEVICE=auto
 BATCH_SIZE=1
 LRATE=""
