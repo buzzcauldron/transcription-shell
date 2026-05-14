@@ -32,6 +32,11 @@ if [[ -n "$_GKEY" ]]; then
     export GOOGLE_API_KEY="$_GKEY"
     export GEMINI_API_KEY="$_GKEY"
 fi
+# Bound per-call latency: magic-elise has no default timeout and we hit a
+# multi-hour hang on Google's TCP socket. 120s per call, with retries handled
+# upstream, keeps stage 5 alive.
+export GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-120}"
+export GEMINI_RETRY_ATTEMPTS="${GEMINI_RETRY_ATTEMPTS:-3}"
 
 echo "==> Stage 5: expand-diplomatic (${EXPAND_DIPLOMATIC_BACKEND:-gemini}) → ${EXPANDED_DIR}"
 EXPAND_ARGS=(
