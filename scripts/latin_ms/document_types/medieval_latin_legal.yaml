@@ -10,12 +10,15 @@ llm:
   fallback: gemini-2.5-pro      # models/gemini-2.5-pro.yaml
 
 htr:
-  model: Tridis_Medieval_EarlyModern   # trained on medieval/early-modern
-  path: "${LATIN_MS_WORKSPACE}/training/Tridis_Medieval_EarlyModern.mlmodel"
+  # Round-4 fine-tune (2026-05-14): CER 15.95% on val holdout vs Tridis 29.90%.
+  # See project_status memory for the full training trajectory.
+  model: htr_latin_updated_best
+  path: "${LATIN_MS_WORKSPACE}/training/htr_latin_updated_best.mlmodel"
 
 segmentation:
-  model: model_249              # base Kraken seg; swap for kraken_seg_updated when ready
-  path: "${HOME}/Projects/latin_documents-1/model_249.mlmodel"
+  # Baseline-only retrain (2026-05-13).
+  model: kraken_seg_updated_best
+  path: "${LATIN_MS_WORKSPACE}/training/kraken_seg_updated_best.mlmodel"
 
 prompt: prompt_latin.yaml
 
