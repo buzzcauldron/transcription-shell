@@ -29,8 +29,42 @@ def _strip_tokens(text: str) -> str:
     return _TOKEN_RE.sub(_repl, text)
 
 
-def _normalize(text: str) -> str:
-    return re.sub(r"\s+", " ", _strip_tokens(text)).strip()
+# Combining diacritics + supralinear marks that vary across transcriptions
+# (macron, tilde, breve, etc.) — strip via NFD decomposition + category filter.
+_COMBINING_RE = re.compile(r"\p{M}+") if False else None  # placeholder for clarity
+
+
+def _canonicalize_latin(text: str) -> str:
+    """Aggressive Latin-aware normalization so fair CER is not dominated by:
+    - capitalization (medieval ms has variable caps)
+    - punctuation (LLM adds modern punctuation; ms has none)
+    - combining diacritics / supralinear marks (vary by transcription convention)
+    - trailing apostrophe abbreviation marks ("Norff'" / "Suff'")
+    - common medieval scribal forms ("u"↔"v", "i"↔"j" when intervocalic).
+
+    This canonicalizer is symmetric: applied to BOTH GT and hypothesis so that
+    score deltas reflect transcription quality, not formatting convention.
+    """
+    import unicodedata
+    # NFD: decompose then drop combining marks (Mn = nonspacing, Mc = spacing,
+    # Me = enclosing). Captures macrons, tildes, supralinear strokes, etc.
+    t = unicodedata.normalize("NFD", text)
+    t = "".join(c for c in t if unicodedata.category(c)[0] != "M")
+    # Lowercase, normalize medieval u/v and i/j (lossy but matches scribal practice).
+    t = t.lower()
+    t = t.replace("v", "u").replace("j", "i")
+    # Drop common scribal punctuation marks but keep word boundaries.
+    t = re.sub(r"['\.\,\;\:\!\?\"`’‘“”…—\-\(\)\[\]]+", " ", t)
+    # Collapse whitespace.
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
+def _normalize(text: str, *, canonicalize: bool = True) -> str:
+    out = re.sub(r"\s+", " ", _strip_tokens(text)).strip()
+    if canonicalize:
+        out = _canonicalize_latin(out)
+    return out
 
 
 def _levenshtein(s1: str, s2: str) -> int:
