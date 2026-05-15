@@ -13,7 +13,14 @@ JOB_DIR="${LATIN_MS_WORKSPACE}/jobs/${LATIN_MS_JOB_ID}"
 ARTIFACTS_DIR="${JOB_DIR}/03_artifacts"
 TEI_DIR="${JOB_DIR}/.tei_stage"
 EXPANDED_DIR="${JOB_DIR}/04_expanded"
-MAGIC_ELISE="${MAGIC_ELISE_ROOT:-${HOME}/Projects/magic-elise-tool}"
+# expand-diplomatic upstream: https://github.com/buzzcauldron/expand-diplomatic
+# MAGIC_ELISE_ROOT name retained for backward compat with older configs.
+EXPAND_DIPLOMATIC_ROOT="${MAGIC_ELISE_ROOT:-${HOME}/Projects/expand-diplomatic}"
+if [[ ! -d "$EXPAND_DIPLOMATIC_ROOT" ]]; then
+    echo "ERROR: expand-diplomatic not found at $EXPAND_DIPLOMATIC_ROOT" >&2
+    echo "  Install with: git clone https://github.com/buzzcauldron/expand-diplomatic.git ~/Projects/expand-diplomatic" >&2
+    exit 1
+fi
 mkdir -p "$TEI_DIR" "$EXPANDED_DIR"
 
 # YAML → TEI (transcriber-shell canonical logic)
@@ -24,7 +31,7 @@ TEI_COUNT=$(find "$TEI_DIR" -name "*_tei.xml" | wc -l | tr -d ' ')
 [[ "$TEI_COUNT" -eq 0 ]] && { echo "ERROR: no YAML in ${ARTIFACTS_DIR}. Run s4_transcribe.sh first." >&2; exit 1; }
 
 # Propagate Google key from transcriber-shell config.
-# magic-elise calls load_dotenv() on its own .env which can hold a stale
+# expand-diplomatic calls load_dotenv() on its own .env which can hold a stale
 # GEMINI_API_KEY. load_dotenv defaults to override=False, so an already-set
 # env var wins — set BOTH names to the same valid key here.
 _GKEY="$(python3 -c "from transcriber_shell.config import Settings; s=Settings(); print(s.google_api_key or '')" 2>/dev/null)"
@@ -32,7 +39,7 @@ if [[ -n "$_GKEY" ]]; then
     export GOOGLE_API_KEY="$_GKEY"
     export GEMINI_API_KEY="$_GKEY"
 fi
-# Bound per-call latency: magic-elise has no default timeout and we hit a
+# Bound per-call latency: expand-diplomatic has no default timeout and we hit a
 # multi-hour hang on Google's TCP socket. 120s per call, with retries handled
 # upstream, keeps stage 5 alive.
 export GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-120}"
@@ -50,7 +57,7 @@ EXPAND_ARGS=(
 [[ -n "${EXPAND_DIPLOMATIC_LOCAL_MODEL:-}" ]] && EXPAND_ARGS+=(--local-model "$EXPAND_DIPLOMATIC_LOCAL_MODEL")
 [[ -f "${JOB_DIR}/expand_examples.json" ]] && EXPAND_ARGS+=(--examples "${JOB_DIR}/expand_examples.json")
 
-(cd "$MAGIC_ELISE" && python3 -m expand_diplomatic "${EXPAND_ARGS[@]}")
+(cd "$EXPAND_DIPLOMATIC_ROOT" && python3 -m expand_diplomatic "${EXPAND_ARGS[@]}")
 
 XML_COUNT=$(find "$EXPANDED_DIR" -name "*.xml" | wc -l | tr -d ' ')
 echo "==> Stage 5 done: ${XML_COUNT} expanded XML file(s) in ${EXPANDED_DIR}"
