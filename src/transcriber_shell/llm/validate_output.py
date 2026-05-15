@@ -41,11 +41,69 @@ _POSITION_ALIASES: dict[str, str] = {
     "marginalia_bottom": "margin_bottom",
     "marginalia": "margin_left",
     "margin": "margin_left",
+    # Models invent finer-grained marginalia positions (e.g. bottom-right corner);
+    # collapse to the nearest protocol bucket so the validator passes.
+    "marginalia_bottom_right": "margin_bottom",
+    "marginalia_bottom_left": "margin_bottom",
+    "marginalia_top_right": "margin_top",
+    "marginalia_top_left": "margin_top",
+    "margin_bottom_right": "margin_bottom",
+    "margin_bottom_left": "margin_bottom",
+    "margin_top_right": "margin_top",
+    "margin_top_left": "margin_top",
     # Models sometimes invent labels outside OUTPUT_SCHEMA; map to closest protocol bucket.
     "title": "header",
     "subtitle": "header",
     "attestation_block": "footer",
     "attestation": "footer",
+}
+# ISO 15924 script codes → ISO 639-2 language codes for known equivalents.
+# The protocol expects language codes; some models emit script codes by mistake.
+_LANGUAGE_ALIASES: dict[str, str] = {
+    "latn": "lat",
+    "latin": "lat",
+    "grek": "grc",
+    "cyrl": "rus",  # closest common code; protocol allows specific lang codes
+    "arab": "ara",
+    "hebr": "heb",
+    "hans": "zho",
+    "hant": "zho",
+    "jpan": "jpn",
+}
+# Protocol's controlled era vocabulary (matches benchmark/validate_schema.py
+# VALID_ERAS). Aliases handle common LLM mistakes (capitalization, slashes,
+# verbose phrasings).
+_VALID_ERAS = frozenset({
+    "medieval", "early_modern", "enlightenment",
+    "nineteenth_century", "twentieth_century", "contemporary",
+})
+_ERA_ALIASES: dict[str, str] = {
+    "late_medieval": "medieval",
+    "early_medieval": "medieval",
+    "high_medieval": "medieval",
+    "late_medieval_early_modern": "medieval",  # ambiguous; pick the earlier bucket
+    "late_medieval/early_modern": "medieval",
+    "renaissance": "early_modern",
+    "early_modern_english": "early_modern",
+    "19th_century": "nineteenth_century",
+    "20th_century": "twentieth_century",
+    "21st_century": "contemporary",
+    "modern": "contemporary",
+}
+_VALID_DIPLOMATIC_PROFILES = frozenset({"strict", "semi_strict", "layout_aware", "diplomatic_plus"})
+_DIPLOMATIC_PROFILE_ALIASES: dict[str, str] = {
+    "academic": "strict",
+    "scholarly": "strict",
+    "paleographic": "strict",
+    "diplomatic": "strict",
+    "loose": "layout_aware",
+    "semi-strict": "semi_strict",
+}
+_VALID_NORM_MODES = frozenset({"diplomatic", "normalized"})
+_NORM_MODE_ALIASES: dict[str, str] = {
+    "unnormalized": "diplomatic",
+    "raw": "diplomatic",
+    "normalised": "normalized",
 }
 _VALID_PROTOCOL_VERSIONS = frozenset({"1.0.0", "1.1.0", "v1.0", "v1.1"})
 _DEFAULT_PROTOCOL_VERSION = "1.1.0"
@@ -132,7 +190,53 @@ def normalize_transcription_yaml_data(data: dict[str, Any]) -> None:
         rm = meta.get("runMode")
         if isinstance(rm, str):
             meta["runMode"] = rm.strip().lower()
+        # targetEra: canonicalize (lowercase, underscore separators, alias map).
+        te = meta.get("targetEra")
+        if isinstance(te, str):
+            te_norm = te.strip().lower().replace(" ", "_").replace("/", "_")
+            while "__" in te_norm:
+                te_norm = te_norm.replace("__", "_")
+            te_norm = _ERA_ALIASES.get(te_norm, te_norm)
+            if te_norm in _VALID_ERAS:
+                meta["targetEra"] = te_norm
+
+        # diplomaticProfile and normalizationMode: alias-map common LLM variants.
+        # Convert literal "null"/"none" strings to actual None (YAML quirk when
+        # the LLM quotes the keyword).
+        for _k in ("diplomaticProfile", "normalizationMode", "targetEra", "targetLanguage"):
+            _v = meta.get(_k)
+            if isinstance(_v, str) and _v.strip().lower() in ("null", "none", "~", ""):
+                meta[_k] = None
+        dp = meta.get("diplomaticProfile")
+        if isinstance(dp, str):
+            dp_norm = dp.strip().lower().replace("-", "_")
+            dp_norm = _DIPLOMATIC_PROFILE_ALIASES.get(dp_norm, dp_norm)
+            if dp_norm in _VALID_DIPLOMATIC_PROFILES:
+                meta["diplomaticProfile"] = dp_norm
+        nm = meta.get("normalizationMode")
+        if isinstance(nm, str):
+            nm_norm = nm.strip().lower()
+            nm_norm = _NORM_MODE_ALIASES.get(nm_norm, nm_norm)
+            if nm_norm in _VALID_NORM_MODES:
+                meta["normalizationMode"] = nm_norm
+
         tl = meta.get("targetLanguage")
+        # Map script codes (e.g. "Latn") and English aliases to language codes.
+        # Protocol wants "<iso639>-<era>" (e.g. "lat-medieval"), so when the model
+        # emits a bare 3-letter code, splice in targetEra if available.
+        if isinstance(tl, str):
+            tl_norm = tl.strip().lower()
+            tl_norm = _LANGUAGE_ALIASES.get(tl_norm, tl_norm)
+            if "-" not in tl_norm and tl_norm and tl_norm != "mixed":
+                era = meta.get("targetEra")
+                if isinstance(era, str) and era.strip():
+                    tl_norm = f"{tl_norm}-{era.strip().lower()}"
+                elif tl_norm == "lat":
+                    # Default Latin docs in this corpus to medieval; the validator
+                    # rejects a bare "lat".
+                    tl_norm = "lat-medieval"
+            meta["targetLanguage"] = tl_norm
+            tl = tl_norm
         ehm = meta.get("englishHandwritingModality")
         if isinstance(ehm, str):
             ehm_norm = ehm.strip().lower().replace("-", "_").replace(" ", "_")

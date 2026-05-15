@@ -67,9 +67,17 @@ YAML
 fi
 
 # ── 2. Run normalization per diplomatic YAML ──────────────────────────────────
-YAMLS=( "$ARTIFACTS_DIR"/*_transcription.yaml )
-if [[ ${#YAMLS[@]} -eq 0 ]] || [[ ! -f "${YAMLS[0]}" ]]; then
-    echo "  ERROR: no *_transcription.yaml found in $ARTIFACTS_DIR" >&2
+# stage-4 writes 03_artifacts/<job_id>/<job_id>_transcription.yaml, so search
+# recursively but skip *.tridis_era/ (Tridis-era backups) and any *.bak dirs.
+# Use process substitution instead of mapfile (bash 3.2 on macOS lacks mapfile).
+YAMLS=()
+while IFS= read -r yaml_path; do
+    YAMLS+=("$yaml_path")
+done < <(find "$ARTIFACTS_DIR" \
+    -type d \( -name '*.tridis_era' -o -name '*.bak' \) -prune -o \
+    -type f -name '*_transcription.yaml' -print | sort)
+if [[ ${#YAMLS[@]} -eq 0 ]]; then
+    echo "  ERROR: no *_transcription.yaml found under $ARTIFACTS_DIR" >&2
     exit 1
 fi
 
@@ -138,13 +146,12 @@ PYEOF
         continue
     fi
 
-    if transcriber-shell run \
+    if TRANSCRIBER_SHELL_ARTIFACTS_DIR="$NORM_DIR" transcriber-shell run \
             --job-id "${LATIN_MS_JOB_ID}-norm-${STEM}" \
             --image "$IMG" \
             --prompt "$NORM_PROMPT" \
             --provider "$PROVIDER" \
             --no-diplomatic \
-            --output-dir "$NORM_DIR" \
             2>&1; then
         PASS=$((PASS + 1))
     else
