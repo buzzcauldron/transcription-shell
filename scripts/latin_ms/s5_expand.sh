@@ -53,6 +53,10 @@ EXPAND_ARGS=(
     --model "${EXPAND_DIPLOMATIC_MODEL:-gemini-2.5-flash}"
     --modality "${EXPAND_DIPLOMATIC_MODALITY:-full}"
     --passes "${EXPAND_DIPLOMATIC_PASSES:-2}"
+    # Run N docs in parallel; serial batch ran ~25 min/doc and we kept seeing
+    # state-related hangs at doc 5. Even modest parallelism (3) wraps a 7-doc
+    # job in roughly 3× one doc's time while spreading any hang risk.
+    --parallel-files "${EXPAND_DIPLOMATIC_PARALLEL_FILES:-3}"
 )
 [[ -n "${EXPAND_DIPLOMATIC_LOCAL_MODEL:-}" ]] && EXPAND_ARGS+=(--local-model "$EXPAND_DIPLOMATIC_LOCAL_MODEL")
 [[ -f "${JOB_DIR}/expand_examples.json" ]] && EXPAND_ARGS+=(--examples "${JOB_DIR}/expand_examples.json")
