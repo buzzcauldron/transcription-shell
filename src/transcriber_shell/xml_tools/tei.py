@@ -38,11 +38,38 @@ def yaml_to_tei(src: Path, dst: Path) -> None:
 def convert_dir(artifacts_dir: Path, out_dir: Path) -> list[tuple[Path, Path]]:
     """Convert all *_transcription.yaml files in artifacts_dir to TEI XML in out_dir.
 
+    Skips files inside conventional backup directories whose names end in
+    ``.tridis_era``, ``.flash`` / ``.flash_era``, ``.bak``, or contain
+    ``.backup``. Without this filter, snapshot backups inside the artifacts
+    tree silently shadow the current YAMLs (same stem → same TEI output
+    filename, last-write-wins).
+
+    When the same stem appears multiple times even after backup filtering,
+    the most recently modified YAML wins.
+
     Returns list of (src, dst) pairs written.
     """
-    pairs: list[tuple[Path, Path]] = []
-    for src in sorted(artifacts_dir.rglob("*_transcription.yaml")):
+    def _is_backup(p: Path) -> bool:
+        for part in p.parts:
+            low = part.lower()
+            if low.endswith((".tridis_era", ".flash", ".flash_era", ".bak", ".backup")):
+                return True
+            if ".backup" in low:
+                return True
+        return False
+
+    candidates: dict[str, Path] = {}
+    for src in artifacts_dir.rglob("*_transcription.yaml"):
+        if _is_backup(src.relative_to(artifacts_dir)):
+            continue
         stem = src.stem.replace("_transcription", "")
+        prev = candidates.get(stem)
+        if prev is None or src.stat().st_mtime > prev.stat().st_mtime:
+            candidates[stem] = src
+
+    pairs: list[tuple[Path, Path]] = []
+    for stem in sorted(candidates):
+        src = candidates[stem]
         dst = out_dir / f"{stem}_tei.xml"
         yaml_to_tei(src, dst)
         pairs.append((src, dst))
