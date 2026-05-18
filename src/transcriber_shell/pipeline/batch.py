@@ -148,6 +148,7 @@ def run_batch(
     skip_successful: bool = False,
     settings: Settings | None = None,
     log_fn=None,
+    cancel_check=None,
 ) -> list[dict[str, Any]]:
     """Run pipeline for each image; return report rows (dicts).
 
@@ -155,15 +156,27 @@ def run_batch(
     progress (lineation / HTR / LLM start+done with elapsed) streams live.
     A per-image header ``[i/N] image=…`` is logged at the start of each
     iteration so the operator can tell how far through the batch we are.
+
+    ``cancel_check`` (optional) is a zero-arg callable that returns True
+    when the operator has requested cancellation. Polled before each
+    iteration; if true, the loop breaks and rows already produced are
+    returned. Currently-running pipelines complete their stage — there is
+    no mid-stage abort. Designed for the GUI Stop button.
     """
     def _log(msg: str) -> None:
         if log_fn is not None:
             log_fn(msg)
 
+    def _cancelled() -> bool:
+        return bool(cancel_check and cancel_check())
+
     s = settings or Settings()
     n = len(images)
     rows: list[dict[str, Any]] = []
     for i, image in enumerate(images, 1):
+        if _cancelled():
+            _log(f"[{i}/{n}] stop requested — halting batch (rows so far: {len(rows)})")
+            break
         job_id = sanitize_job_id(image.stem)
         _log(f"[{i}/{n}] image={image.name}  job_id={job_id}")
         if skip_successful and has_successful_transcription(

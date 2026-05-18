@@ -114,6 +114,7 @@ class TranscriberGui:
         self._log_q: queue.Queue[str] = queue.Queue(maxsize=_GUI_LOG_QUEUE_MAXSIZE)
         self._log_truncation_notified = False
         self._run_id = 0
+        self._stop_event = threading.Event()
         self._discovered_ollama: list[str] = []
         self._key_entry_widgets: list[tk.Entry] = []
 
@@ -347,12 +348,20 @@ class TranscriberGui:
 
         btn_row = ttk.Frame(bottom_bar, style="Main.TFrame")
         btn_row.pack(fill=tk.X)
-        ttk.Button(
+        self._transcribe_btn = ttk.Button(
             btn_row,
             text="Transcribe",
             style="Accent.TButton",
             command=self._run,
-        ).pack(side=tk.LEFT)
+        )
+        self._transcribe_btn.pack(side=tk.LEFT)
+        self._stop_btn = ttk.Button(
+            btn_row,
+            text="Stop",
+            command=self._request_stop,
+            state=tk.DISABLED,
+        )
+        self._stop_btn.pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(btn_row, text="Open artifacts folder", command=self._open_artifacts).pack(
             side=tk.LEFT, padx=(12, 0)
         )
@@ -1601,6 +1610,16 @@ class TranscriberGui:
         if p:
             self._kraken_htr_model_path.set(p)
 
+    def _request_stop(self) -> None:
+        """Signal the run worker to break out of the batch loop after the current image.
+
+        Currently-running pipeline stages (lineation / HTR / LLM) finish — there is no
+        mid-call abort, so a long LLM request can still complete after Stop is pressed.
+        """
+        self._stop_event.set()
+        self._put_log("stop requested — finishing current image, then halting…")
+        self._stop_btn.configure(state=tk.DISABLED)
+
     def _save_run_log(self) -> None:
         art = self._settings.artifacts_dir.expanduser().resolve()
         art.mkdir(parents=True, exist_ok=True)
@@ -1679,6 +1698,8 @@ class TranscriberGui:
                     self._metrics_tokens.set(_format_llm_usage_line(u))
                 elif kind == "done":
                     self._run_metrics_active = False
+                    self._transcribe_btn.configure(state=tk.NORMAL)
+                    self._stop_btn.configure(state=tk.DISABLED)
                     if self._run_t0 is not None:
                         dt = time.monotonic() - self._run_t0
                         m = int(dt // 60)
@@ -1790,6 +1811,9 @@ class TranscriberGui:
         rid = self._run_id
         self._log.delete("1.0", tk.END)
         self._log_truncation_notified = False
+        self._stop_event.clear()
+        self._transcribe_btn.configure(state=tk.DISABLED)
+        self._stop_btn.configure(state=tk.NORMAL)
         self._run_t0 = time.monotonic()
         self._run_metrics_active = True
         self._metrics_elapsed.set("Elapsed: 0:00")
@@ -2080,6 +2104,7 @@ class TranscriberGui:
                         skip_successful=skip_successful,
                         settings=s,
                         log_fn=self._put_log,
+                        cancel_check=self._stop_event.is_set,
                     )
                     if rid != self._run_id:
                         return
