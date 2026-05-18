@@ -2036,10 +2036,9 @@ class TranscriberGui:
     ) -> None:
         try:
             cfg = copy.deepcopy(load_prompt_cfg(Path(pr).expanduser()))
-            cfg["normalizationMode"] = "diplomatic" if diplomatic else "normalized"
+            set_normalization_mode_for_diplomatic(cfg, diplomatic=diplomatic)
             if eff_mode:
                 cfg["runMode"] = "efficient"
-            set_normalization_mode_for_diplomatic(cfg, diplomatic=dipl)
             with patch.dict(os.environ, env_overrides, clear=False):
                 s = Settings()
                 if n == 1:
