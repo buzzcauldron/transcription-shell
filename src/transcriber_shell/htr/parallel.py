@@ -79,6 +79,21 @@ def build_htr_tasks(
 
         tasks["kraken-htr"] = lambda: run_kraken_htr(_img, _xml, _mp, device=device)
 
+    # Tesseract (early modern print: lat+frk+eng by default).
+    # Scripts are not strictly gated — Tesseract has traineddata for many languages — but we
+    # still require the operator to opt in via tesseract_enabled to avoid surprise dependencies.
+    if getattr(settings, "tesseract_enabled", False):
+        lang = getattr(settings, "tesseract_lang", "lat+frk+eng")
+        psm = int(getattr(settings, "tesseract_psm", 7))
+        _img = image_path
+        _xml = lines_xml_path
+
+        from transcriber_shell.htr.tesseract_htr import run_tesseract_htr
+
+        tasks["tesseract-htr"] = lambda: run_tesseract_htr(
+            _img, _xml, lang=lang, psm=psm
+        )
+
     # Glyph Machina HTR pipeline
     if settings.gm_htr_repo_path and scripts & {"latin-french", "latin", "english-medieval"}:
         repo_path = Path(settings.gm_htr_repo_path).expanduser().resolve()

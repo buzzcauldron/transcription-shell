@@ -61,6 +61,12 @@ def plan_htr_execution(
             return HtrExecutionPlan(kind=HtrPlanKind.NONE)
         return HtrExecutionPlan(kind=HtrPlanKind.BEFORE_LLM_PARALLEL, tasks=tasks)
 
+    if c in ("tesseract_htr", "tesseract", "early_modern"):
+        tasks = {k: v for k, v in all_tasks.items() if k == "tesseract-htr"}
+        if not tasks:
+            return HtrExecutionPlan(kind=HtrPlanKind.NONE)
+        return HtrExecutionPlan(kind=HtrPlanKind.BEFORE_LLM_PARALLEL, tasks=tasks)
+
     if c == "parallel":
         if not all_tasks:
             return HtrExecutionPlan(kind=HtrPlanKind.NONE)

@@ -37,6 +37,8 @@ from transcriber_shell.llm.model_catalog import (
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.pipeline.batch import (
     IMAGE_SUFFIXES,
+    INPUT_SUFFIXES,
+    PDF_SUFFIX,
     discover_images,
     has_successful_transcription,
     run_batch,
@@ -132,6 +134,9 @@ class TranscriberGui:
         self._model_selected = tk.StringVar(value=_NONE_LABEL)
         self._efficient_mode = tk.BooleanVar(value=False)
         self._diplomatic = tk.BooleanVar(value=True)
+        self._early_modern_latin = tk.BooleanVar(value=False)
+        self._translate_to_english = tk.BooleanVar(value=False)
+        self._extract_figures = tk.BooleanVar(value=self._settings.figure_extract_enabled)
         self._model_custom = tk.StringVar(value="")
         self._skip_gm = tk.BooleanVar(value=False)
         self._xsd_path = tk.StringVar(
@@ -160,6 +165,9 @@ class TranscriberGui:
         self._kraken_htr_model_path = tk.StringVar(value=str(self._settings.kraken_htr_model_path or ""))
         self._htr_parallel = tk.BooleanVar(value=self._settings.htr_parallel)
         self._htr_combination = tk.StringVar(value=self._settings.htr_combination)
+        self._tesseract_enabled = tk.BooleanVar(value=self._settings.tesseract_enabled)
+        self._tesseract_lang = tk.StringVar(value=self._settings.tesseract_lang)
+        self._tesseract_psm = tk.IntVar(value=self._settings.tesseract_psm)
         self._keys_expanded = tk.BooleanVar(value=True)
         self._htr_section_expanded = tk.BooleanVar(value=False)
         self._advanced_expanded = tk.BooleanVar(value=False)
@@ -324,6 +332,25 @@ class TranscriberGui:
             text="XML only (lines XML; no LLM)",
             variable=self._xml_only,
         ).pack(side=tk.LEFT, padx=(20, 0))
+
+        mode_row2 = ttk.Frame(bottom_bar, style="Main.TFrame")
+        mode_row2.pack(fill=tk.X, pady=(0, 6))
+        ttk.Checkbutton(
+            mode_row2,
+            text="Early modern Latin (targetEra=early_modern · 1500–1800)",
+            variable=self._early_modern_latin,
+        ).pack(side=tk.LEFT)
+        ttk.Checkbutton(
+            mode_row2,
+            text="Translate to English (post-pass; saves *_translation.txt)",
+            variable=self._translate_to_english,
+        ).pack(side=tk.LEFT, padx=(20, 0))
+        ttk.Checkbutton(
+            mode_row2,
+            text="Extract figures (DocLayNet; saves figures/*.png + [fig:id] markers)",
+            variable=self._extract_figures,
+        ).pack(side=tk.LEFT, padx=(20, 0))
+
         btn_row = ttk.Frame(bottom_bar, style="Main.TFrame")
         btn_row.pack(fill=tk.X)
         ttk.Button(
@@ -831,7 +858,8 @@ class TranscriberGui:
             text=(
                 "Optional machine-draft HTR runs alongside the LLM to inform transcription. "
                 "Set GM repo path for local Glyph Machina lineation (no browser) and/or HTR. "
-                "Set Kraken HTR model for the Zenodo medieval-documentary model (CC BY 4.0)."
+                "Set Kraken HTR model for the Zenodo medieval-documentary model (CC BY 4.0). "
+                "Enable Tesseract for early modern print (Latin / Fraktur)."
             ),
             style="Muted.TLabel",
             wraplength=520,
@@ -870,6 +898,39 @@ class TranscriberGui:
             wraplength=520,
         ).pack(anchor=tk.W, pady=(0, 4))
 
+        # ── Tesseract (early modern print) ─────────────────────────────────────
+        tess_enable_row = ttk.Frame(htr, style="Main.TFrame")
+        tess_enable_row.pack(fill=tk.X, pady=(8, 0))
+        ttk.Checkbutton(
+            tess_enable_row,
+            text="Tesseract (early modern print: Latin / Fraktur)",
+            variable=self._tesseract_enabled,
+        ).pack(side=tk.LEFT)
+        tess_lang_row = ttk.Frame(htr, style="Main.TFrame")
+        tess_lang_row.pack(fill=tk.X, pady=2)
+        ttk.Label(tess_lang_row, text="Tesseract lang", width=16, anchor=tk.W).pack(side=tk.LEFT)
+        ttk.Entry(tess_lang_row, textvariable=self._tesseract_lang).pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8)
+        )
+        ttk.Label(tess_lang_row, text="PSM", anchor=tk.W).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Combobox(
+            tess_lang_row,
+            textvariable=self._tesseract_psm,
+            values=tuple(str(i) for i in range(0, 14)),
+            state="readonly",
+            width=4,
+        ).pack(side=tk.LEFT)
+        ttk.Label(
+            htr,
+            text=(
+                "Language stack like lat+frk+eng (default), deu_latf+frk for German Fraktur, "
+                "ita+lat for Italian humanist. Needs a system tesseract + matching .traineddata. "
+                "PSM 7 (single line) is recommended; we crop one line at a time from the PageXML."
+            ),
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(0, 4))
+
         htr_combo_row = ttk.Frame(htr, style="Main.TFrame")
         htr_combo_row.pack(fill=tk.X, pady=4)
         ttk.Label(htr_combo_row, text="HTR combination", width=16, anchor=tk.W).pack(side=tk.LEFT)
@@ -878,7 +939,8 @@ class TranscriberGui:
             textvariable=self._htr_combination,
             values=(
                 "default", "shell", "parallel", "sequential",
-                "gm_htr", "kraken_htr", "gm_then_kraken", "kraken_then_gm", "off",
+                "gm_htr", "kraken_htr", "tesseract_htr",
+                "gm_then_kraken", "kraken_then_gm", "off",
             ),
             state="readonly",
             width=22,
@@ -1185,7 +1247,19 @@ class TranscriberGui:
             except OSError:
                 continue
             if p.is_file():
-                if p.suffix.lower() not in IMAGE_SUFFIXES:
+                suf = p.suffix.lower()
+                if suf not in INPUT_SUFFIXES:
+                    continue
+                if suf == PDF_SUFFIX:
+                    # Expand PDF into its page images before adding (uses artifacts cache).
+                    for p2 in discover_images(str(p)):
+                        r2 = p2.resolve()
+                        if r2 not in existing:
+                            self._image_paths.append(p2)
+                            existing.add(r2)
+                            added_any = True
+                            if before == 0 and len(self._image_paths) == 1:
+                                self._job_id.set(p.stem[:120] or "job")
                     continue
                 rp = p.resolve()
                 if rp not in existing:
@@ -1207,15 +1281,17 @@ class TranscriberGui:
             self._refresh_image_list()
         elif show_empty_warning and items:
             self._gui_notify(
-                "Add images: No supported images were added. Use jpg, jpeg, png, webp, tif/tiff, gif, or bmp, "
+                "Add images: No supported inputs were added. Use jpg, jpeg, png, webp, tif/tiff, gif, bmp, or pdf, "
                 "or a folder whose top-level files include those types (subfolders are not scanned).",
                 "info",
             )
 
     def _add_image_files(self) -> None:
         paths = filedialog.askopenfilenames(
-            title="Pre-cropped page images",
+            title="Page images or PDF",
             filetypes=[
+                ("Images & PDF", "*.jpg *.jpeg *.png *.webp *.tif *.tiff *.bmp *.pdf"),
+                ("PDF", "*.pdf"),
                 ("Images", "*.jpg *.jpeg *.png *.webp *.tif *.tiff *.bmp"),
                 ("All", "*.*"),
             ],
@@ -1231,7 +1307,7 @@ class TranscriberGui:
         found = discover_images(d)
         if not found:
             self._gui_notify(
-                "Add folder: That folder has no supported images in its top level (jpg, png, webp, etc.). "
+                "Add folder: That folder has no supported inputs in its top level (jpg, png, webp, pdf, etc.). "
                 "Subfolders are not scanned.",
                 "info",
             )
@@ -1349,6 +1425,9 @@ class TranscriberGui:
             "TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH": self._kraken_htr_model_path.get().strip(),
             "TRANSCRIBER_SHELL_HTR_PARALLEL": "true" if self._htr_parallel.get() else "false",
             "TRANSCRIBER_SHELL_HTR_COMBINATION": self._htr_combination.get().strip(),
+            "TRANSCRIBER_SHELL_TESSERACT_ENABLED": "true" if self._tesseract_enabled.get() else "false",
+            "TRANSCRIBER_SHELL_TESSERACT_LANG": self._tesseract_lang.get().strip(),
+            "TRANSCRIBER_SHELL_TESSERACT_PSM": str(int(self._tesseract_psm.get())),
         }
 
     def _save_keys_to_dotenv(self) -> None:
@@ -1447,6 +1526,12 @@ class TranscriberGui:
             out["TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH"] = kp
         out["TRANSCRIBER_SHELL_HTR_PARALLEL"] = "true" if self._htr_parallel.get() else "false"
         out["TRANSCRIBER_SHELL_HTR_COMBINATION"] = self._htr_combination.get().strip()
+        out["TRANSCRIBER_SHELL_TESSERACT_ENABLED"] = (
+            "true" if self._tesseract_enabled.get() else "false"
+        )
+        if tl := self._tesseract_lang.get().strip():
+            out["TRANSCRIBER_SHELL_TESSERACT_LANG"] = tl
+        out["TRANSCRIBER_SHELL_TESSERACT_PSM"] = str(int(self._tesseract_psm.get()))
         return out
 
     # ── Discovery ─────────────────────────────────────────────────────────────
@@ -1700,6 +1785,9 @@ class TranscriberGui:
             env_overrides["LATIN_MS_DOC_TYPE"] = dt
         eff_mode = self._efficient_mode.get()
         diplomatic = self._diplomatic.get()
+        early_modern = self._early_modern_latin.get()
+        translate = self._translate_to_english.get()
+        extract_figures = self._extract_figures.get()
         persist_after = self._persist_keys_after_run.get()
         skip_successful = self._skip_successful.get()
         persist_snapshot = self._env_persist_dict()
@@ -1723,6 +1811,12 @@ class TranscriberGui:
         self._put_log(
             f"xml_only={self._xml_only.get()} (lines XML + validation only; no LLM when true)"
         )
+        if early_modern:
+            self._put_log("early_modern_latin=True (overrides targetLanguage=lat-Latn, targetEra=early_modern, eraRange=1500-1800)")
+        if translate:
+            self._put_log("translate_to_english=True (post-transcription pass; saves *_translation.txt)")
+        if extract_figures:
+            self._put_log("extract_figures=True (DocLayNet detection; saves figures/*.png and inserts [fig:id] markers)")
 
         threading.Thread(
             target=self._run_worker,
@@ -1732,6 +1826,9 @@ class TranscriberGui:
                 env_overrides=env_overrides,
                 eff_mode=eff_mode,
                 diplomatic=diplomatic,
+                early_modern=early_modern,
+                translate=translate,
+                extract_figures=extract_figures,
                 skip=skip,
                 n=n,
                 job_id_str=self._job_id.get().strip(),
@@ -1750,6 +1847,101 @@ class TranscriberGui:
             daemon=True,
         ).start()
 
+    def _run_figure_extract_pass(
+        self,
+        *,
+        yaml_path: Path,
+        image_path: Path,
+        lines_xml_path: Path | None,
+        settings: "Settings",
+    ) -> None:
+        """Run DocLayNet figure detection, save crops, and embed markers."""
+        try:
+            from transcriber_shell.pipeline.figure_extract import extract_figures_for_page
+
+            # Force-enable for this call so the orchestrator runs even if the
+            # Settings env var isn't set — the GUI checkbox is the source of truth.
+            s = settings.model_copy(update={"figure_extract_enabled": True})
+            self._put_log("  detecting figures …")
+            report = extract_figures_for_page(
+                image_path=Path(image_path),
+                lines_xml_path=Path(lines_xml_path) if lines_xml_path else None,
+                transcription_yaml_path=Path(yaml_path),
+                settings=s,
+            )
+            for w in report.warnings:
+                self._put_log(f"  figures warning: {w}")
+            if not report.figures:
+                self._put_log("  figures: none detected")
+                return
+            self._put_log(
+                f"  figures: {len(report.figures)} detected ({report.backend}); crops under {yaml_path.parent / 'figures'}"
+            )
+            for f in report.figures[:8]:
+                self._put_log(
+                    f"    {f.id}  {f.label}  conf={f.confidence:.2f}  bbox={f.bbox}"
+                )
+            if len(report.figures) > 8:
+                self._put_log(f"    … and {len(report.figures) - 8} more")
+        except Exception as e:  # noqa: BLE001 — best-effort
+            self._put_log(f"  figure extraction failed: {e}")
+
+    def _run_translation_pass(
+        self,
+        *,
+        yaml_path: Path,
+        image_path: Path,
+        provider: str,
+        model_override: str | None,
+        settings: "Settings",
+    ) -> None:
+        """Read the diplomatic transcript and write an English translation alongside."""
+        try:
+            from transcriber_shell.llm.translate import (
+                run_translate,
+                translation_output_path,
+            )
+            from transcriber_shell.llm.validate_output import (
+                load_yaml_or_json_path,
+                load_transcription_root,
+            )
+
+            data = load_yaml_or_json_path(Path(yaml_path))
+            root = load_transcription_root(data) if data else None
+            segs = root.get("segments") if isinstance(root, dict) else None
+            if not isinstance(segs, list) or not segs:
+                self._put_log(
+                    f"  translation: skipped (no segments in {yaml_path.name})"
+                )
+                return
+            parts: list[str] = []
+            for seg in segs:
+                if not isinstance(seg, dict):
+                    continue
+                t = seg.get("text") or seg.get("transcription") or ""
+                if isinstance(t, str):
+                    parts.append(t)
+            diplomatic = "\n".join(p for p in parts if p)
+            if not diplomatic.strip():
+                self._put_log(
+                    f"  translation: skipped (empty diplomatic text in {yaml_path.name})"
+                )
+                return
+
+            self._put_log(f"  translating → {translation_output_path(yaml_path).name} …")
+            result = run_translate(
+                image_path=Path(image_path),
+                diplomatic_text=diplomatic,
+                provider=provider,
+                model=model_override,
+                settings=settings,
+            )
+            out = translation_output_path(yaml_path)
+            out.write_text(result.text + "\n", encoding="utf-8")
+            self._put_log(f"  translation_txt={out}")
+        except Exception as e:  # noqa: BLE001 — translation is best-effort
+            self._put_log(f"  translation failed: {e}")
+
     def _run_worker(
         self,
         *,
@@ -1758,6 +1950,9 @@ class TranscriberGui:
         env_overrides: dict[str, str],
         eff_mode: bool,
         diplomatic: bool,
+        early_modern: bool,
+        translate: bool,
+        extract_figures: bool,
         skip: bool,
         n: int,
         job_id_str: str,
@@ -1778,6 +1973,10 @@ class TranscriberGui:
             cfg["normalizationMode"] = "diplomatic" if diplomatic else "normalized"
             if eff_mode:
                 cfg["runMode"] = "efficient"
+            if early_modern:
+                cfg["targetLanguage"] = "lat-Latn"
+                cfg["targetEra"] = "early_modern"
+                cfg["eraRange"] = "1500-1800"
             with patch.dict(os.environ, env_overrides, clear=False):
                 s = Settings()
                 if n == 1:
@@ -1853,6 +2052,21 @@ class TranscriberGui:
                         self._q.put(("status", "Failed."))
                         self._q.put(("done", "\n".join(res.errors)))
                     else:
+                        if extract_figures and res.transcription_yaml_path:
+                            self._run_figure_extract_pass(
+                                yaml_path=res.transcription_yaml_path,
+                                image_path=img,
+                                lines_xml_path=res.lines_xml_path,
+                                settings=s,
+                            )
+                        if translate and res.transcription_yaml_path:
+                            self._run_translation_pass(
+                                yaml_path=res.transcription_yaml_path,
+                                image_path=img,
+                                provider=prov,
+                                model_override=model_override,
+                                settings=s,
+                            )
                         if persist_after:
                             try:
                                 merge_dotenv(Path(".env"), persist_snapshot)
@@ -1904,6 +2118,21 @@ class TranscriberGui:
                             self._put_log(f"  lines_xml={row['lines_xml']}")
                         if row.get("transcription_yaml"):
                             self._put_log(f"  transcription_yaml={row['transcription_yaml']}")
+                            if extract_figures and ok and not row.get("skipped"):
+                                self._run_figure_extract_pass(
+                                    yaml_path=Path(row["transcription_yaml"]),
+                                    image_path=Path(row.get("image", "")),
+                                    lines_xml_path=Path(row["lines_xml"]) if row.get("lines_xml") else None,
+                                    settings=s,
+                                )
+                            if translate and ok and not row.get("skipped"):
+                                self._run_translation_pass(
+                                    yaml_path=Path(row["transcription_yaml"]),
+                                    image_path=Path(row.get("image", "")),
+                                    provider=prov,
+                                    model_override=model_override,
+                                    settings=s,
+                                )
                         if row.get("skipped"):
                             seg = row.get("transcription_segment_count")
                             self._put_log(
@@ -1972,6 +2201,9 @@ class TranscriberGui:
             "free_only": self._free_only.get(),
             "efficient_mode": self._efficient_mode.get(),
             "diplomatic": self._diplomatic.get(),
+            "early_modern_latin": self._early_modern_latin.get(),
+            "translate_to_english": self._translate_to_english.get(),
+            "extract_figures": self._extract_figures.get(),
             "skip_gm": self._skip_gm.get(),
             "prompt_path": self._prompt_path.get().strip(),
             "lines_xml_path": self._lines_xml_path.get().strip(),
@@ -1995,6 +2227,9 @@ class TranscriberGui:
             "kraken_htr_model_path": self._kraken_htr_model_path.get().strip(),
             "htr_parallel": self._htr_parallel.get(),
             "htr_combination": self._htr_combination.get().strip(),
+            "tesseract_enabled": self._tesseract_enabled.get(),
+            "tesseract_lang": self._tesseract_lang.get().strip(),
+            "tesseract_psm": int(self._tesseract_psm.get()),
             "keys_expanded": self._keys_expanded.get(),
             "htr_section_expanded": self._htr_section_expanded.get(),
             "advanced_expanded": self._advanced_expanded.get(),
@@ -2055,6 +2290,12 @@ class TranscriberGui:
                 self._efficient_mode.set(bool(data["efficient_mode"]))
             if "diplomatic" in data:
                 self._diplomatic.set(bool(data["diplomatic"]))
+            if "early_modern_latin" in data:
+                self._early_modern_latin.set(bool(data["early_modern_latin"]))
+            if "translate_to_english" in data:
+                self._translate_to_english.set(bool(data["translate_to_english"]))
+            if "extract_figures" in data:
+                self._extract_figures.set(bool(data["extract_figures"]))
             if "skip_gm" in data:
                 self._skip_gm.set(bool(data["skip_gm"]))
             for key, var in (
@@ -2108,6 +2349,14 @@ class TranscriberGui:
             hc = data.get("htr_combination")
             if isinstance(hc, str) and hc.strip():
                 self._htr_combination.set(hc.strip())
+            if "tesseract_enabled" in data:
+                self._tesseract_enabled.set(bool(data["tesseract_enabled"]))
+            tl = data.get("tesseract_lang")
+            if isinstance(tl, str) and tl.strip():
+                self._tesseract_lang.set(tl.strip())
+            tp = data.get("tesseract_psm")
+            if isinstance(tp, int) and 0 <= tp <= 13:
+                self._tesseract_psm.set(tp)
             if "keys_expanded" in data:
                 self._keys_expanded.set(bool(data["keys_expanded"]))
                 self._keys_section_apply()
@@ -2150,6 +2399,9 @@ class TranscriberGui:
             self._free_only,
             self._efficient_mode,
             self._diplomatic,
+            self._early_modern_latin,
+            self._translate_to_english,
+            self._extract_figures,
             self._skip_gm,
             self._prompt_path,
             self._lines_xml_path,
@@ -2173,6 +2425,9 @@ class TranscriberGui:
             self._kraken_htr_model_path,
             self._htr_parallel,
             self._htr_combination,
+            self._tesseract_enabled,
+            self._tesseract_lang,
+            self._tesseract_psm,
             self._keys_expanded,
             self._htr_section_expanded,
             self._advanced_expanded,

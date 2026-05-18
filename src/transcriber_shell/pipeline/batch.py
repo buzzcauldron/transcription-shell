@@ -23,6 +23,16 @@ from transcriber_shell.pipeline.transcription_paths import transcription_yaml_pa
 IMAGE_SUFFIXES = frozenset(
     {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 )
+PDF_SUFFIX = ".pdf"
+INPUT_SUFFIXES = IMAGE_SUFFIXES | {PDF_SUFFIX}
+
+
+def _expand_pdf(pdf_path: Path) -> list[Path]:
+    """Rasterise a PDF into images under the artifacts cache and return their paths."""
+    from transcriber_shell.pipeline.pdf_extract import expand_pdf_to_images
+
+    s = Settings()
+    return expand_pdf_to_images(pdf_path, s.artifacts_dir)
 
 
 def sanitize_job_id(stem: str) -> str:
@@ -54,20 +64,27 @@ def _htr_results_for_report(htr: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def discover_images(path_or_glob: str) -> list[Path]:
+    """Resolve a path/glob into image paths. PDFs are rasterised to per-page JPGs."""
+    def _expand(paths: list[Path]) -> list[Path]:
+        out: list[Path] = []
+        for x in paths:
+            if not x.is_file():
+                continue
+            suf = x.suffix.lower()
+            if suf in IMAGE_SUFFIXES:
+                out.append(x)
+            elif suf == PDF_SUFFIX:
+                out.extend(_expand_pdf(x))
+        return out
+
     raw = path_or_glob.strip()
     if any(ch in raw for ch in "*?["):
-        paths = [Path(p) for p in sorted(glob.glob(raw, recursive=True))]
-        return [p for p in paths if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES]
+        return _expand([Path(p) for p in sorted(glob.glob(raw, recursive=True))])
     p = Path(raw).expanduser().resolve()
     if p.is_file():
-        return [p] if p.suffix.lower() in IMAGE_SUFFIXES else []
+        return _expand([p])
     if p.is_dir():
-        out = [
-            x
-            for x in p.iterdir()
-            if x.is_file() and x.suffix.lower() in IMAGE_SUFFIXES
-        ]
-        return sorted(out)
+        return sorted(_expand(sorted(p.iterdir())), key=lambda q: q.name)
     return []
 
 

@@ -311,6 +311,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     cfg = load_prompt_cfg(Path(prompt_path))
     if getattr(args, "diplomatic", None) is not None:
         cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
+    if getattr(args, "early_modern_latin", False):
+        cfg["targetLanguage"] = "lat-Latn"
+        cfg["targetEra"] = "early_modern"
+        cfg["eraRange"] = "1500-1800"
     provider = _resolve_provider(args.provider, settings)
     job = TranscribeJob(
         job_id=args.job_id,
@@ -352,7 +356,99 @@ def cmd_run(args: argparse.Namespace) -> int:
         for e in res.errors:
             print(e, file=sys.stderr)
         return 1
+    if getattr(args, "extract_figures", False) and res.transcription_yaml_path:
+        _cli_extract_figures(
+            yaml_path=res.transcription_yaml_path,
+            image_path=Path(args.image),
+            lines_xml_path=res.lines_xml_path,
+            settings=settings,
+        )
+    if getattr(args, "translate", False) and res.transcription_yaml_path:
+        _cli_translate(
+            yaml_path=res.transcription_yaml_path,
+            image_path=Path(args.image),
+            provider=provider,
+            model=args.model,
+            settings=settings,
+        )
     return 0
+
+
+def _cli_extract_figures(
+    *,
+    yaml_path: Path,
+    image_path: Path,
+    lines_xml_path: Path | None,
+    settings: Settings,
+) -> None:
+    """Best-effort figure extraction pass for CLI --extract-figures."""
+    try:
+        from transcriber_shell.pipeline.figure_extract import extract_figures_for_page
+
+        s = settings.model_copy(update={"figure_extract_enabled": True})
+        report = extract_figures_for_page(
+            image_path=image_path,
+            lines_xml_path=lines_xml_path,
+            transcription_yaml_path=yaml_path,
+            settings=s,
+        )
+        for w in report.warnings:
+            print(f"figures warning: {w}", file=sys.stderr)
+        if not report.figures:
+            print("figures: none detected")
+            return
+        crops_dir = yaml_path.parent / "figures"
+        print(f"figures_detected={len(report.figures)}  crops_dir={crops_dir}")
+        for f in report.figures:
+            print(f"  {f.id}  {f.label}  conf={f.confidence:.2f}  bbox={f.bbox}")
+    except Exception as e:  # noqa: BLE001 — best-effort
+        print(f"figure extraction failed: {e}", file=sys.stderr)
+
+
+def _cli_translate(
+    *,
+    yaml_path: Path,
+    image_path: Path,
+    provider: str,
+    model: str | None,
+    settings: Settings,
+) -> None:
+    """Best-effort translation pass for CLI --translate. Logs errors and returns."""
+    try:
+        from transcriber_shell.llm.translate import run_translate, translation_output_path
+        from transcriber_shell.llm.validate_output import (
+            load_yaml_or_json_path,
+            load_transcription_root,
+        )
+
+        data = load_yaml_or_json_path(Path(yaml_path))
+        root = load_transcription_root(data) if data else None
+        segs = root.get("segments") if isinstance(root, dict) else None
+        if not isinstance(segs, list) or not segs:
+            print(f"translation: skipped (no segments in {yaml_path.name})", file=sys.stderr)
+            return
+        parts: list[str] = []
+        for seg in segs:
+            if isinstance(seg, dict):
+                t = seg.get("text") or seg.get("transcription") or ""
+                if isinstance(t, str):
+                    parts.append(t)
+        diplomatic = "\n".join(p for p in parts if p)
+        if not diplomatic.strip():
+            print(f"translation: skipped (empty diplomatic text)", file=sys.stderr)
+            return
+        result = run_translate(
+            image_path=image_path,
+            diplomatic_text=diplomatic,
+            provider=provider,
+            model=model,
+            settings=settings,
+        )
+        out = translation_output_path(yaml_path)
+        out.write_text(result.text + "\n", encoding="utf-8")
+        print(f"translation_txt={out}")
+    except Exception as e:  # noqa: BLE001 — best-effort
+        print(f"translation failed: {e}", file=sys.stderr)
 
 
 def cmd_batch(args: argparse.Namespace) -> int:
@@ -412,6 +508,10 @@ def cmd_batch(args: argparse.Namespace) -> int:
         cfg = load_prompt_cfg(Path(prompt_path))
         if getattr(args, "diplomatic", None) is not None:
             cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
+        if getattr(args, "early_modern_latin", False):
+            cfg["targetLanguage"] = "lat-Latn"
+            cfg["targetEra"] = "early_modern"
+            cfg["eraRange"] = "1500-1800"
         provider = _resolve_provider(args.provider, settings)
         if len(groups) > 1:
             print(f"\n== group doc-type={group_doc_type or '(none)'}, {len(group_images)} image(s) ==",
@@ -433,6 +533,33 @@ def cmd_batch(args: argparse.Namespace) -> int:
         all_rows.extend(rows)
         if not all(r.get("ok") for r in rows):
             overall_ok = False
+        if getattr(args, "extract_figures", False):
+            for row in rows:
+                if not row.get("ok") or row.get("skipped"):
+                    continue
+                yml = row.get("transcription_yaml")
+                img = row.get("image")
+                if yml and img:
+                    _cli_extract_figures(
+                        yaml_path=Path(yml),
+                        image_path=Path(img),
+                        lines_xml_path=Path(row["lines_xml"]) if row.get("lines_xml") else None,
+                        settings=settings,
+                    )
+        if getattr(args, "translate", False):
+            for row in rows:
+                if not row.get("ok") or row.get("skipped"):
+                    continue
+                yml = row.get("transcription_yaml")
+                img = row.get("image")
+                if yml and img:
+                    _cli_translate(
+                        yaml_path=Path(yml),
+                        image_path=Path(img),
+                        provider=provider,
+                        model=args.model,
+                        settings=settings,
+                    )
     rows = all_rows
     if args.batch_report:
         write_batch_report(Path(args.batch_report), rows)
@@ -1152,6 +1279,7 @@ def main() -> None:
             "shell",
             "kraken_htr",
             "gm_htr",
+            "tesseract_htr",
             "parallel",
             "sequential",
             "gm_then_kraken",
@@ -1186,6 +1314,24 @@ def main() -> None:
         action="store_const",
         const=False,
         help="Override normalizationMode=normalized in the prompt config.",
+    )
+    run.add_argument(
+        "--early-modern-latin",
+        dest="early_modern_latin",
+        action="store_true",
+        help="Override prompt cfg to targetLanguage=lat-Latn, targetEra=early_modern, eraRange=1500-1800.",
+    )
+    run.add_argument(
+        "--translate",
+        dest="translate",
+        action="store_true",
+        help="After transcription succeeds, run an English translation pass and save <stem>_translation.txt.",
+    )
+    run.add_argument(
+        "--extract-figures",
+        dest="extract_figures",
+        action="store_true",
+        help="After transcription succeeds, run DocLayNet figure detection, save crops, and weave [fig:id] markers into the YAML.",
     )
     _add_pipeline_network_args(run)
     run.set_defaults(func=cmd_run)
@@ -1295,6 +1441,7 @@ def main() -> None:
             "shell",
             "kraken_htr",
             "gm_htr",
+            "tesseract_htr",
             "parallel",
             "sequential",
             "gm_then_kraken",
@@ -1334,6 +1481,24 @@ def main() -> None:
         action="store_const",
         const=False,
         help="Override normalizationMode=normalized in the prompt config.",
+    )
+    batch.add_argument(
+        "--early-modern-latin",
+        dest="early_modern_latin",
+        action="store_true",
+        help="Override prompt cfg to targetLanguage=lat-Latn, targetEra=early_modern, eraRange=1500-1800.",
+    )
+    batch.add_argument(
+        "--translate",
+        dest="translate",
+        action="store_true",
+        help="After each transcription succeeds, run an English translation pass and save <stem>_translation.txt.",
+    )
+    batch.add_argument(
+        "--extract-figures",
+        dest="extract_figures",
+        action="store_true",
+        help="After each transcription succeeds, run DocLayNet figure detection, save crops, and weave [fig:id] markers into the YAML.",
     )
     _add_pipeline_network_args(batch)
     batch.set_defaults(func=cmd_batch)

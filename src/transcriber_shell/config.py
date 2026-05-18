@@ -383,6 +383,109 @@ class Settings(BaseSettings):
             "Playwright website call. Set false to disable the website call entirely."
         ),
     )
+    figure_extract_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_FIGURE_EXTRACT_ENABLED",
+            "FIGURE_EXTRACT_ENABLED",
+        ),
+        description=(
+            "If true, run figure detection on each page after transcription, save per-figure "
+            "PNG crops under artifacts/<job_id>/figures/, and weave [fig:id] markers into "
+            "the transcription YAML. Install: pip install 'transcriber-shell[figures]'."
+        ),
+    )
+    figure_extract_backend: str = Field(
+        default="doclaynet",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_FIGURE_EXTRACT_BACKEND",
+            "FIGURE_EXTRACT_BACKEND",
+        ),
+        description="Figure-detection backend. Currently: doclaynet (DocLayNet YOLO via HF Hub).",
+    )
+    figure_extract_model: str = Field(
+        default="juliozhao/DocLayout-YOLO-DocLayNet",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_FIGURE_EXTRACT_MODEL",
+            "FIGURE_EXTRACT_MODEL",
+        ),
+        description="HF Hub repo id or local .pt path for the layout YOLO model.",
+    )
+    figure_min_confidence: float = Field(
+        default=0.4,
+        ge=0.0,
+        le=1.0,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_FIGURE_MIN_CONFIDENCE",
+            "FIGURE_MIN_CONFIDENCE",
+        ),
+        description="Drop detections below this YOLO confidence (0–1).",
+    )
+    figure_min_area_frac: float = Field(
+        default=0.01,
+        ge=0.0,
+        le=1.0,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_FIGURE_MIN_AREA_FRAC",
+            "FIGURE_MIN_AREA_FRAC",
+        ),
+        description="Drop detections smaller than this fraction of the full page area.",
+    )
+    figure_pad_px: int = Field(
+        default=8,
+        ge=0,
+        le=200,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_FIGURE_PAD_PX",
+            "FIGURE_PAD_PX",
+        ),
+        description="Pixels of padding added on each side when cropping the page image.",
+    )
+    figure_classes: str = Field(
+        default="Picture,Table",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_FIGURE_CLASSES",
+            "FIGURE_CLASSES",
+        ),
+        description=(
+            "Comma-separated DocLayNet class names that count as 'figures' "
+            "(e.g. 'Picture,Table,Caption'). Default: 'Picture,Table'. "
+            "Use ``settings.figure_classes_list`` for the parsed list form."
+        ),
+    )
+
+    tesseract_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_TESSERACT_ENABLED", "TESSERACT_ENABLED"
+        ),
+        description=(
+            "Enable the Tesseract HTR backend (early modern print). Needs a system tesseract "
+            "binary and traineddata files for the configured languages. "
+            "Install: pip install 'transcriber-shell[tesseract]'."
+        ),
+    )
+    tesseract_lang: str = Field(
+        default="lat+frk+eng",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_TESSERACT_LANG", "TESSERACT_LANG"
+        ),
+        description=(
+            "Tesseract language stack for early modern print. Defaults to lat+frk+eng "
+            "(Latin + Fraktur + English); use deu_latf+frk for German Fraktur, ita+lat for "
+            "Italian humanist print, etc."
+        ),
+    )
+    tesseract_psm: int = Field(
+        default=7,
+        ge=0,
+        le=13,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_TESSERACT_PSM", "TESSERACT_PSM"
+        ),
+        description="Page Segmentation Mode. 7 = single line (recommended when we crop per TextLine).",
+    )
+
     htr_parallel: bool = Field(
         default=True,
         validation_alias=AliasChoices(
@@ -517,6 +620,18 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_API_KEY", "API_KEY"),
     )
 
+    @field_validator("figure_classes", mode="before")
+    @classmethod
+    def _normalize_figure_classes(cls, v: object) -> str:
+        if v is None or v == "":
+            return "Picture,Table"
+        if isinstance(v, (list, tuple)):
+            return ",".join(str(x).strip() for x in v if str(x).strip())
+        if isinstance(v, str):
+            parts = [x.strip() for x in v.split(",") if x.strip()]
+            return ",".join(parts) if parts else "Picture,Table"
+        return str(v)
+
     @field_validator("lines_xml_xsd", mode="before")
     @classmethod
     def _empty_lines_xml_xsd_none(cls, v: object) -> object:
@@ -586,6 +701,8 @@ class Settings(BaseSettings):
             "zenodo": "kraken_htr",
             "glyph_machina": "gm_htr",
             "gm": "gm_htr",
+            "tesseract": "tesseract_htr",
+            "early_modern": "tesseract_htr",
             "gm_then_zenodo": "gm_then_kraken",
             "best_then_second": "gm_then_kraken",
             "zenodo_then_gm": "kraken_then_gm",
@@ -599,6 +716,7 @@ class Settings(BaseSettings):
                 "shell",
                 "kraken_htr",
                 "gm_htr",
+                "tesseract_htr",
                 "parallel",
                 "sequential",
                 "gm_then_kraken",
@@ -610,6 +728,11 @@ class Settings(BaseSettings):
                 f"htr_combination must be one of {sorted(allowed)}; got {s!r}"
             )
         return s
+
+    @property
+    def figure_classes_list(self) -> list[str]:
+        """``figure_classes`` parsed into a list of trimmed class names."""
+        return [x.strip() for x in self.figure_classes.split(",") if x.strip()]
 
     def resolved_protocol_root(self, package_root: Path | None = None) -> Path:
         if self.protocol_root is not None:
