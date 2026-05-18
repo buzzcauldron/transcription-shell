@@ -1,0 +1,35 @@
+# Document type: early modern Latin printed and scribal hands (1500-1700)
+# Humanist roman/italic typefaces, scholarly Latin, with carryover Gothic
+# practices: long-s (ſ), ligatures, common abbreviations (ÿe, ÿt, ⁊, etc.).
+name: early_modern_latin
+language: lat-Latn
+era: early_modern
+era_range: 1500-1700
+script: humanist_italic_mixed
+
+llm:
+  primary: claude-sonnet-4
+  fallback: gemini-2.5-pro
+
+htr:
+  # Round-2 HF-fine-tuned HTR model; same checkpoint we use for medieval-Latin
+  # legal hands works passably here too. Replace once a dedicated early-modern
+  # Latin model is trained.
+  model: gm-htr-r2_best
+  path: "${HOME}/src/latin_documents/gm-htr-r2.mlmodel_best.mlmodel"
+
+segmentation:
+  model: kraken-merged-seg_best
+  path: "${HOME}/src/latin_documents/kraken-merged-seg.mlmodel_best.mlmodel"
+
+prompt: prompt_latin.yaml
+
+notes: >
+  Targets early modern Latin printed editions (astronomy, theology, law,
+  natural philosophy) and the contemporaneous scribal hands. Expect:
+    - Long-s (ſ) consistently used non-finally — Tesseract will read it as 'f'.
+    - Ligatures: æ, œ, &, ⁊ (Tironian et).
+    - Period-appropriate abbreviations: nasal-bar, q;, p° (pro), etc.
+  Tesseract HTR (lat+frk+eng stack, PSM 7) gives medium-confidence reads on
+  body text; use it as a draft alongside the LLM when the manuscript-fingerprint
+  doc-type matcher picks this profile.

@@ -134,7 +134,6 @@ class TranscriberGui:
         self._model_selected = tk.StringVar(value=_NONE_LABEL)
         self._efficient_mode = tk.BooleanVar(value=False)
         self._diplomatic = tk.BooleanVar(value=True)
-        self._early_modern_latin = tk.BooleanVar(value=False)
         self._translate_to_english = tk.BooleanVar(value=False)
         self._extract_figures = tk.BooleanVar(value=self._settings.figure_extract_enabled)
         self._model_custom = tk.StringVar(value="")
@@ -337,14 +336,9 @@ class TranscriberGui:
         mode_row2.pack(fill=tk.X, pady=(0, 6))
         ttk.Checkbutton(
             mode_row2,
-            text="Early modern Latin (targetEra=early_modern · 1500–1800)",
-            variable=self._early_modern_latin,
-        ).pack(side=tk.LEFT)
-        ttk.Checkbutton(
-            mode_row2,
             text="Translate to English (post-pass; saves *_translation.txt)",
             variable=self._translate_to_english,
-        ).pack(side=tk.LEFT, padx=(20, 0))
+        ).pack(side=tk.LEFT)
         ttk.Checkbutton(
             mode_row2,
             text="Extract figures (DocLayNet; saves figures/*.png + [fig:id] markers)",
@@ -554,6 +548,7 @@ class TranscriberGui:
             values=(
                 "medieval_latin_legal",
                 "medieval_latin_ecclesiastical",
+                "early_modern_latin",
                 "early_modern_english",
             ),
             state="readonly",
@@ -1785,7 +1780,6 @@ class TranscriberGui:
             env_overrides["LATIN_MS_DOC_TYPE"] = dt
         eff_mode = self._efficient_mode.get()
         diplomatic = self._diplomatic.get()
-        early_modern = self._early_modern_latin.get()
         translate = self._translate_to_english.get()
         extract_figures = self._extract_figures.get()
         persist_after = self._persist_keys_after_run.get()
@@ -1811,8 +1805,6 @@ class TranscriberGui:
         self._put_log(
             f"xml_only={self._xml_only.get()} (lines XML + validation only; no LLM when true)"
         )
-        if early_modern:
-            self._put_log("early_modern_latin=True (overrides targetLanguage=lat-Latn, targetEra=early_modern, eraRange=1500-1800)")
         if translate:
             self._put_log("translate_to_english=True (post-transcription pass; saves *_translation.txt)")
         if extract_figures:
@@ -1826,7 +1818,6 @@ class TranscriberGui:
                 env_overrides=env_overrides,
                 eff_mode=eff_mode,
                 diplomatic=diplomatic,
-                early_modern=early_modern,
                 translate=translate,
                 extract_figures=extract_figures,
                 skip=skip,
@@ -1950,7 +1941,6 @@ class TranscriberGui:
         env_overrides: dict[str, str],
         eff_mode: bool,
         diplomatic: bool,
-        early_modern: bool,
         translate: bool,
         extract_figures: bool,
         skip: bool,
@@ -1973,10 +1963,6 @@ class TranscriberGui:
             cfg["normalizationMode"] = "diplomatic" if diplomatic else "normalized"
             if eff_mode:
                 cfg["runMode"] = "efficient"
-            if early_modern:
-                cfg["targetLanguage"] = "lat-Latn"
-                cfg["targetEra"] = "early_modern"
-                cfg["eraRange"] = "1500-1800"
             with patch.dict(os.environ, env_overrides, clear=False):
                 s = Settings()
                 if n == 1:
@@ -2201,7 +2187,6 @@ class TranscriberGui:
             "free_only": self._free_only.get(),
             "efficient_mode": self._efficient_mode.get(),
             "diplomatic": self._diplomatic.get(),
-            "early_modern_latin": self._early_modern_latin.get(),
             "translate_to_english": self._translate_to_english.get(),
             "extract_figures": self._extract_figures.get(),
             "skip_gm": self._skip_gm.get(),
@@ -2290,8 +2275,6 @@ class TranscriberGui:
                 self._efficient_mode.set(bool(data["efficient_mode"]))
             if "diplomatic" in data:
                 self._diplomatic.set(bool(data["diplomatic"]))
-            if "early_modern_latin" in data:
-                self._early_modern_latin.set(bool(data["early_modern_latin"]))
             if "translate_to_english" in data:
                 self._translate_to_english.set(bool(data["translate_to_english"]))
             if "extract_figures" in data:
@@ -2399,7 +2382,6 @@ class TranscriberGui:
             self._free_only,
             self._efficient_mode,
             self._diplomatic,
-            self._early_modern_latin,
             self._translate_to_english,
             self._extract_figures,
             self._skip_gm,

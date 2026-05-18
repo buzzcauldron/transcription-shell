@@ -311,10 +311,6 @@ def cmd_run(args: argparse.Namespace) -> int:
     cfg = load_prompt_cfg(Path(prompt_path))
     if getattr(args, "diplomatic", None) is not None:
         cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
-    if getattr(args, "early_modern_latin", False):
-        cfg["targetLanguage"] = "lat-Latn"
-        cfg["targetEra"] = "early_modern"
-        cfg["eraRange"] = "1500-1800"
     provider = _resolve_provider(args.provider, settings)
     job = TranscribeJob(
         job_id=args.job_id,
@@ -508,10 +504,6 @@ def cmd_batch(args: argparse.Namespace) -> int:
         cfg = load_prompt_cfg(Path(prompt_path))
         if getattr(args, "diplomatic", None) is not None:
             cfg["normalizationMode"] = "diplomatic" if args.diplomatic else "normalized"
-        if getattr(args, "early_modern_latin", False):
-            cfg["targetLanguage"] = "lat-Latn"
-            cfg["targetEra"] = "early_modern"
-            cfg["eraRange"] = "1500-1800"
         provider = _resolve_provider(args.provider, settings)
         if len(groups) > 1:
             print(f"\n== group doc-type={group_doc_type or '(none)'}, {len(group_images)} image(s) ==",
@@ -1316,12 +1308,6 @@ def main() -> None:
         help="Override normalizationMode=normalized in the prompt config.",
     )
     run.add_argument(
-        "--early-modern-latin",
-        dest="early_modern_latin",
-        action="store_true",
-        help="Override prompt cfg to targetLanguage=lat-Latn, targetEra=early_modern, eraRange=1500-1800.",
-    )
-    run.add_argument(
         "--translate",
         dest="translate",
         action="store_true",
@@ -1481,12 +1467,6 @@ def main() -> None:
         action="store_const",
         const=False,
         help="Override normalizationMode=normalized in the prompt config.",
-    )
-    batch.add_argument(
-        "--early-modern-latin",
-        dest="early_modern_latin",
-        action="store_true",
-        help="Override prompt cfg to targetLanguage=lat-Latn, targetEra=early_modern, eraRange=1500-1800.",
     )
     batch.add_argument(
         "--translate",

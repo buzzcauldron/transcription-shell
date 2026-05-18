@@ -44,6 +44,19 @@ After training, tune **`TRANSCRIBER_SHELL_MASK_THRESHOLD`** and **`TRANSCRIBER_S
 
 4. **Optional:** compare to Glyph Machina using `transcriber-shell compare-lines-xml` or **`scripts/benchmark_gm_parity.py`** ([README](../README.md)).
 
+## Document-type specs
+
+Each profile in [`scripts/latin_ms/document_types/`](../scripts/latin_ms/document_types/) bundles an HTR model, segmentation model, prompt template, and primary/fallback LLM. The GUI's **Document type** dropdown reads from this directory.
+
+| Doc-type | Language / era | Script | HTR model | Notes |
+|----------|----------------|--------|-----------|-------|
+| `medieval_latin_legal` | Latin / 1280–1420 | Anglicana cursiva | `htr_latin_updated_best.mlmodel` (round-4 fine-tune, CER 15.95% on val) | English plea rolls — King's Bench, Common Pleas, Eyre rolls; high abbreviation density. |
+| `medieval_latin_ecclesiastical` | Latin / medieval | Gothic textura / cursiva | (see spec) | Charters, cartularies, registers. |
+| `early_modern_latin` | Latin / 1500–1700 | Humanist roman/italic + carryover Gothic | `gm-htr-r2.mlmodel_best.mlmodel` (round-2 HF fine-tune) | Printed editions (astronomy, theology, law) and contemporaneous scribal hands. Watch long-s (ſ→f under Tesseract), æ/œ/⁊ ligatures, period abbreviations. Tesseract HTR (`lat+frk+eng`, PSM 7) usable as a second-opinion draft. |
+| `early_modern_english` | English / 1500–1700 | Secretary hand | `transfer_learned_1k_lines.mlmodel` | Mixed Latin formulae in English documents; less abbreviation than medieval. |
+
+To add a new profile, drop a `<name>.yaml` next to the existing ones (same fields: `name`, `language`, `era`, `script`, `llm`, `htr`, `segmentation`, `prompt`, `notes`) and add the name to the **Document type** combobox values in [`gui.py`](../src/transcriber_shell/gui.py).
+
 ## License and attribution
 
 Respect the license and citation requirements of **ideasrule/latin_documents**. Keep **`TRANSCRIBER_SHELL_LINEATION_CREDIT_REPO_URL`** consistent with what you publish ([README](../README.md)).
