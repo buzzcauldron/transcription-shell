@@ -387,6 +387,20 @@ class Settings(BaseSettings):
             "Playwright website call. Set false to disable the website call entirely."
         ),
     )
+    reuse_lines_xml: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_REUSE_LINES_XML",
+            "REUSE_LINES_XML",
+        ),
+        description=(
+            "If an artifacts/<job_id>/lines.xml file already exists and is non-empty, "
+            "reuse it and skip the lineation step. Saves the ~8 s/page lineation cost "
+            "when retrying a batch where the LLM call previously failed. Set to false "
+            "to force re-lineation."
+        ),
+    )
+
     batch_parallel_pages: int = Field(
         default=3,
         ge=1,

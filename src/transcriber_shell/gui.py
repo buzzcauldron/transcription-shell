@@ -167,7 +167,7 @@ class TranscriberGui:
         )
         self._xml_only = tk.BooleanVar(value=self._settings.xml_only)
         self._persist_keys_after_run = tk.BooleanVar(value=False)
-        self._skip_successful = tk.BooleanVar(value=False)
+        self._skip_successful = tk.BooleanVar(value=True)
         self._llm_use_proxy = tk.BooleanVar(value=self._settings.llm_use_proxy)
 
         self._llm_http_proxy = tk.StringVar(value=(self._settings.llm_http_proxy or ""))

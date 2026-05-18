@@ -1219,10 +1219,21 @@ def main() -> None:
         action="store_true",
         help="Do not fail XML step when TextLine count is 0",
     )
-    run.add_argument(
+    run_skip = run.add_mutually_exclusive_group()
+    run_skip.add_argument(
         "--skip-successful",
-        action="store_true",
-        help="Skip run when artifacts/<job_id>/<image_stem>_transcription.yaml already validates",
+        dest="skip_successful",
+        action="store_const",
+        const=True,
+        default=True,
+        help="Skip run when artifacts/<job_id>/<image_stem>_transcription.yaml already validates (default).",
+    )
+    run_skip.add_argument(
+        "--no-skip-successful",
+        dest="skip_successful",
+        action="store_const",
+        const=False,
+        help="Force the pipeline to re-run even when a valid transcription YAML already exists.",
     )
     run.add_argument(
         "--skip-lines-xml-validation",
@@ -1375,10 +1386,21 @@ def main() -> None:
         help="Optional XSD for lines XML (overrides TRANSCRIBER_SHELL_LINES_XML_XSD if set)",
     )
     batch.add_argument("--no-require-text-line", action="store_true")
-    batch.add_argument(
+    batch_skip = batch.add_mutually_exclusive_group()
+    batch_skip.add_argument(
         "--skip-successful",
-        action="store_true",
-        help="Skip images with existing valid artifacts/<job_id>/<image_stem>_transcription.yaml",
+        dest="skip_successful",
+        action="store_const",
+        const=True,
+        default=True,
+        help="Skip images with an existing valid artifacts/<job_id>/<image_stem>_transcription.yaml (default).",
+    )
+    batch_skip.add_argument(
+        "--no-skip-successful",
+        dest="skip_successful",
+        action="store_const",
+        const=False,
+        help="Force the batch to re-run every image, even those with a valid transcription YAML.",
     )
     batch.add_argument(
         "--skip-lines-xml-validation",
@@ -1457,14 +1479,6 @@ def main() -> None:
         help=(
             "Lineation and lines XML validation only; do not call the LLM "
             "(env: TRANSCRIBER_SHELL_XML_ONLY)"
-        ),
-    )
-    batch.add_argument(
-        "--diplomatic",
-        action="store_true",
-        help=(
-            "Set normalizationMode to diplomatic (main text only; no normalizedLayer). "
-            "Default matches GUI with Diplomatic unchecked: normalized (LLM adds normalizedLayer for expansions)."
         ),
     )
     batch.add_argument(

@@ -32,7 +32,11 @@ from transcriber_shell.llm.validate_output import (
     validate_transcript_file,
 )
 from transcriber_shell.models.job import PipelineResult, TranscribeJob
-from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path, transcription_txt_path
+from transcriber_shell.pipeline.transcription_paths import (
+    lines_xml_canonical_path,
+    transcription_txt_path,
+    transcription_yaml_path,
+)
 from transcriber_shell.xml_tools.lines_validate import validate_lines_xml
 from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
 
@@ -435,6 +439,15 @@ def run_pipeline(
                 warnings=warnings,
             )
         lines_out = lines_xml_path.resolve()
+    elif (
+        getattr(s, "reuse_lines_xml", True)
+        and (canonical := lines_xml_canonical_path(s.artifacts_dir, job.job_id)).is_file()
+        and canonical.stat().st_size > 0
+    ):
+        # Reuse an existing artifacts/<job_id>/lines.xml when present.
+        # Saves the ~8 s/page lineation cost when retrying after an LLM failure.
+        _log(f"lineation: reused {canonical} (cached from previous run)")
+        lines_out = canonical
     else:
         backend = s.lineation_backend
         _log(f"lineation: starting ({backend})…")
