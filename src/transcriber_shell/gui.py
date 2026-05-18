@@ -1334,7 +1334,19 @@ class TranscriberGui:
                     if before == 0 and len(self._image_paths) == 1:
                         self._job_id.set(p.stem[:120] or "job")
             elif p.is_dir():
-                for p2 in discover_images(str(p)):
+                try:
+                    dir_images = list(discover_images(str(p)))
+                except ModuleNotFoundError:
+                    self._gui_notify(
+                        "PDF support requires PyMuPDF (fitz): pip install pymupdf\nPDFs in folder skipped.",
+                        "info",
+                    )
+                    from transcriber_shell.pipeline.batch import IMAGE_SUFFIXES
+                    dir_images = sorted(
+                        (f for f in p.iterdir() if f.suffix.lower() in IMAGE_SUFFIXES),
+                        key=lambda q: q.name,
+                    )
+                for p2 in dir_images:
                     r2 = p2.resolve()
                     if r2 not in existing:
                         self._image_paths.append(p2)
@@ -1369,15 +1381,7 @@ class TranscriberGui:
         d = filedialog.askdirectory(title="Folder containing page images")
         if not d:
             return
-        found = discover_images(d)
-        if not found:
-            self._gui_notify(
-                "Add folder: That folder has no supported inputs in its top level (jpg, png, webp, pdf, etc.). "
-                "Subfolders are not scanned.",
-                "info",
-            )
-            return
-        self._ingest_paths([Path(d)], show_empty_warning=False)
+        self._ingest_paths([Path(d)], show_empty_warning=True)
 
     def _add_from_url(self) -> None:
         url = self._url_entry.get().strip()
