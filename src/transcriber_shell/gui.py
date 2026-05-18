@@ -686,6 +686,14 @@ class TranscriberGui:
         )
         ttk.Button(img_btns, text="Clear all", command=self._clear_images).pack(side=tk.LEFT)
 
+        url_row = ttk.Frame(img_frame, style="Main.TFrame")
+        url_row.pack(fill=tk.X, pady=(4, 0), side=tk.BOTTOM)
+        ttk.Label(url_row, text="URL:").pack(side=tk.LEFT, padx=(0, 4))
+        self._url_entry = ttk.Entry(url_row, font=self._content_font)
+        self._url_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 6))
+        self._url_entry.bind("<Return>", lambda _e: self._add_from_url())
+        ttk.Button(url_row, text="Fetch", command=self._add_from_url).pack(side=tk.LEFT)
+
         list_fr = ttk.Frame(img_frame, style="Main.TFrame")
         list_fr.pack(fill=tk.BOTH, expand=True, pady=(4, 4))
         self._image_listbox = tk.Listbox(
@@ -1301,8 +1309,15 @@ class TranscriberGui:
                 if suf not in INPUT_SUFFIXES:
                     continue
                 if suf == PDF_SUFFIX:
-                    # Expand PDF into its page images before adding (uses artifacts cache).
-                    for p2 in discover_images(str(p)):
+                    try:
+                        expanded = list(discover_images(str(p)))
+                    except ModuleNotFoundError:
+                        self._gui_notify(
+                            f"PDF support requires PyMuPDF (fitz): pip install pymupdf\n{p.name} skipped.",
+                            "info",
+                        )
+                        continue
+                    for p2 in expanded:
                         r2 = p2.resolve()
                         if r2 not in existing:
                             self._image_paths.append(p2)
@@ -1363,6 +1378,42 @@ class TranscriberGui:
             )
             return
         self._ingest_paths([Path(d)], show_empty_warning=False)
+
+    def _add_from_url(self) -> None:
+        url = self._url_entry.get().strip()
+        if not url:
+            return
+        try:
+            from transcriber_shell.strigil_fetch import fetch_images_from_url
+        except ImportError as e:
+            self._gui_notify(f"strigil not available: {e}", "error", auto_dismiss_ms=0)
+            return
+        self._url_entry.delete(0, tk.END)
+        out_dir = self._settings.artifacts_dir / "strigil-fetch"
+        self._gui_notify(f"Fetching images from URL…", "info")
+
+        import threading
+
+        def _work() -> None:
+            try:
+                paths = fetch_images_from_url(
+                    url, out_dir,
+                    progress=lambda msg: self.root.after(0, lambda m=msg: self._gui_notify(m, "info")),
+                )
+                def _done() -> None:
+                    if paths:
+                        self._ingest_paths(paths, show_empty_warning=False)
+                        self._gui_notify(f"Fetched {len(paths)} image(s) from URL.", "info")
+                    else:
+                        self._gui_notify("No images found at that URL.", "info", auto_dismiss_ms=0)
+                self.root.after(0, _done)
+            except Exception as exc:
+                self.root.after(
+                    0,
+                    lambda e=exc: self._gui_notify(f"URL fetch failed: {e}", "error", auto_dismiss_ms=0),
+                )
+
+        threading.Thread(target=_work, daemon=True).start()
 
     def _remove_selected_images(self) -> None:
         sel = list(self._image_listbox.curselection())
