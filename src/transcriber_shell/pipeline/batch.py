@@ -147,13 +147,25 @@ def run_batch(
     skip_lines_xml_validation: bool = False,
     skip_successful: bool = False,
     settings: Settings | None = None,
+    log_fn=None,
 ) -> list[dict[str, Any]]:
-    """Run pipeline for each image; return report rows (dicts)."""
+    """Run pipeline for each image; return report rows (dicts).
+
+    ``log_fn`` (optional) is forwarded to ``run_pipeline`` so per-stage
+    progress (lineation / HTR / LLM start+done with elapsed) streams live.
+    A per-image header ``[i/N] image=…`` is logged at the start of each
+    iteration so the operator can tell how far through the batch we are.
+    """
+    def _log(msg: str) -> None:
+        if log_fn is not None:
+            log_fn(msg)
+
     s = settings or Settings()
     n = len(images)
     rows: list[dict[str, Any]] = []
-    for image in images:
+    for i, image in enumerate(images, 1):
         job_id = sanitize_job_id(image.stem)
+        _log(f"[{i}/{n}] image={image.name}  job_id={job_id}")
         if skip_successful and has_successful_transcription(
             job_id, image, settings=s
         ):
@@ -217,6 +229,10 @@ def run_batch(
             require_text_line=require_text_line,
             skip_lines_xml_validation=skip_lines_xml_validation,
             settings=s,
+            log_fn=log_fn,
+        )
+        _log(
+            f"[{i}/{n}] {'ok' if not res.errors else 'fail'}  text_lines={res.text_line_count}"
         )
         row: dict[str, Any] = {
             "job_id": res.job_id,

@@ -2079,6 +2079,7 @@ class TranscriberGui:
                         skip_lines_xml_validation=skip_xml_val,
                         skip_successful=skip_successful,
                         settings=s,
+                        log_fn=self._put_log,
                     )
                     if rid != self._run_id:
                         return

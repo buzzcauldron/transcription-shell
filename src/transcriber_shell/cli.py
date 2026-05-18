@@ -332,6 +332,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 0
     lines_xml = _expand_resolve_cli_path(args.lines_xml)
     xsd = _resolve_xsd_path(args.xsd, settings)
+    def _cli_log(msg: str) -> None:
+        print(msg, file=sys.stderr, flush=True)
+
     res = run_pipeline(
         job,
         skip_gm=args.skip_gm,
@@ -340,6 +343,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         require_text_line=_require_text_line_from_cli(args, settings),
         skip_lines_xml_validation=_skip_lines_xml_validation_from_cli(args, settings),
         settings=settings,
+        log_fn=_cli_log,
     )
     for w in res.warnings:
         print(w, file=sys.stderr)
@@ -508,6 +512,9 @@ def cmd_batch(args: argparse.Namespace) -> int:
         if len(groups) > 1:
             print(f"\n== group doc-type={group_doc_type or '(none)'}, {len(group_images)} image(s) ==",
                   file=sys.stderr)
+        def _cli_log(msg: str) -> None:
+            print(msg, file=sys.stderr, flush=True)
+
         rows = run_batch(
             group_images,
             cfg,
@@ -521,6 +528,7 @@ def cmd_batch(args: argparse.Namespace) -> int:
             skip_lines_xml_validation=_skip_lines_xml_validation_from_cli(args, settings),
             skip_successful=args.skip_successful,
             settings=settings,
+            log_fn=_cli_log,
         )
         all_rows.extend(rows)
         if not all(r.get("ok") for r in rows):
