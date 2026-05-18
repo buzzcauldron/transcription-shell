@@ -140,3 +140,58 @@ def test_v1_transcribe_invalid_provider_returns_422() -> None:
         files=[("files", ("a.jpg", b"\xff\xd8", "image/jpeg"))],
     )
     assert r.status_code == 422
+
+
+def test_v1_transcribe_defaults_prompt_to_normalized_mode() -> None:
+    """Omitting `diplomatic` forces normalizationMode normalized (overrides YAML)."""
+    app = create_app(Settings(api_key=None))
+    client = TestClient(app)
+    captured: dict = {}
+
+    def capture_run(job, *args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["normalizationMode"] = job.prompt_cfg.get("normalizationMode")
+        return PipelineResult(
+            job_id=job.job_id,
+            lines_xml_path=None,
+            transcription_yaml_path=None,
+            text_line_count=0,
+            errors=[],
+            warnings=[],
+        )
+
+    prompt = '{"normalizationMode": "diplomatic"}'
+    with patch("transcriber_shell.api.app.run_pipeline", side_effect=capture_run):
+        r = client.post(
+            "/v1/transcribe",
+            data={"prompt": prompt},
+            files=[("files", ("stem.jpg", b"\xff\xd8", "image/jpeg"))],
+        )
+    assert r.status_code == 200
+    assert captured.get("normalizationMode") == "normalized"
+
+
+def test_v1_transcribe_diplomatic_true_overrides_prompt() -> None:
+    app = create_app(Settings(api_key=None))
+    client = TestClient(app)
+    captured: dict = {}
+
+    def capture_run(job, *args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["normalizationMode"] = job.prompt_cfg.get("normalizationMode")
+        return PipelineResult(
+            job_id=job.job_id,
+            lines_xml_path=None,
+            transcription_yaml_path=None,
+            text_line_count=0,
+            errors=[],
+            warnings=[],
+        )
+
+    prompt = '{"normalizationMode": "normalized"}'
+    with patch("transcriber_shell.api.app.run_pipeline", side_effect=capture_run):
+        r = client.post(
+            "/v1/transcribe",
+            data={"prompt": prompt, "diplomatic": "true"},
+            files=[("files", ("stem.jpg", b"\xff\xd8", "image/jpeg"))],
+        )
+    assert r.status_code == 200
+    assert captured.get("normalizationMode") == "diplomatic"

@@ -6,7 +6,9 @@ targetEra: "medieval"
 eraRange: "1150-1300"
 diplomaticProfile: "strict"
 diplomaticToggles: "{}"
-normalizationMode: "diplomatic"
+# Default matches GUI (Diplomatic unchecked) / CLI without --diplomatic / API without diplomatic=true.
+# For main text only with no normalizedLayer, use normalizationMode: "diplomatic" or pass --diplomatic.
+normalizationMode: "normalized"
 languageSet: "[]"
 scriptNotesOptional: "abbreviated legal Latin; align lineRange with PageXML TextLine count"
 englishHandwritingModality: ""

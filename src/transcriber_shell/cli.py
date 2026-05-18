@@ -16,7 +16,11 @@ from transcriber_shell.pipeline.batch import (
     run_batch,
     write_batch_report,
 )
-from transcriber_shell.pipeline.run import load_prompt_cfg, run_pipeline
+from transcriber_shell.pipeline.run import (
+    load_prompt_cfg,
+    run_pipeline,
+    set_normalization_mode_for_diplomatic,
+)
 from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path
 from transcriber_shell.xml_tools.lines_compare import compare_lines_xml, format_comparison_report
 from transcriber_shell.xml_tools.lines_validate import validate_lines_xml
@@ -1453,6 +1457,14 @@ def main() -> None:
         help=(
             "Lineation and lines XML validation only; do not call the LLM "
             "(env: TRANSCRIBER_SHELL_XML_ONLY)"
+        ),
+    )
+    batch.add_argument(
+        "--diplomatic",
+        action="store_true",
+        help=(
+            "Set normalizationMode to diplomatic (main text only; no normalizedLayer). "
+            "Default matches GUI with Diplomatic unchecked: normalized (LLM adds normalizedLayer for expansions)."
         ),
     )
     batch.add_argument(

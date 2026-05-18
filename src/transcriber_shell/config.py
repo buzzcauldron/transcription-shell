@@ -540,8 +540,23 @@ class Settings(BaseSettings):
             "Combine Glyph Machina HTR (best), Zenodo kraken-htr (second), and LLM-only shell: "
             "default (follow htr_parallel), shell (original shell: LLM only, no HTR), off, "
             "kraken_htr, gm_htr, parallel (all HTR with LLM), sequential (all HTR then LLM), "
-            "gm_then_kraken, kraken_then_gm. Aliases: zenodo→kraken_htr, glyph_machina|gm→gm_htr, "
-            "none|llm_only→shell|off."
+            "gm_then_kraken, kraken_then_gm, htr_only (all HTR, no LLM), "
+            "gm_htr_only (GM only, no LLM), kraken_htr_only (Kraken only, no LLM). "
+            "Aliases: zenodo→kraken_htr, glyph_machina|gm→gm_htr, none|llm_only→shell|off."
+        ),
+    )
+
+    llm_mode: str = Field(
+        default="full",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_LLM_MODE",
+            "LLM_MODE",
+        ),
+        description=(
+            "LLM stage behavior. full (current default — protocol YAML); "
+            "correct (short prompt: treat HTR draft as primary, fix recognition errors); "
+            "off (skip LLM entirely — equivalent to setting htr_combination to a *_only variant). "
+            "Honored only when an HTR backend produced drafts; falls back to full otherwise."
         ),
     )
 
@@ -754,6 +769,9 @@ class Settings(BaseSettings):
                 "sequential",
                 "gm_then_kraken",
                 "kraken_then_gm",
+                "htr_only",
+                "gm_htr_only",
+                "kraken_htr_only",
             }
         )
         if s not in allowed:
@@ -766,6 +784,21 @@ class Settings(BaseSettings):
     def figure_classes_list(self) -> list[str]:
         """``figure_classes`` parsed into a list of trimmed class names."""
         return [x.strip() for x in self.figure_classes.split(",") if x.strip()]
+
+    @field_validator("llm_mode", mode="before")
+    @classmethod
+    def _normalize_llm_mode(cls, v: object) -> str:
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return "full"
+        if not isinstance(v, str):
+            raise ValueError("llm_mode must be a string")
+        s = v.strip().lower()
+        aliases = {"normal": "full", "default": "full", "skip": "off", "none": "off"}
+        s = aliases.get(s, s)
+        allowed = {"full", "correct", "off"}
+        if s not in allowed:
+            raise ValueError(f"llm_mode must be one of {sorted(allowed)}; got {s!r}")
+        return s
 
     def resolved_protocol_root(self, package_root: Path | None = None) -> Path:
         if self.protocol_root is not None:

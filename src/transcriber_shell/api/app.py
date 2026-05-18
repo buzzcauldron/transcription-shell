@@ -11,7 +11,11 @@ from typing import Any
 from transcriber_shell import __version__ as _package_version
 from transcriber_shell.config import Settings
 from transcriber_shell.models.job import TranscribeJob
-from transcriber_shell.pipeline.run import load_prompt_cfg_from_str, run_pipeline
+from transcriber_shell.pipeline.run import (
+    load_prompt_cfg_from_str,
+    run_pipeline,
+    set_normalization_mode_for_diplomatic,
+)
 
 # Per-part limits (multipart uploads are not globally capped by Starlette by default).
 MAX_UPLOAD_BYTES_PER_IMAGE = 40 * 1024 * 1024  # 40 MiB — enough for high-res page scans; limits memory DoS
@@ -88,7 +92,9 @@ def create_app(settings: Settings | None = None) -> Any:
         description=(
             "Send **multipart/form-data** with fields: **`prompt`** (required, YAML or JSON string), "
             "**`files`** (one or more image parts, same field name), optional **`provider`**, **`model`**, "
-            "**`inline_yaml`** (embed YAML text in the JSON response). "
+            "**`inline_yaml`** (embed YAML text in the JSON response), optional **`diplomatic`** "
+            "(default `false`: `normalizationMode` is **normalized** so the LLM emits **normalizedLayer**; "
+            "set `true` for diplomatic-only output, same as CLI **`--diplomatic`** / GUI checkbox). "
             "Boolean form fields use strings like `true` / `false`. "
             "**`skip_gm`** is rejected here — use the CLI for offline lines XML."
         ),
@@ -128,6 +134,9 @@ def create_app(settings: Settings | None = None) -> Any:
                 status_code=422,
                 detail=f"Could not parse 'prompt' as YAML/JSON object: {e}",
             ) from e
+
+        diplomatic = _form_bool(form.get("diplomatic"), False)
+        set_normalization_mode_for_diplomatic(cfg, diplomatic=diplomatic)
 
         if skip_gm:
             raise HTTPException(

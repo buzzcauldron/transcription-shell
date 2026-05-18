@@ -44,7 +44,11 @@ from transcriber_shell.pipeline.batch import (
     run_batch,
     sanitize_job_id,
 )
-from transcriber_shell.pipeline.run import load_prompt_cfg, run_pipeline
+from transcriber_shell.pipeline.run import (
+    load_prompt_cfg,
+    run_pipeline,
+    set_normalization_mode_for_diplomatic,
+)
 from transcriber_shell.pipeline.transcription_paths import transcription_yaml_path
 
 _NONE_LABEL = "(none — use .env default)"
@@ -104,7 +108,16 @@ def _repo_fixtures_prompt() -> Path | None:
 
 class TranscriberGui:
     def __init__(self) -> None:
-        self.root = TkinterDnD.Tk() if TkinterDnD is not None else tk.Tk()
+        # tkinterdnd2 may import but fail at runtime (e.g. tkdnd built for wrong Tcl). Fall back to plain Tk.
+        self._dnd_available = False
+        if TkinterDnD is not None:
+            try:
+                self.root = TkinterDnD.Tk()
+                self._dnd_available = True
+            except (RuntimeError, tk.TclError, OSError):
+                self.root = tk.Tk()
+        else:
+            self.root = tk.Tk()
         self.root.title("Transcriber shell")
         self.root.minsize(560, 720)
         self.root.configure(bg=_BG)
@@ -122,6 +135,8 @@ class TranscriberGui:
         self._key_openai = tk.StringVar()
         self._key_google = tk.StringVar()
         self._ollama_base_url = tk.StringVar(value="http://127.0.0.1:11434")
+        self._custom_env_name = tk.StringVar()
+        self._custom_env_value = tk.StringVar()
         # False = keys visible. True = mask with * (default on).
         self._mask_keys = tk.BooleanVar(value=True)
         self._free_only = tk.BooleanVar(value=False)
@@ -137,6 +152,7 @@ class TranscriberGui:
         self._diplomatic = tk.BooleanVar(value=True)
         self._translate_to_english = tk.BooleanVar(value=False)
         self._extract_figures = tk.BooleanVar(value=self._settings.figure_extract_enabled)
+        self._llm_mode = tk.StringVar(value=self._settings.llm_mode)
         self._model_custom = tk.StringVar(value="")
         self._skip_gm = tk.BooleanVar(value=False)
         self._xsd_path = tk.StringVar(
@@ -164,12 +180,15 @@ class TranscriberGui:
         self._kraken_seg_model_path = tk.StringVar(value=str(self._settings.kraken_model_path or ""))
         self._kraken_htr_model_path = tk.StringVar(value=str(self._settings.kraken_htr_model_path or ""))
         self._htr_parallel = tk.BooleanVar(value=self._settings.htr_parallel)
-        self._htr_combination = tk.StringVar(value=self._settings.htr_combination)
+        _combo = self._settings.htr_combination
+        if _combo in ("default", "") and self._settings.kraken_htr_model_path:
+            _combo = "kraken_htr"
+        self._htr_combination = tk.StringVar(value=_combo)
         self._tesseract_enabled = tk.BooleanVar(value=self._settings.tesseract_enabled)
         self._tesseract_lang = tk.StringVar(value=self._settings.tesseract_lang)
         self._tesseract_psm = tk.IntVar(value=self._settings.tesseract_psm)
         self._keys_expanded = tk.BooleanVar(value=True)
-        self._htr_section_expanded = tk.BooleanVar(value=False)
+        self._htr_section_expanded = tk.BooleanVar(value=True)
         self._advanced_expanded = tk.BooleanVar(value=False)
         self._status = tk.StringVar(value="Ready.")
         self._metrics_elapsed = tk.StringVar(value="Elapsed: —")
@@ -345,6 +364,12 @@ class TranscriberGui:
             text="Extract figures (DocLayNet; saves figures/*.png + [fig:id] markers)",
             variable=self._extract_figures,
         ).pack(side=tk.LEFT, padx=(20, 0))
+        ttk.Label(mode_row2, text="LLM mode:").pack(side=tk.LEFT, padx=(20, 4))
+        ttk.Combobox(
+            mode_row2, textvariable=self._llm_mode,
+            values=("full", "correct", "off"),
+            state="readonly", width=8,
+        ).pack(side=tk.LEFT)
 
         btn_row = ttk.Frame(bottom_bar, style="Main.TFrame")
         btn_row.pack(fill=tk.X)
@@ -470,8 +495,17 @@ class TranscriberGui:
                 highlightcolor=_ACCENT,
                 font=self._content_font,
             )
-            e.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            e.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
             self._key_entry_widgets.append(e)
+            # Per-field show/hide toggle
+            shown = tk.BooleanVar(value=not self._mask_keys.get())
+            def _toggle(entry=e, sv=shown) -> None:
+                sv.set(not sv.get())
+                entry.configure(show="" if sv.get() else "*")
+                btn.configure(text="hide" if sv.get() else "show")
+            btn = ttk.Button(f, text="show" if self._mask_keys.get() else "hide",
+                             command=_toggle, width=4)
+            btn.pack(side=tk.LEFT)
 
         key_row("Anthropic", self._key_anthropic)
         key_row("OpenAI", self._key_openai)
@@ -483,6 +517,13 @@ class TranscriberGui:
         ttk.Entry(olf, textvariable=self._ollama_base_url).pack(
             side=tk.LEFT, fill=tk.X, expand=True
         )
+
+        cef = ttk.Frame(cred, style="Main.TFrame")
+        cef.pack(fill=tk.X, pady=(4, 2))
+        ttk.Label(cef, text="Custom env", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        ttk.Entry(cef, textvariable=self._custom_env_name, width=24).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Label(cef, text="=").pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Entry(cef, textvariable=self._custom_env_value).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         optf = ttk.Frame(cred, style="Main.TFrame")
         optf.pack(fill=tk.X, pady=(4, 0))
@@ -621,8 +662,12 @@ class TranscriberGui:
             img_frame,
             text=(
                 "Drag image files or a folder onto the list below (same rules as Add files… / Add folder…)."
-                if DND_FILES is not None
-                else "Install tkinterdnd2 (declared dependency) to drag files or folders onto the list."
+                if self._dnd_available
+                else (
+                    "Drag-and-drop is unavailable on this Tcl/tkdnd build; use Add files… / Add folder…."
+                    if DND_FILES is not None
+                    else "Install tkinterdnd2 (declared dependency) to drag files or folders onto the list."
+                )
             ),
             style="Muted.TLabel",
             wraplength=520,
@@ -944,7 +989,8 @@ class TranscriberGui:
             values=(
                 "default", "shell", "parallel", "sequential",
                 "gm_htr", "kraken_htr", "tesseract_htr",
-                "gm_then_kraken", "kraken_then_gm", "off",
+                "gm_then_kraken", "kraken_then_gm",
+                "htr_only", "gm_htr_only", "kraken_htr_only", "off",
             ),
             state="readonly",
             width=22,
@@ -1222,7 +1268,7 @@ class TranscriberGui:
         self._schedule_gui_state_save()
 
     def _setup_image_drop_target(self) -> None:
-        if DND_FILES is None:
+        if DND_FILES is None or not self._dnd_available:
             return
 
         def on_drop(event: tk.Event) -> None:
@@ -1432,6 +1478,9 @@ class TranscriberGui:
             "TRANSCRIBER_SHELL_TESSERACT_ENABLED": "true" if self._tesseract_enabled.get() else "false",
             "TRANSCRIBER_SHELL_TESSERACT_LANG": self._tesseract_lang.get().strip(),
             "TRANSCRIBER_SHELL_TESSERACT_PSM": str(int(self._tesseract_psm.get())),
+            "TRANSCRIBER_SHELL_LLM_MODE": self._llm_mode.get().strip() or "full",
+            **({self._custom_env_name.get().strip(): self._custom_env_value.get()}
+               if self._custom_env_name.get().strip() else {}),
         }
 
     def _save_keys_to_dotenv(self) -> None:
@@ -1536,6 +1585,9 @@ class TranscriberGui:
         if tl := self._tesseract_lang.get().strip():
             out["TRANSCRIBER_SHELL_TESSERACT_LANG"] = tl
         out["TRANSCRIBER_SHELL_TESSERACT_PSM"] = str(int(self._tesseract_psm.get()))
+        out["TRANSCRIBER_SHELL_LLM_MODE"] = self._llm_mode.get().strip() or "full"
+        if n := self._custom_env_name.get().strip():
+            out[n] = self._custom_env_value.get()
         return out
 
     # ── Discovery ─────────────────────────────────────────────────────────────
@@ -1987,6 +2039,7 @@ class TranscriberGui:
             cfg["normalizationMode"] = "diplomatic" if diplomatic else "normalized"
             if eff_mode:
                 cfg["runMode"] = "efficient"
+            set_normalization_mode_for_diplomatic(cfg, diplomatic=dipl)
             with patch.dict(os.environ, env_overrides, clear=False):
                 s = Settings()
                 if n == 1:
@@ -2215,6 +2268,7 @@ class TranscriberGui:
             "diplomatic": self._diplomatic.get(),
             "translate_to_english": self._translate_to_english.get(),
             "extract_figures": self._extract_figures.get(),
+            "llm_mode": self._llm_mode.get(),
             "skip_gm": self._skip_gm.get(),
             "prompt_path": self._prompt_path.get().strip(),
             "lines_xml_path": self._lines_xml_path.get().strip(),
@@ -2305,6 +2359,10 @@ class TranscriberGui:
                 self._translate_to_english.set(bool(data["translate_to_english"]))
             if "extract_figures" in data:
                 self._extract_figures.set(bool(data["extract_figures"]))
+            if "llm_mode" in data:
+                v = str(data["llm_mode"]).strip().lower()
+                if v in ("full", "correct", "off"):
+                    self._llm_mode.set(v)
             if "skip_gm" in data:
                 self._skip_gm.set(bool(data["skip_gm"]))
             for key, var in (

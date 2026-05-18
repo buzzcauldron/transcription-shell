@@ -20,6 +20,7 @@ class HtrPlanKind(str, Enum):
     WITH_LLM_PARALLEL = "with_llm_parallel"
     BEFORE_LLM_PARALLEL = "before_llm_parallel"
     BEFORE_LLM_ORDERED = "before_llm_ordered"
+    HTR_ONLY = "htr_only"
 
 
 @dataclass(frozen=True)
@@ -106,6 +107,23 @@ def plan_htr_execution(
                 kind=HtrPlanKind.BEFORE_LLM_PARALLEL, tasks={k: fn}
             )
         return HtrExecutionPlan(kind=HtrPlanKind.BEFORE_LLM_ORDERED, ordered=ordered)
+
+    if c == "htr_only":
+        if not all_tasks:
+            return HtrExecutionPlan(kind=HtrPlanKind.NONE)
+        return HtrExecutionPlan(kind=HtrPlanKind.HTR_ONLY, tasks=dict(all_tasks))
+
+    if c == "gm_htr_only":
+        tasks = {k: v for k, v in all_tasks.items() if k == "gm-htr"}
+        if not tasks:
+            return HtrExecutionPlan(kind=HtrPlanKind.NONE)
+        return HtrExecutionPlan(kind=HtrPlanKind.HTR_ONLY, tasks=tasks)
+
+    if c == "kraken_htr_only":
+        tasks = {k: v for k, v in all_tasks.items() if k == "kraken-htr"}
+        if not tasks:
+            return HtrExecutionPlan(kind=HtrPlanKind.NONE)
+        return HtrExecutionPlan(kind=HtrPlanKind.HTR_ONLY, tasks=tasks)
 
     # Unknown combination: behave like sequential (safe default)
     if not all_tasks:

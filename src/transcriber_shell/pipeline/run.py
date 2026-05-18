@@ -1,9 +1,9 @@
-"""Orchestrate: lines XML → validate → LLM (+ optional HTR backends) → YAML validate.
+"""Orchestrate: lineation → (optional HTR) → LLM → YAML normalize/validate.
 
-Core path: fetch lines (or use --skip-gm + existing XML) → validate_lines_xml → run_transcribe →
-normalize + validate_transcript_file. Other backends (mask, kraken) are pluggable line sources only.
-HTR backends (kraken-htr, gm-htr): when ``htr_parallel`` is true they run alongside the LLM; when false
-they run **before** the LLM and drafts are appended to the lineation hint (lineation → HTR → LLM).
+Stages are run sequentially by ``run_pipeline``; each is implemented as a small private
+helper (``_do_lineation``, ``_do_htr``, ``_call_llm``, ``_write_output``). Backends and
+the HTR-vs-LLM ordering are controlled by ``Settings`` (``lineation_backend``,
+``htr_combination``).
 """
 
 from __future__ import annotations
@@ -219,6 +219,174 @@ def _fixup_protocol_compliance(data: dict[str, Any]) -> None:
         )
 
 
+def _format_llm_error(job: TranscribeJob, exc: BaseException) -> str:
+    """One place that maps an LLM-call exception to a user-facing message."""
+    prov = job.provider.lower()
+    if isinstance(exc, LLMProviderError):
+        hint = " See docs/claude_anthropic_reference.md for Anthropic-specific troubleshooting." if prov == "anthropic" else ""
+        return f"LLM transcription failed ({job.provider}): {exc}{hint}"
+    if isinstance(exc, httpx.TimeoutException):
+        return (
+            f"LLM transcription failed ({job.provider}): {exc} ({type(exc).__name__}). "
+            f"{_llm_network_timeout_hint(job)}"
+        )
+    if isinstance(exc, TimeoutError) or (
+        isinstance(exc, OSError) and getattr(exc, "errno", None) == errno.ETIMEDOUT
+    ):
+        return f"LLM transcription failed ({job.provider}): {exc}. {_llm_network_timeout_hint(job)}"
+    return (
+        f"LLM transcription failed ({job.provider}): {exc}. "
+        "Check API key in .env or the GUI, provider outage/rate limits, and that the model id is valid."
+    )
+
+
+def _htr_only_short_circuit(
+    job: TranscribeJob,
+    s: Settings,
+    lines_out: Path | None,
+    text_line_count: int,
+    htr_results: dict[str, Any],
+    errors: list[str],
+    warnings: list[str],
+    timings: list[tuple[str, float]],
+) -> PipelineResult:
+    """Write raw HTR text as the final output and skip the LLM step entirely."""
+    from transcriber_shell.htr.base import HtrResult as _HtrResult
+    parts = [
+        res.text.strip()
+        for res in htr_results.values()
+        if isinstance(res, _HtrResult) and res.text.strip()
+    ]
+    if not parts:
+        errors.append("htr_only: HTR returned no text.")
+        return PipelineResult(
+            job.job_id, lines_out, None, text_line_count,
+            errors=errors, warnings=warnings, htr_results=htr_results, timings=timings,
+        )
+    raw_htr = "\n\n".join(parts)
+    out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
+    out_yaml.parent.mkdir(parents=True, exist_ok=True)
+    out_yaml.write_text(raw_htr, encoding="utf-8")
+    try:
+        out_yaml.with_suffix(".txt").write_text(raw_htr, encoding="utf-8")
+    except OSError:
+        pass
+    warnings.append("htr_only: output is raw HTR text, not protocol-compliant YAML.")
+    return PipelineResult(
+        job.job_id, lines_out, out_yaml, text_line_count,
+        errors=errors, warnings=warnings, htr_results=htr_results, timings=timings,
+    )
+
+
+def _append_htr_hint(job: TranscribeJob, htr_results: dict[str, Any]) -> None:
+    """Append HTR drafts to ``job.line_hint`` when results are available."""
+    hint_extra = _htr_results_to_line_hint(htr_results)
+    if hint_extra:
+        job.line_hint = f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
+
+
+def _do_htr(
+    job: TranscribeJob,
+    s: Settings,
+    lines_out: Path,
+    errors: list[str],
+    warnings: list[str],
+    timings: list[tuple[str, float]],
+    text_line_count: int,
+    _log,
+) -> tuple[dict[str, Any], Future | None, ThreadPoolExecutor | None, PipelineResult | None]:
+    """Plan and run HTR backends per ``htr_combination``.
+
+    Returns ``(early_results, future, executor, short_circuit)``.
+    ``short_circuit`` is a complete ``PipelineResult`` only when the plan is ``HTR_ONLY``
+    (or HTR errored under that plan) — the caller must return it immediately and skip the LLM.
+    """
+    from transcriber_shell.htr.detect import detect_scripts
+    from transcriber_shell.htr.parallel import build_htr_tasks, run_htr_ordered, run_htr_parallel
+    from transcriber_shell.htr.selector import HtrPlanKind, plan_htr_execution
+
+    scripts = detect_scripts(job.prompt_cfg)
+    htr_tasks = build_htr_tasks(job.image_path, lines_out, scripts, s)
+    plan = plan_htr_execution(s, htr_tasks)
+
+    early: dict[str, Any] = {}
+
+    if plan.kind == HtrPlanKind.NONE:
+        if htr_tasks and (s.htr_combination or "").strip().lower() in ("shell", "off", "none", "llm_only"):
+            warnings.append(
+                "HTR backends are configured (Glyph Machina and/or Zenodo paths) but "
+                f"htr_combination={s.htr_combination!r} runs the original shell (LLM) only; HTR was skipped."
+            )
+        return early, None, None, None
+
+    if plan.kind == HtrPlanKind.WITH_LLM_PARALLEL and plan.tasks:
+        _log("htr: starting (parallel with LLM)…")
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(run_htr_parallel, plan.tasks)
+        return early, future, executor, None
+
+    label = "htr_only — LLM skipped" if plan.kind == HtrPlanKind.HTR_ONLY else "before LLM"
+    _log(f"htr: starting ({label})…")
+    t0 = time.perf_counter()
+    try:
+        if plan.kind == HtrPlanKind.BEFORE_LLM_ORDERED and plan.ordered:
+            early = run_htr_ordered(plan.ordered)
+        elif plan.tasks:
+            early = run_htr_parallel(plan.tasks)
+    except Exception as exc:  # noqa: BLE001
+        if plan.kind == HtrPlanKind.HTR_ONLY:
+            errors.append(f"HTR runner error: {exc}")
+            return early, None, None, PipelineResult(
+                job.job_id, lines_out, None, text_line_count,
+                errors=errors, warnings=warnings, timings=timings,
+            )
+        kind = "ordered " if plan.kind == HtrPlanKind.BEFORE_LLM_ORDERED else ""
+        warnings.append(f"HTR {kind}runner error: {exc}")
+        early = {}
+    timings.append(("htr", time.perf_counter() - t0))
+    _log(f"htr: done ({timings[-1][1]:.1f}s)")
+
+    if plan.kind == HtrPlanKind.HTR_ONLY:
+        return early, None, None, _htr_only_short_circuit(
+            job, s, lines_out, text_line_count, early, errors, warnings, timings,
+        )
+
+    _append_htr_hint(job, early)
+    return early, None, None, None
+
+
+def _write_output(
+    raw: str,
+    s: Settings,
+    job: TranscribeJob,
+) -> tuple[Path, list[str]]:
+    """Write LLM output as YAML, normalize, and emit a plain-text sidecar.
+
+    Returns ``(out_yaml, errors)`` — errors is non-empty when the model output isn't valid YAML.
+    """
+    raw = strip_yaml_fence(raw)
+    out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
+    out_yaml.parent.mkdir(parents=True, exist_ok=True)
+    out_yaml.write_text(raw, encoding="utf-8")
+    try:
+        data = yaml.safe_load(raw)
+    except yaml.YAMLError as e:
+        return out_yaml, [
+            f"Model returned text that is not valid YAML: {e}. "
+            "Retry or switch model; ensure the prompt asks for YAML matching the Academic Transcription Protocol."
+        ]
+    if isinstance(data, dict):
+        normalize_transcription_yaml_data(data)
+        out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        try:
+            transcription_txt_path(s.artifacts_dir, job.job_id, job.image_path).write_text(
+                _extract_plain_text(data), encoding="utf-8"
+            )
+        except OSError:
+            pass
+    return out_yaml, []
+
+
 def run_pipeline(
     job: TranscribeJob,
     *,
@@ -399,176 +567,42 @@ def run_pipeline(
             "align segment lineRange fields accordingly."
         )
 
-    # HTR (Glyph Machina, Zenodo kraken-htr): combination from htr_combination / htr_parallel; shell = LLM only.
+    # ── HTR ───────────────────────────────────────────────────────────────
     htr_future: Future | None = None
     htr_executor: ThreadPoolExecutor | None = None
     htr_results_early: dict[str, Any] = {}
     if lines_out is not None and not s.xml_only:
-        from transcriber_shell.htr.detect import detect_scripts
-        from transcriber_shell.htr.parallel import (
-            build_htr_tasks,
-            run_htr_ordered,
-            run_htr_parallel,
+        htr_results_early, htr_future, htr_executor, short_circuit = _do_htr(
+            job, s, lines_out, errors, warnings, timings, text_line_count, _log,
         )
-        from transcriber_shell.htr.selector import HtrPlanKind, plan_htr_execution
+        if short_circuit is not None:
+            return short_circuit
 
-        scripts = detect_scripts(job.prompt_cfg)
-        htr_tasks = build_htr_tasks(job.image_path, lines_out, scripts, s)
-        plan = plan_htr_execution(s, htr_tasks)
-        if plan.kind == HtrPlanKind.NONE:
-            if htr_tasks and (s.htr_combination or "").strip().lower() in (
-                "shell",
-                "off",
-                "none",
-                "llm_only",
-            ):
-                warnings.append(
-                    "HTR backends are configured (Glyph Machina and/or Zenodo paths) but "
-                    f"htr_combination={s.htr_combination!r} runs the original shell (LLM) only; HTR was skipped."
-                )
-        elif plan.kind == HtrPlanKind.WITH_LLM_PARALLEL and plan.tasks:
-            _log("htr: starting (parallel with LLM)…")
-            htr_executor = ThreadPoolExecutor(max_workers=1)
-            htr_future = htr_executor.submit(run_htr_parallel, plan.tasks)
-        elif plan.kind == HtrPlanKind.BEFORE_LLM_PARALLEL and plan.tasks:
-            _log("htr: starting (before LLM)…")
-            _t_htr = time.perf_counter()
-            try:
-                htr_results_early = run_htr_parallel(plan.tasks)
-            except Exception as exc:  # noqa: BLE001
-                warnings.append(f"HTR runner error: {exc}")
-            else:
-                hint_extra = _htr_results_to_line_hint(htr_results_early)
-                if hint_extra:
-                    job.line_hint = (
-                        f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
-                    )
-            _htr_s = time.perf_counter() - _t_htr
-            timings.append(("htr", _htr_s))
-            _log(f"htr: done ({_htr_s:.1f}s)")
-        elif plan.kind == HtrPlanKind.BEFORE_LLM_ORDERED and plan.ordered:
-            _log("htr: starting (before LLM)…")
-            _t_htr = time.perf_counter()
-            try:
-                htr_results_early = run_htr_ordered(plan.ordered)
-            except Exception as exc:  # noqa: BLE001
-                warnings.append(f"HTR ordered runner error: {exc}")
-            else:
-                hint_extra = _htr_results_to_line_hint(htr_results_early)
-                if hint_extra:
-                    job.line_hint = (
-                        f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
-                    )
-            _htr_s = time.perf_counter() - _t_htr
-            timings.append(("htr", _htr_s))
-            _log(f"htr: done ({_htr_s:.1f}s)")
+    # llm_mode=off short-circuits to the same htr_only output path when drafts exist.
+    if (s.llm_mode or "full").lower() == "off" and htr_results_early:
+        return _htr_only_short_circuit(
+            job, s, lines_out, text_line_count, htr_results_early, errors, warnings, timings,
+        )
 
+    # ── LLM ───────────────────────────────────────────────────────────────
     _log(f"llm: starting ({job.provider}/{job.model_override or 'default'})…")
     llm_usage: dict[str, int] | None = None
-    _t = time.perf_counter()
+    t_llm = time.perf_counter()
     try:
         tx = run_transcribe(job, settings=s)
-        if isinstance(tx, TranscribeResult):
-            raw = tx.text
-            llm_usage = tx.usage
-        else:
-            raw = tx  # pragma: no cover — tests may mock with plain str
-    except LLMProviderError as e:
-        hint = ""
-        if job.provider.lower() == "anthropic":
-            hint = " See docs/claude_anthropic_reference.md for Anthropic-specific troubleshooting."
-        errors.append(f"LLM transcription failed ({job.provider}): {e}{hint}")
+    except (LLMProviderError, TimeoutError, OSError, httpx.TimeoutException, Exception) as e:
+        errors.append(_format_llm_error(job, e))
         return PipelineResult(
-            job.job_id,
-            lines_out,
-            None,
-            text_line_count,
-            errors=errors,
-            warnings=warnings,
-            htr_results=_finalize_htr_results(
-                htr_results_early, htr_future, htr_executor, warnings
-            ),
+            job.job_id, lines_out, None, text_line_count,
+            errors=errors, warnings=warnings,
+            htr_results=_finalize_htr_results(htr_results_early, htr_future, htr_executor, warnings),
+            timings=timings,
         )
-    except TimeoutError as e:
-        errors.append(
-            f"LLM transcription failed ({job.provider}): {e}. {_llm_network_timeout_hint(job)}"
-        )
-        return PipelineResult(
-            job.job_id,
-            lines_out,
-            None,
-            text_line_count,
-            errors=errors,
-            warnings=warnings,
-            htr_results=_finalize_htr_results(
-                htr_results_early, htr_future, htr_executor, warnings
-            ),
-        )
-    except OSError as e:
-        if getattr(e, "errno", None) == errno.ETIMEDOUT:
-            errors.append(
-                f"LLM transcription failed ({job.provider}): {e}. {_llm_network_timeout_hint(job)}"
-            )
-            return PipelineResult(
-                job.job_id,
-                lines_out,
-                None,
-                text_line_count,
-                errors=errors,
-                warnings=warnings,
-                htr_results=_finalize_htr_results(
-                    htr_results_early, htr_future, htr_executor, warnings
-                ),
-            )
-        errors.append(
-            f"LLM transcription failed ({job.provider}): {e}. "
-            "Check API key in .env or the GUI, provider outage/rate limits, and that the model id is valid."
-        )
-        return PipelineResult(
-            job.job_id,
-            lines_out,
-            None,
-            text_line_count,
-            errors=errors,
-            warnings=warnings,
-            htr_results=_finalize_htr_results(
-                htr_results_early, htr_future, htr_executor, warnings
-            ),
-        )
-    except httpx.TimeoutException as e:
-        errors.append(
-            f"LLM transcription failed ({job.provider}): {e} ({type(e).__name__}). "
-            f"{_llm_network_timeout_hint(job)}"
-        )
-        return PipelineResult(
-            job.job_id,
-            lines_out,
-            None,
-            text_line_count,
-            errors=errors,
-            warnings=warnings,
-            htr_results=_finalize_htr_results(
-                htr_results_early, htr_future, htr_executor, warnings
-            ),
-        )
-    except Exception as e:
-        errors.append(
-            f"LLM transcription failed ({job.provider}): {e}. "
-            "Check API key in .env or the GUI, provider outage/rate limits, and that the model id is valid."
-        )
-        return PipelineResult(
-            job.job_id,
-            lines_out,
-            None,
-            text_line_count,
-            errors=errors,
-            warnings=warnings,
-            htr_results=_finalize_htr_results(
-                htr_results_early, htr_future, htr_executor, warnings
-            ),
-        )
-
-    _llm_s = time.perf_counter() - _t
+    if isinstance(tx, TranscribeResult):
+        raw, llm_usage = tx.text, tx.usage
+    else:  # pragma: no cover — tests may mock with plain str
+        raw = tx
+    _llm_s = time.perf_counter() - t_llm
     timings.append(("llm", _llm_s))
     _log(f"llm: done ({_llm_s:.1f}s)")
 
@@ -578,16 +612,12 @@ def run_pipeline(
     out_yaml.parent.mkdir(parents=True, exist_ok=True)
     out_yaml.write_text(raw, encoding="utf-8")
 
-    # Parse and re-dump for sanity (optional)
     try:
         data = yaml.safe_load(raw)
         if isinstance(data, dict):
-            # Restore [uncertain: tokens that were placeholdered for YAML safety
             data = _restore_uncertain_in_dict(data)
             normalize_transcription_yaml_data(data)
             _fixup_protocol_compliance(data)
-            # Overwrite whatever model ID the LLM put in the metadata with the
-            # actual runtime model so records are trustworthy.
             _actual_model = job.model_override or s.resolved_model(job.provider)
             _meta = (data.get("transcriptionOutput") or {}).get("metadata")
             if isinstance(_meta, dict):
@@ -622,19 +652,10 @@ def run_pipeline(
     if not val_ok:
         errors.extend(val_errs)
 
-    htr_results = _finalize_htr_results(
-        htr_results_early, htr_future, htr_executor, warnings
-    )
-
     return PipelineResult(
-        job.job_id,
-        lines_out,
-        out_yaml,
-        text_line_count,
-        errors=errors,
-        warnings=warnings,
-        llm_usage=llm_usage,
-        htr_results=htr_results,
+        job.job_id, lines_out, out_yaml, text_line_count,
+        errors=errors, warnings=warnings, llm_usage=llm_usage,
+        htr_results=_finalize_htr_results(htr_results_early, htr_future, htr_executor, warnings),
         timings=timings,
     )
 
@@ -655,3 +676,12 @@ def load_prompt_cfg_from_str(text: str, *, suffix: str = "") -> dict:
     if not isinstance(data, dict):
         raise ValueError("prompt file must parse to a JSON/YAML object (top-level mapping), not a list or scalar")
     return data
+
+
+def set_normalization_mode_for_diplomatic(cfg: dict[str, Any], *, diplomatic: bool) -> None:
+    """Set ``normalizationMode`` from the diplomatic toggle (GUI / CLI / API).
+
+    When *diplomatic* is false, the LLM emits a parallel ``normalizedLayer`` for expansions
+    (protocol ``normalizationMode: normalized``). When true, only the diplomatic transcript is produced.
+    """
+    cfg["normalizationMode"] = "diplomatic" if diplomatic else "normalized"

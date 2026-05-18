@@ -62,13 +62,7 @@ def _compile_split(split_dir: Path, out_arrow: Path) -> bool:
         print(f"  No PNG files in {split_dir}, skipping compile.")
         return False
     print(f"  ketos compile: {len(png_files)} images → {out_arrow}")
-    cmd = [
-        sys.executable, "-m", "kraken.ketos", "compile",
-        "-o", str(out_arrow),
-        "--workers", "4",
-    ] + [str(p) for p in png_files]
-    # Try ketos CLI directly first (faster path)
-    result = subprocess.run(["ketos", "compile", "-o", str(out_arrow), "--workers", "4"]
+    result = subprocess.run(["ketos", "compile", "-f", "path", "-o", str(out_arrow)]
                             + [str(p) for p in png_files])
     if result.returncode != 0:
         print(f"  ketos compile failed (exit {result.returncode})")
@@ -82,12 +76,14 @@ def main() -> None:
                    help=f"Output directory for GT pairs and compiled .arrow files (default: {DEFAULT_OUT})")
     p.add_argument("--base-model", type=Path, default=DEFAULT_BASE_MODEL,
                    help=f"Kraken base model for fine-tuning (default: {DEFAULT_BASE_MODEL})")
-    p.add_argument("--splits", nargs="+", default=["train", "validation"],
-                   help="HuggingFace dataset splits to download (default: train validation)")
+    p.add_argument("--splits", nargs="+", default=None,
+                   help="Dataset splits to process (default: all available splits)")
     p.add_argument("--no-compile", action="store_true",
                    help="Save pairs only; skip ketos compile (compile on the training server)")
     p.add_argument("--hf-token", default=None,
                    help="HuggingFace token for private datasets")
+    p.add_argument("--local-data", type=Path, default=None,
+                   help="Directory of already-downloaded parquet files (skips HuggingFace download)")
     args = p.parse_args()
 
     out_dir = args.out.expanduser().resolve()
@@ -98,12 +94,25 @@ def main() -> None:
     except ImportError:
         sys.exit("Install HuggingFace datasets: pip install datasets pillow")
 
-    print(f"Downloading {DATASET_ID} …")
-    ds = load_dataset(DATASET_ID, token=args.hf_token)
+    if args.local_data:
+        local_dir = args.local_data.expanduser().resolve()
+        train_files = sorted(local_dir.glob("train-*.parquet"))
+        test_files = sorted(local_dir.glob("test-*.parquet"))
+        data_files = {}
+        if train_files:
+            data_files["train"] = [str(f) for f in train_files]
+        if test_files:
+            data_files["test"] = [str(f) for f in test_files]
+        print(f"Loading from local parquet files in {local_dir} …")
+        ds = load_dataset("parquet", data_files=data_files)
+    else:
+        print(f"Downloading {DATASET_ID} …")
+        ds = load_dataset(DATASET_ID, token=args.hf_token)
     print(f"  Splits available: {list(ds.keys())}")
 
+    splits = args.splits if args.splits else list(ds.keys())
     total = 0
-    for split in args.splits:
+    for split in splits:
         if split not in ds:
             print(f"  Split '{split}' not found, skipping.")
             continue
@@ -117,7 +126,7 @@ def main() -> None:
     if not args.no_compile:
         print("\nCompiling ground truth to Kraken binary format (.arrow) …")
         arrow_files = []
-        for split in args.splits:
+        for split in splits:
             split_dir = out_dir / split
             if not split_dir.is_dir():
                 continue

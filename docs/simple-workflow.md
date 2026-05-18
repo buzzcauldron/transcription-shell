@@ -13,6 +13,12 @@ The program does **one thing in order**:
 
 4. **Check YAML** — Validate the model’s transcription YAML (`<image_stem>_transcription.yaml`) against the protocol schema.
 
+### Diplomatic vs normalized (`normalizationMode`)
+
+Optional **HTR** steps (Kraken / Glyph Machina) produce **draft text** that often **keeps scribal abbreviation marks** as read from the page; that is expected HTR behavior, not a model bug.
+
+By default the shell aligns with the GUI **Diplomatic** checkbox **unchecked**: after loading your prompt file it sets **`normalizationMode` to `normalized`**, so the LLM keeps a faithful **diplomatic** line in `segments` and adds a parallel **`normalizedLayer`** for grounded expansions (see [transcription-output schema §normalizedLayer](https://github.com/buzzcauldron/transcription-protocol/blob/main/transcription-output-schema-v1.1.0.md)). To request **main text only** with no normalized layer, use the GUI **Diplomatic** checkbox, **`transcriber-shell run` / `batch` with `--diplomatic`**, or **`diplomatic=true`** on **`POST /v1/transcribe`** (same meaning as the checkbox). The example prompt [fixtures/prompt.example.yaml](../fixtures/prompt.example.yaml) uses **`normalized`** so `run --prompt` matches that default without extra flags.
+
 Output goes under **`artifacts/<job_id>/`** (e.g. `page_transcription.yaml` for `page.jpg`, lines XML copy).
 
 Older versions of this tool wrote a fixed filename `transcription.yaml` instead; **`--skip-successful` and the GUI skip option only recognize `<image_stem>_transcription.yaml`.** Rename old files if you rely on skip.
