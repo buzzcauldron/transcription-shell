@@ -11,7 +11,16 @@ Requires: pip install 'transcriber-shell[kraken]'
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
+
+# Suppress the harmless coremltools warning emitted when loading a kraken .mlmodel
+# on Apple Silicon (see kraken_lineation.py for the full explanation).
+warnings.filterwarnings(
+    "ignore",
+    message=r"You will not be able to run predict\(\) on this Core ML model.*",
+    category=RuntimeWarning,
+)
 
 from transcriber_shell.htr.base import HtrResult, float_to_confidence_tier
 

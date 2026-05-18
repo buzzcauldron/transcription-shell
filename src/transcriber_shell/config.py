@@ -332,9 +332,13 @@ class Settings(BaseSettings):
         ),
     )
     kraken_device: str = Field(
-        default="cpu",
+        default="auto",
         validation_alias=AliasChoices(
             "TRANSCRIBER_SHELL_KRAKEN_DEVICE", "KRAKEN_DEVICE"
+        ),
+        description=(
+            "Torch device for kraken inference. 'auto' (default) picks MPS on Apple "
+            "Silicon, CUDA when available, else CPU. Explicit 'cpu'/'mps'/'cuda:N' override."
         ),
     )
     kraken_threshold: float = Field(
@@ -383,6 +387,35 @@ class Settings(BaseSettings):
             "Playwright website call. Set false to disable the website call entirely."
         ),
     )
+    batch_parallel_pages: int = Field(
+        default=3,
+        ge=1,
+        le=16,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_BATCH_PARALLEL_PAGES",
+            "BATCH_PARALLEL_PAGES",
+        ),
+        description=(
+            "Number of pages run concurrently in run_batch. Pages are independent, "
+            "so a small thread pool (3 by default) overlaps LLM I/O wait with the next "
+            "page's lineation. Set to 1 to force serial execution."
+        ),
+    )
+
+    pdf_dpi: int = Field(
+        default=300,
+        ge=72,
+        le=600,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_PDF_DPI", "PDF_DPI"
+        ),
+        description=(
+            "Rasterisation DPI when expanding PDFs to per-page JPGs (pipeline/pdf_extract). "
+            "300 is the safe default; drop to 200 for ~2× faster rasterisation when the "
+            "HTR backend doesn't need ultra-fine glyph detail."
+        ),
+    )
+
     figure_extract_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices(

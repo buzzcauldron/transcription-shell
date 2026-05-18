@@ -5,6 +5,7 @@ from __future__ import annotations
 import glob
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +33,7 @@ def _expand_pdf(pdf_path: Path) -> list[Path]:
     from transcriber_shell.pipeline.pdf_extract import expand_pdf_to_images
 
     s = Settings()
-    return expand_pdf_to_images(pdf_path, s.artifacts_dir)
+    return expand_pdf_to_images(pdf_path, s.artifacts_dir, dpi=s.pdf_dpi)
 
 
 def sanitize_job_id(stem: str) -> str:
@@ -172,11 +173,12 @@ def run_batch(
 
     s = settings or Settings()
     n = len(images)
-    rows: list[dict[str, Any]] = []
-    for i, image in enumerate(images, 1):
+    workers = max(1, min(int(getattr(s, "batch_parallel_pages", 1) or 1), n))
+
+    def _process(i: int, image: Path) -> dict[str, Any] | None:
+        """Run the pipeline for a single image. Returns the report row, or None if cancelled."""
         if _cancelled():
-            _log(f"[{i}/{n}] stop requested — halting batch (rows so far: {len(rows)})")
-            break
+            return None
         job_id = sanitize_job_id(image.stem)
         _log(f"[{i}/{n}] image={image.name}  job_id={job_id}")
         if skip_successful and has_successful_transcription(
@@ -184,25 +186,23 @@ def run_batch(
         ):
             ty_path = transcription_yaml_path(s.artifacts_dir, job_id, image)
             seg_n = transcription_segment_count(ty_path)
-            rows.append(
-                {
-                    "job_id": job_id,
-                    "image": str(image),
-                    "ok": True,
-                    "skipped": True,
-                    "errors": [],
-                    "warnings": [
-                        "Skipped: existing valid transcription file "
-                        f"({image.stem}_transcription.yaml) found."
-                    ],
-                    # PageXML TextLine count was not recomputed; GUI/CLI show segment count separately.
-                    "text_line_count": None,
-                    "transcription_segment_count": seg_n,
-                    "lines_xml": None,
-                    "transcription_yaml": str(ty_path.resolve()),
-                }
-            )
-            continue
+            _log(f"[{i}/{n}] skipped (existing valid transcription)")
+            return {
+                "job_id": job_id,
+                "image": str(image),
+                "ok": True,
+                "skipped": True,
+                "errors": [],
+                "warnings": [
+                    "Skipped: existing valid transcription file "
+                    f"({image.stem}_transcription.yaml) found."
+                ],
+                # PageXML TextLine count was not recomputed; GUI/CLI show segment count separately.
+                "text_line_count": None,
+                "transcription_segment_count": seg_n,
+                "lines_xml": None,
+                "transcription_yaml": str(ty_path.resolve()),
+            }
         lx: Path | None = None
         try:
             if skip_gm:
@@ -214,18 +214,16 @@ def run_batch(
                     n_images=n,
                 )
         except (FileNotFoundError, ValueError) as e:
-            rows.append(
-                {
-                    "job_id": job_id,
-                    "image": str(image),
-                    "ok": False,
-                    "errors": [str(e)],
-                    "text_line_count": 0,
-                    "lines_xml": None,
-                    "transcription_yaml": None,
-                }
-            )
-            continue
+            _log(f"[{i}/{n}] fail (skip_gm resolution): {e}")
+            return {
+                "job_id": job_id,
+                "image": str(image),
+                "ok": False,
+                "errors": [str(e)],
+                "text_line_count": 0,
+                "lines_xml": None,
+                "transcription_yaml": None,
+            }
 
         job = TranscribeJob(
             job_id=job_id,
@@ -234,6 +232,14 @@ def run_batch(
             provider=provider,
             model_override=model_override,
         )
+        # Prefix per-stage messages with the page index when running parallel so the
+        # interleaved log stays readable.
+        def _stage_log(msg: str) -> None:
+            if workers > 1:
+                _log(f"[{i}/{n}] {msg}")
+            else:
+                _log(msg)
+
         res = run_pipeline(
             job,
             skip_gm=skip_gm,
@@ -242,12 +248,12 @@ def run_batch(
             require_text_line=require_text_line,
             skip_lines_xml_validation=skip_lines_xml_validation,
             settings=s,
-            log_fn=log_fn,
+            log_fn=_stage_log,
         )
         _log(
             f"[{i}/{n}] {'ok' if not res.errors else 'fail'}  text_lines={res.text_line_count}"
         )
-        row: dict[str, Any] = {
+        return {
             "job_id": res.job_id,
             "image": str(image),
             "ok": len(res.errors) == 0,
@@ -261,8 +267,44 @@ def run_batch(
             "llm_usage": res.llm_usage,
             "htr_results": _htr_results_for_report(res.htr_results),
         }
-        rows.append(row)
-    return rows
+
+    if workers <= 1:
+        # Serial path — preserves the simple, ordered log cadence operators are used to.
+        rows: list[dict[str, Any]] = []
+        for i, image in enumerate(images, 1):
+            if _cancelled():
+                _log(f"[{i}/{n}] stop requested — halting batch (rows so far: {len(rows)})")
+                break
+            row = _process(i, image)
+            if row is not None:
+                rows.append(row)
+        return rows
+
+    # Parallel path — pages are independent, so a small pool overlaps LLM I/O wait
+    # with the next page's lineation. Order in the returned rows matches image order.
+    _log(f"parallel pages: {workers}")
+    indexed: dict[int, dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_process, i, img): i for i, img in enumerate(images, 1)}
+        for fut in as_completed(futures):
+            i = futures[fut]
+            try:
+                row = fut.result()
+            except Exception as exc:  # noqa: BLE001 — one bad page shouldn't kill the batch
+                _log(f"[{i}/{n}] fail (worker exception): {exc}")
+                indexed[i] = {
+                    "job_id": sanitize_job_id(images[i - 1].stem),
+                    "image": str(images[i - 1]),
+                    "ok": False,
+                    "errors": [f"worker exception: {exc}"],
+                    "text_line_count": 0,
+                    "lines_xml": None,
+                    "transcription_yaml": None,
+                }
+                continue
+            if row is not None:
+                indexed[i] = row
+    return [indexed[i] for i in sorted(indexed)]
 
 
 def has_successful_transcription(

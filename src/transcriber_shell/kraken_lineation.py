@@ -6,7 +6,18 @@ import hashlib
 import os
 import shutil
 import tempfile
+import warnings
 from pathlib import Path
+
+# coremltools is loaded as a transitive dep of kraken; on Apple Silicon it warns
+# once per .mlmodel load that the CoreML representation can't be compiled (input
+# shape mismatch with MLMultiArray). Kraken uses the torch weights path either way,
+# so the warning is harmless noise — suppress it.
+warnings.filterwarnings(
+    "ignore",
+    message=r"You will not be able to run predict\(\) on this Core ML model.*",
+    category=RuntimeWarning,
+)
 
 from PIL import Image
 
