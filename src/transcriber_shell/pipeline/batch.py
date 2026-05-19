@@ -147,6 +147,7 @@ def run_batch(
     require_text_line: bool,
     skip_lines_xml_validation: bool = False,
     skip_successful: bool = False,
+    document_job_id: str | None = None,
     settings: Settings | None = None,
     log_fn=None,
     cancel_check=None,
@@ -179,7 +180,7 @@ def run_batch(
         """Run the pipeline for a single image. Returns the report row, or None if cancelled."""
         if _cancelled():
             return None
-        job_id = sanitize_job_id(image.stem)
+        job_id = document_job_id if document_job_id else sanitize_job_id(image.stem)
         _log(f"[{i}/{n}] image={image.name}  job_id={job_id}")
         if skip_successful and has_successful_transcription(
             job_id, image, settings=s
@@ -293,7 +294,7 @@ def run_batch(
             except Exception as exc:  # noqa: BLE001 — one bad page shouldn't kill the batch
                 _log(f"[{i}/{n}] fail (worker exception): {exc}")
                 indexed[i] = {
-                    "job_id": sanitize_job_id(images[i - 1].stem),
+                    "job_id": document_job_id or sanitize_job_id(images[i - 1].stem),
                     "image": str(images[i - 1]),
                     "ok": False,
                     "errors": [f"worker exception: {exc}"],
@@ -305,6 +306,79 @@ def run_batch(
             if row is not None:
                 indexed[i] = row
     return [indexed[i] for i in sorted(indexed)]
+
+
+def write_combined_document(
+    rows: list[dict[str, Any]],
+    out_dir: Path,
+    *,
+    include_translation: bool = False,
+    log_fn=None,
+) -> tuple[Path | None, Path | None]:
+    """Collate per-page outputs into a single paginated document.
+
+    Writes ``full_transcription.txt`` (and optionally ``full_translation.txt``)
+    into *out_dir*.  Pages are ordered by the row list order, which matches the
+    original image order.  Returns ``(transcription_path, translation_path)``.
+    """
+    def _log(msg: str) -> None:
+        if log_fn:
+            log_fn(msg)
+
+    tx_parts: list[str] = []
+    tr_parts: list[str] = []
+
+    for i, row in enumerate(rows, 1):
+        yaml_path_str = row.get("transcription_yaml")
+        if not yaml_path_str:
+            continue
+        yaml_path = Path(yaml_path_str)
+
+        # Plain-text transcription
+        txt_path = yaml_path.with_suffix(".txt")
+        if txt_path.exists():
+            text = txt_path.read_text(encoding="utf-8").strip()
+        else:
+            try:
+                data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+                root = data.get("transcriptionOutput", data) if isinstance(data, dict) else {}
+                segs = root.get("segments") or [] if isinstance(root, dict) else []
+                text = "\n\n".join(
+                    s["text"].strip() for s in segs
+                    if isinstance(s, dict) and isinstance(s.get("text"), str) and s["text"].strip()
+                )
+            except Exception:
+                text = ""
+        if text:
+            image_name = Path(row.get("image", f"page {i}")).name
+            tx_parts.append(f"[Page {i}: {image_name}]\n{text}")
+
+        # Translation sidecar
+        if include_translation:
+            tr_path = yaml_path.parent / (yaml_path.stem.replace("_transcription", "") + "_translation.txt")
+            if not tr_path.exists():
+                tr_path = yaml_path.with_name(yaml_path.stem + "_translation.txt")
+            if tr_path.exists():
+                tr_text = tr_path.read_text(encoding="utf-8").strip()
+                if tr_text:
+                    image_name = Path(row.get("image", f"page {i}")).name
+                    tr_parts.append(f"[Page {i}: {image_name}]\n{tr_text}")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tx_out: Path | None = None
+    tr_out: Path | None = None
+
+    if tx_parts:
+        tx_out = out_dir / "full_transcription.txt"
+        tx_out.write_text("\n\n---\n\n".join(tx_parts) + "\n", encoding="utf-8")
+        _log(f"combined transcription: {tx_out}")
+
+    if tr_parts:
+        tr_out = out_dir / "full_translation.txt"
+        tr_out.write_text("\n\n---\n\n".join(tr_parts) + "\n", encoding="utf-8")
+        _log(f"combined translation: {tr_out}")
+
+    return tx_out, tr_out
 
 
 def has_successful_transcription(

@@ -43,6 +43,7 @@ from transcriber_shell.pipeline.batch import (
     has_successful_transcription,
     run_batch,
     sanitize_job_id,
+    write_combined_document,
 )
 from transcriber_shell.pipeline.run import (
     load_prompt_cfg,
@@ -2197,6 +2198,7 @@ class TranscriberGui:
                     lines_xml_dir_arg: Path | None = None
                     if skip:
                         lines_xml_dir_arg = Path(lx_dir).expanduser().resolve()
+                    doc_job_id = sanitize_job_id(job_id_str) if job_id_str else None
                     rows = run_batch(
                         images,
                         cfg,
@@ -2209,6 +2211,7 @@ class TranscriberGui:
                         require_text_line=req_tl,
                         skip_lines_xml_validation=skip_xml_val,
                         skip_successful=skip_successful,
+                        document_job_id=doc_job_id,
                         settings=s,
                         log_fn=self._put_log,
                         cancel_check=self._stop_event.is_set,
@@ -2272,7 +2275,18 @@ class TranscriberGui:
                             merge_dotenv(Path(".env"), persist_snapshot)
                         except OSError as err:
                             self._put_log(f"warning: could not save keys to .env: {err}")
-                    self._q.put(("open_folder", str(s.artifacts_dir.expanduser().resolve())))
+                    if doc_job_id and len(rows) > 1:
+                        combo_dir = s.artifacts_dir.expanduser().resolve() / doc_job_id
+                        tx_out, tr_out = write_combined_document(
+                            rows,
+                            combo_dir,
+                            include_translation=translate,
+                            log_fn=self._put_log,
+                        )
+                        open_dir = str(combo_dir)
+                    else:
+                        open_dir = str(s.artifacts_dir.expanduser().resolve())
+                    self._q.put(("open_folder", open_dir))
                     self._q.put(
                         ("status", f"Finished {len(rows)} jobs ({ok_c} ok, {fail_c} failed).")
                     )
