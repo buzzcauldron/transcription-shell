@@ -90,8 +90,17 @@ def build_htr_tasks(
 
         from transcriber_shell.htr.tesseract_htr import run_tesseract_htr
 
+        # Build preprocessing options only when the toggle is on; otherwise pass
+        # None so the OCR loop keeps its existing fast path.
+        if getattr(settings, "htr_preprocess_enabled", False):
+            from transcriber_shell.htr.preprocessing import PreprocOptions
+
+            _pre = PreprocOptions.from_settings(settings)
+        else:
+            _pre = None
+
         tasks["tesseract-htr"] = lambda: run_tesseract_htr(
-            _img, _xml, lang=lang, psm=psm
+            _img, _xml, lang=lang, psm=psm, preprocess_opts=_pre
         )
 
     # Glyph Machina HTR pipeline

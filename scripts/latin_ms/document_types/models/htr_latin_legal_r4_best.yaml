@@ -1,0 +1,30 @@
+# Round-4 fine-tune for medieval Latin legal hands (14th-c. English plea rolls).
+# Specialised model — narrower coverage, higher quality on its target domain.
+name: htr_latin_legal_r4_best
+kind: htr
+path: "${LATIN_MS_WORKSPACE}/training/htr_latin_updated_best.mlmodel"
+size_mb: 24
+
+languages: [lat-Latn]
+eras: [medieval]
+scripts: [anglicana_cursiva]
+era_range: "1280-1420"
+
+training:
+  base_model: gm-htr-r2_best
+  round: 4
+  date: 2026-05-14
+  corpora: [cremma-medieval, justice-rolls-curated]
+  hyperparams:
+    learning_rate: 0.00001
+    augment: true
+
+metrics:
+  val_cer: 0.1595
+  per_corpus_cer:
+    tridis: 0.2990
+    catmus-medieval: null
+  notes: |
+    Primary test corpus: JUST1, KB27, CP40 rolls. Tridis OOD CER 29.90% confirms
+    the specialisation trade-off — narrower hand coverage, materially better on
+    target than the broader r2.

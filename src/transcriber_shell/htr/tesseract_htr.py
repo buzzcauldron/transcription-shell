@@ -70,6 +70,7 @@ def run_tesseract_htr(
     psm: int = 7,
     config_extra: str = "",
     pad_px: int = 6,
+    preprocess_opts=None,
 ) -> HtrResult:
     """Crop each PageXML TextLine and run Tesseract on it.
 
@@ -121,6 +122,10 @@ def run_tesseract_htr(
             lines.append("")
             continue
         crop = im.crop((x0p, y0p, x1p, y1p))
+        if preprocess_opts is not None and not getattr(preprocess_opts, "is_noop", True):
+            from transcriber_shell.htr.preprocessing import preprocess_for_htr
+
+            crop = preprocess_for_htr(crop, preprocess_opts)
         text = pytesseract.image_to_string(crop, lang=lang, config=config)
         lines.append(text.strip())
         # image_to_data returns per-word confidences (0–100); fold them in when present.

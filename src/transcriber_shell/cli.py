@@ -30,6 +30,144 @@ from transcriber_shell.xml_tools.pagexml_schema import validate_xsd_optional
 
 # ── doc-type helpers ─────────────────────────────────────────────────────────
 
+def _apply_htr_model_override(name: str | None, settings: Settings) -> Settings:
+    """If ``name`` is given, resolve it through the model registry and override
+    ``settings.kraken_htr_model_path``. The override always wins over the env
+    var and any doc-type default.
+    """
+    if not name:
+        return settings
+    from transcriber_shell.htr import model_registry
+
+    spec = model_registry.by_name(name.strip())
+    if spec is None:
+        print(
+            f"error: --htr-model {name!r} not found in registry. "
+            f"Run `transcriber-shell list-htr-models` to see available names.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if not spec.exists:
+        print(
+            f"error: --htr-model {name!r} found in registry but file missing on disk: {spec.path}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    return settings.model_copy(update={"kraken_htr_model_path": spec.path})
+
+
+def cmd_list_htr_models(_args: argparse.Namespace) -> int:
+    """Print the model registry as a table."""
+    from transcriber_shell.htr import model_registry
+
+    print(model_registry.format_table(model_registry.load_all()), end="")
+    return 0
+
+
+def cmd_score_htr_per_corpus(args: argparse.Namespace) -> int:
+    """Run ``test-htr`` against each subdirectory under EVAL_DIR and report per-corpus CER.
+
+    Layout expected::
+
+        EVAL_DIR/
+            catmus-medieval/   <- per-corpus subdir, PAGE/ALTO XML or PNG+.gt.txt
+            tridis/
+            posner-em-latin/
+            …
+
+    Optionally writes the resulting per_corpus_cer dict back into the model's
+    registry YAML so the next ``list-htr-models`` shows fresh metrics.
+    """
+    import json
+    from transcriber_shell.htr.eval import evaluate, format_eval_report
+    from transcriber_shell.htr import model_registry
+
+    model_arg = args.model
+    if not model_arg:
+        print("error: --model NAME (registry name) or --model-path PATH is required", file=sys.stderr)
+        return 1
+
+    if args.model_path:
+        model_path = Path(args.model_path).expanduser().resolve()
+        registry_spec = None
+    else:
+        registry_spec = model_registry.by_name(model_arg)
+        if registry_spec is None:
+            print(f"error: model {model_arg!r} not in registry", file=sys.stderr)
+            return 1
+        if not registry_spec.exists:
+            print(f"error: model {model_arg!r} registry entry's path missing on disk: {registry_spec.path}", file=sys.stderr)
+            return 1
+        model_path = registry_spec.path
+
+    eval_root = Path(args.eval_dir).expanduser().resolve()
+    if not eval_root.is_dir():
+        print(f"error: --eval-dir not a directory: {eval_root}", file=sys.stderr)
+        return 1
+
+    seg_model = Path(args.seg_model).expanduser().resolve() if args.seg_model else None
+    device = args.device
+
+    corpora = sorted([p for p in eval_root.iterdir() if p.is_dir()])
+    if not corpora:
+        print(f"error: no corpus subdirectories under {eval_root}", file=sys.stderr)
+        return 1
+
+    per_corpus: dict[str, float | None] = {}
+    print(f"model: {model_path}")
+    print(f"eval root: {eval_root}")
+    print(f"corpora: {[p.name for p in corpora]}")
+    print()
+    for corpus_dir in corpora:
+        print(f"── {corpus_dir.name} ──")
+        try:
+            result = evaluate(
+                model_path,
+                corpus_dir,
+                seg_model=seg_model,
+                device=device,
+                centroid_match_px=args.centroid_match_px,
+            )
+        except (FileNotFoundError, RuntimeError) as e:
+            print(f"  skipped: {e}")
+            per_corpus[corpus_dir.name] = None
+            continue
+        if result.transcription is None:
+            print("  no transcription metrics produced")
+            per_corpus[corpus_dir.name] = None
+            continue
+        cer = result.transcription.cer()
+        per_corpus[corpus_dir.name] = round(cer, 6)
+        print(format_eval_report(result, as_json=False), end="")
+
+    print()
+    print("=== per-corpus CER ===")
+    width = max((len(k) for k in per_corpus), default=8)
+    for k, v in per_corpus.items():
+        s = f"{v:.4f}" if isinstance(v, float) else "—"
+        print(f"  {k:<{width}}  {s}")
+
+    if args.json:
+        print()
+        print(json.dumps(per_corpus, indent=2))
+
+    if args.update_registry and registry_spec is not None:
+        import yaml
+        raw = yaml.safe_load(registry_spec.source_path.read_text(encoding="utf-8")) or {}
+        metrics = raw.setdefault("metrics", {})
+        existing = metrics.get("per_corpus_cer") or {}
+        existing.update({k: v for k, v in per_corpus.items() if v is not None})
+        metrics["per_corpus_cer"] = existing
+        registry_spec.source_path.write_text(
+            yaml.safe_dump(raw, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+        print()
+        print(f"updated metrics.per_corpus_cer in {registry_spec.source_path}")
+
+    return 0
+
+
 def _apply_doc_type(
     doc_type: str | None,
     settings: Settings,
@@ -309,6 +447,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     settings, prompt_path = _apply_doc_type(
         doc_type, settings, getattr(args, "prompt", None)
     )
+    settings = _apply_htr_model_override(getattr(args, "htr_model", None), settings)
     if not prompt_path:
         print("error: --prompt is required (or set --doc-type with a spec that includes a prompt)", file=sys.stderr)
         return 1
@@ -502,6 +641,7 @@ def cmd_batch(args: argparse.Namespace) -> int:
         settings, prompt_path = _apply_doc_type(
             group_doc_type, base_settings, getattr(args, "prompt", None)
         )
+        settings = _apply_htr_model_override(getattr(args, "htr_model", None), settings)
         if not prompt_path:
             print(
                 f"error: --prompt is required (group doc-type={group_doc_type!r} has no prompt)",
@@ -1252,6 +1392,17 @@ def main() -> None:
         ),
     )
     run.add_argument(
+        "--htr-model",
+        dest="htr_model",
+        default=None,
+        metavar="NAME",
+        help=(
+            "Registry name of the HTR model to use (e.g. gm-htr-r2_best). "
+            "Overrides --doc-type's HTR pick and TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH. "
+            "Use `transcriber-shell list-htr-models` to see candidates."
+        ),
+    )
+    run.add_argument(
         "--auto-doc-type",
         metavar="LIB.json",
         default=None,
@@ -1416,6 +1567,16 @@ def main() -> None:
             "Document type name (e.g. medieval_latin_legal). "
             "Sets prompt, HTR model, seg model, and provider from spec YAML. "
             "CLI args override. (env: TRANSCRIBER_SHELL_DOC_TYPE)"
+        ),
+    )
+    batch.add_argument(
+        "--htr-model",
+        dest="htr_model",
+        default=None,
+        metavar="NAME",
+        help=(
+            "Registry name of the HTR model to use across the whole batch. "
+            "Overrides --doc-type's HTR pick. See `list-htr-models`."
         ),
     )
     batch.add_argument(
@@ -1716,6 +1877,34 @@ def main() -> None:
     # ── list-doc-types ───────────────────────────────────────────────────────
     ldt = sub.add_parser("list-doc-types", help="List available document type specs")
     ldt.set_defaults(func=cmd_list_doc_types)
+
+    lhm = sub.add_parser(
+        "list-htr-models",
+        help="List HTR + segmentation models in the registry (scripts/latin_ms/document_types/models/).",
+    )
+    lhm.set_defaults(func=cmd_list_htr_models)
+
+    spc = sub.add_parser(
+        "score-htr-per-corpus",
+        help="Run test-htr against each subdir under EVAL_DIR and report per-corpus CER.",
+    )
+    spc.add_argument("--model", "-m", default=None, metavar="NAME",
+                     help="Registry name of the HTR model (e.g. gm-htr-r2_best).")
+    spc.add_argument("--model-path", default=None, metavar="PATH",
+                     help="Direct .mlmodel path (alternative to --model).")
+    spc.add_argument("--eval-dir", "-e", required=True, metavar="DIR",
+                     help="Directory of per-corpus subdirectories; each holds XML or PNG+.gt.txt pairs.")
+    spc.add_argument("--seg-model", "-s", default=None, metavar="PATH",
+                     help="Optional kraken segmentation model for baseline accuracy.")
+    spc.add_argument("--device", "-d", default="cpu",
+                     help="ketos/kraken device (cpu, mps, cuda:0).")
+    spc.add_argument("--centroid-match-px", type=float, default=120.0,
+                     help="Centroid distance for baseline matching when seg-model provided.")
+    spc.add_argument("--json", action="store_true",
+                     help="Print the per-corpus CER dict as JSON after the table.")
+    spc.add_argument("--update-registry", action="store_true",
+                     help="Write metrics.per_corpus_cer back into the model's registry YAML.")
+    spc.set_defaults(func=cmd_score_htr_per_corpus)
 
     args = ap.parse_args()
     raise SystemExit(args.func(args))

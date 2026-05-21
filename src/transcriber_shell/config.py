@@ -501,6 +501,63 @@ class Settings(BaseSettings):
         ),
     )
 
+    htr_preprocess_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_HTR_PREPROCESS_ENABLED",
+            "HTR_PREPROCESS_ENABLED",
+        ),
+        description=(
+            "Apply htr/preprocessing.preprocess_for_htr to each per-line crop before "
+            "the HTR backend. The individual steps (invert, contrast, sharpen, binarise) "
+            "have their own settings below. Default False = no-op."
+        ),
+    )
+    htr_preprocess_invert: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_HTR_PREPROCESS_INVERT",
+            "HTR_PREPROCESS_INVERT",
+        ),
+        description="Invert dark-text-on-white before HTR (matches bib-ocr's default).",
+    )
+    htr_preprocess_contrast: float = Field(
+        default=2.0,
+        ge=0.1,
+        le=10.0,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_HTR_PREPROCESS_CONTRAST",
+            "HTR_PREPROCESS_CONTRAST",
+        ),
+        description="Contrast enhancement factor (1.0 = no change; bib-ocr default 2.0).",
+    )
+    htr_preprocess_sharpen: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_HTR_PREPROCESS_SHARPEN",
+            "HTR_PREPROCESS_SHARPEN",
+        ),
+        description="Apply Pillow's SHARPEN filter after contrast (helps low-res scans).",
+    )
+    htr_preprocess_binarise: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_HTR_PREPROCESS_BINARISE",
+            "HTR_PREPROCESS_BINARISE",
+        ),
+        description="Threshold to 1-bit black/white after contrast (helps noisy scans).",
+    )
+    htr_preprocess_deskew_degrees: float = Field(
+        default=0.0,
+        ge=-45.0,
+        le=45.0,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_HTR_PREPROCESS_DESKEW_DEGREES",
+            "HTR_PREPROCESS_DESKEW_DEGREES",
+        ),
+        description="Clockwise rotation in degrees before HTR (0 = none).",
+    )
+
     tesseract_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices(

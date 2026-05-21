@@ -50,6 +50,11 @@ class DocumentTypeSpec:
     fallback_model: str | None = None
     htr_path: Path | None = None
     seg_path: Path | None = None
+    # Names of the registry entries that resolved htr_path / seg_path (when the
+    # spec was filled via the registry rather than a direct path). Useful for
+    # display in the GUI ("you're using gm-htr-r2_best").
+    htr_model_name: str | None = None
+    seg_model_name: str | None = None
     language: str = ""
     era: str = ""
     script: str = ""
@@ -101,6 +106,49 @@ def _parse_model_ref(ref: str) -> tuple[str, str | None]:
     return "anthropic", ref
 
 
+def _resolve_via_registry(
+    raw_kind_field: dict,
+    *,
+    kind: str,
+    language: str,
+    era: str,
+    script: str,
+) -> tuple[Path | None, str | None]:
+    """Resolve an htr/segmentation block to (path, registry-name).
+
+    Resolution order:
+      1. ``model:`` on the spec → registry.by_name() (explicit pick).
+      2. ``path:`` on the spec → direct file path (legacy / out-of-registry checkpoints).
+      3. registry.select(language=, era=, script=) using the doc-type's fields.
+
+    Returns (None, None) when nothing matches.
+    """
+    from transcriber_shell.htr import model_registry
+
+    explicit_name = raw_kind_field.get("model")
+    if isinstance(explicit_name, str) and explicit_name.strip():
+        spec = model_registry.by_name(explicit_name.strip())
+        if spec is not None:
+            return spec.path, spec.name
+
+    legacy_path = raw_kind_field.get("path")
+    if isinstance(legacy_path, str) and legacy_path.strip():
+        p = _resolve_path(legacy_path)
+        if p is not None:
+            return p, None
+
+    spec = model_registry.select(
+        kind=kind,  # type: ignore[arg-type]
+        language=language or None,
+        era=era or None,
+        script=script or None,
+        require_exists=True,
+    )
+    if spec is not None:
+        return spec.path, spec.name
+    return None, None
+
+
 def _load_spec(raw: dict[str, Any], search_dirs: list[Path]) -> DocumentTypeSpec:
     llm = raw.get("llm", {})
     primary_provider, primary_model = _parse_model_ref(llm.get("primary", "claude-sonnet-4"))
@@ -108,8 +156,18 @@ def _load_spec(raw: dict[str, Any], search_dirs: list[Path]) -> DocumentTypeSpec
     if fb := llm.get("fallback"):
         fallback_provider, fallback_model = _parse_model_ref(fb)
 
-    htr_raw = raw.get("htr", {})
-    seg_raw = raw.get("segmentation", {})
+    htr_raw = raw.get("htr", {}) or {}
+    seg_raw = raw.get("segmentation", {}) or {}
+    language = raw.get("language", "")
+    era = raw.get("era", "")
+    script = raw.get("script", "")
+
+    htr_path, htr_model_name = _resolve_via_registry(
+        htr_raw, kind="htr", language=language, era=era, script=script
+    )
+    seg_path, seg_model_name = _resolve_via_registry(
+        seg_raw, kind="segmentation", language=language, era=era, script=script
+    )
 
     return DocumentTypeSpec(
         name=raw.get("name", ""),
@@ -118,11 +176,13 @@ def _load_spec(raw: dict[str, Any], search_dirs: list[Path]) -> DocumentTypeSpec
         primary_model=primary_model,
         fallback_provider=fallback_provider,
         fallback_model=fallback_model,
-        htr_path=_resolve_path(htr_raw.get("path")),
-        seg_path=_resolve_path(seg_raw.get("path")),
-        language=raw.get("language", ""),
-        era=raw.get("era", ""),
-        script=raw.get("script", ""),
+        htr_path=htr_path,
+        seg_path=seg_path,
+        htr_model_name=htr_model_name,
+        seg_model_name=seg_model_name,
+        language=language,
+        era=era,
+        script=script,
         notes=str(raw.get("notes", "")),
         _search_dirs=search_dirs,
     )

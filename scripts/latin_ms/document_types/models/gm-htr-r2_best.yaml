@@ -1,0 +1,32 @@
+# r2 HTR — round-2 fine-tune from gm-hf-htr_best on the trimmed train manifest.
+# Currently the default HTR model for medieval + early modern Latin.
+name: gm-htr-r2_best
+kind: htr
+path: "${HOME}/src/latin_documents/gm-htr-r2.mlmodel_best.mlmodel"
+size_mb: 24
+
+languages: [lat-Latn, fra-Latn, eng-Latn]
+eras: [medieval, early_modern]
+scripts: [anglicana_cursiva, gothic_cursiva, humanist_italic_mixed, gothic_textura]
+era_range: "1100-1700"
+
+training:
+  base_model: gm-hf-htr_best
+  round: 2
+  date: 2026-05-11
+  corpora: [catmus-medieval, tridis, cremma-medieval, glyph-machina]
+  hyperparams:
+    learning_rate: 0.00005
+    batch_size: 16
+    epochs_run: 50
+    workers: 4
+    precision: bf16-mixed
+    augment: true
+    schedule: reduceonplateau
+    lag: 20
+
+metrics:
+  val_accuracy: 0.841
+  val_word_accuracy: 0.522
+  per_corpus_cer: {}
+  notes: "Trimmed train set. Best checkpoint saved at epoch 50."

@@ -1,0 +1,25 @@
+# Segmentation (BLLA) model — produces TextLine baselines for any of the
+# downstream HTR backends. Trained on vatlib + deed GT (April 2026 campaign).
+name: kraken-merged-seg_best
+kind: segmentation
+path: "${HOME}/src/latin_documents/kraken-merged-seg.mlmodel_best.mlmodel"
+size_mb: 4.8
+
+# Segmentation models are largely script-agnostic — the same baselines work for
+# medieval Latin and early modern print. Selector ranks them on era_range overlap
+# and the recency of the training round.
+languages: [lat-Latn, fra-Latn, eng-Latn]
+eras: [medieval, early_modern]
+scripts: ["*"]
+era_range: "800-1900"
+
+training:
+  base_model: model_249
+  round: merged
+  date: 2026-05-06
+  corpora: [kraken-vatlib-gt, deed-finetune-gt]
+  hyperparams:
+    precision: bf16-mixed
+
+metrics:
+  notes: "Working lineation model; replaces Glyph Machina browser automation."
