@@ -8,8 +8,8 @@ era_range: 500-1100
 script: caroline_minuscule
 
 llm:
-  primary: claude-sonnet-4
-  fallback: gemini-2.5-pro
+  primary: gemini-2.5-flash
+  fallback: claude-sonnet-4
 
 htr:
   # Dedicated Carolingian/computus specialist — not yet trained; registry scoring will

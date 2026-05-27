@@ -65,11 +65,26 @@ scriptNotesOptional: >
   Easter tables with feria, epact, and luna columns; kalend sequences; regnal-year
   synchronisms). If the page is a table:
     (1) Transcribe each TextLine as a single row segment; do NOT merge rows.
-    (2) Preserve column separators exactly as they appear (vertical strokes | , dots · ,
-        spaces, or rubrication gaps) — do not add or remove separators.
-    (3) Do NOT reorder entries within a row to match an expected Easter-table schema.
-    (4) If a column header line exists, transcribe it as its own segment first.
-    (5) Ruling lines (dry-point or ink) are not text — omit them from the transcript.
+    (2) COLUMN DELIMITERS — use a pipe character | to separate columns within a row,
+        regardless of how the MS marks the boundary (vertical stroke, dot, spacing, or
+        rubrication). Insert | at every inferred column boundary. If the MS already has
+        an explicit separator character, keep it AND add a | beside it for clarity,
+        e.g. "xix · | v | xviiii".
+    (3) COLUMN HEADER SEGMENT — if a header row (column labels) is present, transcribe
+        it as its own segment with position: table_header. In that segment's notes
+        field, list the inferred column sequence, e.g. "columns: year | epact |
+        concurrentes | luna_xiv | feria_paschalis". All subsequent row segments inherit
+        that column order — do NOT re-describe it per row.
+    (4) TABLE TYPE — in the notes field of the first table row, name the table type:
+        "tableType: metonic_cycle", "tableType: easter_table",
+        "tableType: calendar_kalends", "tableType: feria_regulares", etc.
+    (5) POSITION FIELD — set position: table_row for data rows,
+        position: table_header for the header row.
+    (6) BLANK/DAMAGED CELLS — if a cell is empty or illegible, write [lacuna] in that
+        column position, e.g. "cccc | [lacuna] | v | xix".
+    (7) Do NOT reorder entries within a row to match an expected Easter-table schema.
+        Transcribe the columns in left-to-right visual order only.
+    (8) Ruling lines (dry-point or ink) are not text — omit them from the transcript.
 
   GREEK: some computus MSS include Greek loanwords or genuine Greek passages (especially
   in texts derived from Dionysius Exiguus or Irish computistica). If a term is a
