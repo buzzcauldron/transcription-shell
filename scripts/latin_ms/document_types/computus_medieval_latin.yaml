@@ -1,0 +1,40 @@
+# Document type: Carolingian computus manuscripts (7th-11th c.)
+# Caroline Minuscule; liturgical-computistical content: Easter tables, lunar/solar cycles,
+# kalend sequences, astronomical diagrams, Bede-derived texts.
+name: computus_medieval_latin
+language: lat-Latn
+era: early_medieval
+era_range: 500-1100
+script: caroline_minuscule
+
+llm:
+  primary: claude-sonnet-4
+  fallback: gemini-2.5-pro
+
+htr:
+  # Dedicated Carolingian/computus specialist — not yet trained; registry scoring will
+  # fall back to gm-htr-r2_best until gm-htr-computus_best.mlmodel is present.
+  model: gm-htr-computus_best
+  path: "${HOME}/src/latin_documents/gm-htr-computus_best.mlmodel"
+
+segmentation:
+  model: kraken-merged-seg_best
+  path: "${HOME}/src/latin_documents/kraken-merged-seg.mlmodel_best.mlmodel"
+
+prompt: prompt_computus.yaml
+
+notes: >
+  Targets computus manuscripts in Caroline Minuscule: calendrical, astronomical, and
+  mathematical content from the Carolingian reform period (roughly 6th-11th century).
+  Expect:
+    - Roman numerals throughout for all computed quantities (epact values, lunar age,
+      year numbers, concurrentes). Never convert to Arabic.
+    - Greek loanwords integrated into Latin: epacta, embolismus, concurrentes, cyclus,
+      indictio — transcribe the Latin form as written.
+    - Abbreviated kalend notation: KL, NON, ID with suspension marks.
+    - Tabular layouts: 19-year Metonic cycle tables, Easter tables, feria columns — pages
+      are often predominantly table rather than running prose.
+    - Feria weekday markers and luna (moon age) annotations in margins or interline.
+  The LLM prompt addendum in prompt_computus.yaml handles number-table transcription
+  rules and disambiguation of visually similar Roman numeral sequences (e.g. iiii vs v,
+  viii vs iii+bar).
