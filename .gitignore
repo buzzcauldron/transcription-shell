@@ -21,3 +21,6 @@ test-results/
 # Local agent / IDE (may contain machine-specific paths)
 .claude/
 .tdad/logs/
+
+# Strigil downloads from scripts/computus/acquire_library.sh
+references/computus-library/images/

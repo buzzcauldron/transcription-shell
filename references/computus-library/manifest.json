@@ -1,0 +1,1235 @@
+{
+  "version": 1,
+  "generated_at": "2026-05-28T17:48:51.639011+00:00",
+  "catalogues": {
+    "citca": {
+      "title": "Computus in the Carolingian Age",
+      "list_url": "https://computus.huma-num.fr/mss/list",
+      "count": 47
+    },
+    "local": {
+      "title": "transcription-shell local witnesses",
+      "count": 7
+    }
+  },
+  "manuscripts": [
+    {
+      "id": "ALBI_BM_38BIS_61_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/ALBI_BM_38BIS_61_COD",
+      "display": "Albi, Albi Bibliothèque municipale, 38bis (61)",
+      "archive": null,
+      "shelfmark": "38bis (61)",
+      "origin": "Southern France",
+      "date_citca": "AD 876 x 900",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 3,
+      "texts": [
+        "anon., Calendar (f.58v - 62r)",
+        "anon., Dionysiac Easter Table (extensive, AD 817-854) (f.64v - 65v)",
+        "Bede, De temporum ratione (ch. 23) (f.58r - 58v)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BAV_REG_LAT_141_CU1",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BAV_REG_LAT_141_CU1",
+      "display": "Vatican City, Biblioteca Apostolica Vaticana, Reg. Lat. 141",
+      "archive": null,
+      "shelfmark": "Reg. Lat. 141",
+      "origin": "Saint-Denis",
+      "date_citca": "AD 802",
+      "date_computistical": null,
+      "archive_ms_page": "https://digi.vatlib.it/mss/detail/Reg.lat.141",
+      "text_count_indexed": 3,
+      "texts": [
+        "anon., Computus Fardulfi (f.151r - 158r)",
+        "anon., Dionysiac Easter Table (extensive) (f.163v - 166r)",
+        "anon., Multiplication Tables (f.158v - 159r)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BERLIN_SBPK_PHILLIPPS_1831_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BERLIN_SBPK_PHILLIPPS_1831_COD",
+      "display": "Berlin, Staatsbibliothek - Preußischer Kulturbesitz, Phillipps 1831",
+      "archive": null,
+      "shelfmark": "Phillipps 1831",
+      "origin": "Verona",
+      "date_citca": "AD 811 x 819 (post AD 811 (cf. Phillipps 1784), ante AD 819 (134r) / AD 821 (89v))",
+      "date_computistical": null,
+      "archive_ms_page": "https://db.innovatingknowledge.nl/#detail/M0032",
+      "text_count_indexed": 14,
+      "texts": [
+        "anon., Calendar (f.1r - 6r)",
+        "anon., Calendar (f.136r - 137v)",
+        "anon., Computus of AD 757 (f.90r - 90v)",
+        "anon., Dial. Langob. of AD 750 (f.129r - 134r)",
+        "anon., Dial. Neustr. of AD 737 (f.138r - 142r)",
+        "anon., Dionysiac Easter Table (standard, AD 532-1063) (f.8r - 14v)",
+        "anon., Libellus annalis of AD 793 (f.116r - 125v)",
+        "anon., Quaest. Langob. of AD 780 (f.142v - 143v)",
+        "Bede, De natura rerum (f.91r - 99r)",
+        "Bede, De temporibus (f.100r - 106r)",
+        "Bede, De temporum ratione (f.16r - 89v)",
+        "Isidore of Seville, Etymologiae (De astronomia) (f.107r - 112v)",
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.99v)",
+        "Isidore of Seville, Etymologiae (De mundo) (f.112v - 115v)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BERN_BB_441_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BERN_BB_441_COD",
+      "display": "Bern, Burgerbibliothek, 441",
+      "archive": null,
+      "shelfmark": "441",
+      "origin": "Saint-Maixent",
+      "date_citca": "AD 920 x 930 (Borst)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 1,
+      "texts": [
+        "anon., Calendar (f.2r - 14v)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BERN_BB_611_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BERN_BB_611_COD",
+      "display": "Bern, Burgerbibliothek, 611",
+      "archive": null,
+      "shelfmark": "611",
+      "origin": "Eastern France/ Burgandy",
+      "date_citca": "AD 727 x 750 (Borst)",
+      "date_computistical": null,
+      "archive_ms_page": "https://elmss.nuigalway.ie/catalogue/1266",
+      "text_count_indexed": 1,
+      "texts": [
+        "anon., Dial. Burg. of AD 727 (f.94r - 96v)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BERN_BB_AA_90_16_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BERN_BB_AA_90_16_COD",
+      "display": "Bern, Burgerbibliothek, AA 90.16",
+      "archive": null,
+      "shelfmark": "AA 90.16",
+      "origin": "France",
+      "date_citca": "AD 867 x 899 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 1,
+      "texts": [
+        "anon., De divisionibus temporum (fragment beginning with nox) (f.1r - 8v)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BLB_AUG_PERG_229_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BLB_AUG_PERG_229_COD",
+      "display": "Karlsruhe, Badische Landesbibliothek, Aug. perg. 229",
+      "archive": null,
+      "shelfmark": "Aug. perg. 229",
+      "origin": "Santo Stefano in Lucana",
+      "date_citca": "AD 821",
+      "date_computistical": null,
+      "archive_ms_page": "https://db.innovatingknowledge.nl/#detail/M0132",
+      "text_count_indexed": 6,
+      "texts": [
+        "anon., Acta synodi Caesareae (recension A) (f.12v - 16r)",
+        "anon., De divisionibus temporum (f.32v - 44r)",
+        "anon., Pagina epactarum (f.46r - 46v)",
+        "anon., Tractatus Adthanasii (f.16r - 21r)",
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.21r - 24r)",
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.28v)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BLB_AUG_PERG_239_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BLB_AUG_PERG_239_COD",
+      "display": "Karlsruhe, Badische Landesbibliothek, Aug. perg. 239",
+      "archive": null,
+      "shelfmark": "Aug. perg. 239",
+      "origin": "Reichenau",
+      "date_citca": "AD 900 x 915 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 1,
+      "texts": [
+        "Bede, De temporum ratione (f.1r - 68v; f.71r - 168v)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BLCOTCAL_A_XV_CU1",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BLCOTCAL_A_XV_CU1",
+      "display": "London, British Library, Cotton Caligula A XV (CU 1)",
+      "archive": null,
+      "shelfmark": "(codicological unit) : Cotton Caligula A XV (CU 1)",
+      "origin": "North-east France",
+      "date_citca": "AD 743",
+      "date_computistical": null,
+      "archive_ms_page": "https://www.bl.uk/manuscripts/FullDisplay.aspx?ref=Cotton_MS_Caligula_A_XV&index=0",
+      "text_count_indexed": 13,
+      "texts": [
+        "anon., Acta synodi Caesareae (f.80v - 82v)",
+        "anon., Computus Cottonianus of AD 689 (f.73r - 80r)",
+        "anon., Computus of AD 243 (f.97v - 105v)",
+        "anon., De sollemnitatibus (f.86v - 90r)",
+        "anon., Disputatio Morini (f.82v - 83v)",
+        "anon., Easter table tract of AD 703 (f.110r - 117v)",
+        "anon., Epistola Cyrilli (f.95 - 96v)",
+        "anon., Epistola Pascasini (f.93v - 95r)",
+        "anon., Epistola Proterii (f.90r - 93v)",
+        "Dionysius Exiguus, Epistola ad Bonifatium et Bonum (f.84r - 86v)",
+        "Gaudentius of Brescia, De pascha (excerpt) (f.96v - 97v)",
+        "Isidore of Seville, Etymologiae (f.36r - 38v)",
+        "Jerome, Vita beati Pauli (f.31r l.20 - f.36v l.40)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BLCOTCAL_A_XV_CU2",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BLCOTCAL_A_XV_CU2",
+      "display": "London, British Library, Cotton Caligula A XV (CU 2)",
+      "archive": null,
+      "shelfmark": "(codicological unit) : Cotton Caligula A XV (CU 2)",
+      "origin": "Northern France",
+      "date_citca": "AD 797",
+      "date_computistical": null,
+      "archive_ms_page": "https://www.bl.uk/manuscripts/FullDisplay.aspx?ref=Cotton_MS_Caligula_A_XV&index=0",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BNF_LAT_2796_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BNF_LAT_2796_COD",
+      "display": "Paris, Bibliothèque Nationale de France, Lat. 2796",
+      "archive": null,
+      "shelfmark": "Lat. 2796",
+      "origin": "Northern France",
+      "date_citca": "AD 815 x 818 (computistical: 92v; 95v; 97r; 98r; 49v)",
+      "date_computistical": "AD 815 x 818 (92v; 95v; 97r; 98r; 49v)",
+      "archive_ms_page": "https://gallica.bnf.fr/ark:/12148/btv1b10073557z",
+      "text_count_indexed": 9,
+      "texts": [
+        "anon., Acta synodi Caesareae (recension B) (f.86r - 88r)",
+        "anon., Cap. comp. (updated from the original 809 to 815) (f.98r - 99r)",
+        "anon., De computo dialogus (f.78v - 82v)",
+        "anon., De divisionibus temporum (f.70v - 74v)",
+        "anon., Multiplication Tables (f.76r - 76v)",
+        "anon., Ser. ant. (updated from the original 809 to 815) (f.95v)",
+        "anon., Table of calendrical data (AD 813-854) (f.68r - 69r)",
+        "Isidore of Seville, Etymologiae (De eclipsi) (f.99r - 99v)",
+        "Isidore of Seville, Etymologiae (De temporibus) (f.103v - 105r)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BNF_LAT_4860_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BNF_LAT_4860_COD",
+      "display": "Paris, Bibliothèque Nationale de France, Lat. 4860",
+      "archive": null,
+      "shelfmark": "Lat. 4860",
+      "origin": "Reichenau (Bischoff/Borst)",
+      "date_citca": "AD 885 x 915 (provisional)",
+      "date_computistical": null,
+      "archive_ms_page": "https://gallica.bnf.fr/ark:/12148/btv1b10721203n/f4.item.r=4860",
+      "text_count_indexed": 18,
+      "texts": [
+        "anon., Acta synodi Caesareae (recension A) (f.144r - 144v)",
+        "anon., Calendar (f.135v - 136v)",
+        "anon., Calendar (f.158r - 160r)",
+        "anon., De computo dialogus (f.144v - 145v)",
+        "anon., Dionysiac Easter Table (standard, AD 532-1063) (f.152r - 155v)",
+        "anon., Disputatio Morini (f.150r - 150v)",
+        "anon., Epistola Pascasini (f.150v - 151r)",
+        "anon., Item eiusdem alius libellus Bedae presbyteri de ratione compoticum interrogationes et responsibus (f.111v - 116v)",
+        "anon., Libellus annalis of AD 793 (ch. 1-65) (f.138v - 141v)",
+        "anon., Multiplication Tables (f.162v - 163r)",
+        "anon., Victorian Easter Table (AP 141-212) (f.147v - 148r)",
+        "Dionysius Exiguus, Epistola ad Bonifatium et Bonum (f.149v - 150r)",
+        "Dionysius Exiguus, Epistola ad Petronium (f.148v - 149v)",
+        "Hilarus, Epistola ad Victorium (f.145v)",
+        "Hrabanus Maurus, De computo (f.119v - 135v)",
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.143v - 144r)",
+        "Ps-Dionysius, Argumentum XIV (f.151r - 151v)",
+        "Victorius of Aquitaine, Epistola ad Hilarium (f.145v - 147r)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BNF_LAT_5543_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BNF_LAT_5543_COD",
+      "display": "Paris, Bibliothèque Nationale de France, Lat. 5543",
+      "archive": null,
+      "shelfmark": "Lat. 5543",
+      "origin": "Fleury",
+      "date_citca": "AD 847",
+      "date_computistical": null,
+      "archive_ms_page": "https://archivesetmanuscrits.bnf.fr/ark:/12148/cc64506m",
+      "text_count_indexed": 22,
+      "texts": [
+        "Abbo of Fleury, Cyclus secundum fidem historiographorum (f.23v - 24r)",
+        "anon., Arg. Aquens. of AD 816 (f.112r - 113r)",
+        "anon., Calendar (f.95v - 100v)",
+        "anon., De contrari aetatibus VII cycli lunaris (based on De ratione conputandi 73) (f.123v - 124v)",
+        "anon., De divisionibus temporum (Short DDT 3) (f.126r)",
+        "anon., De divisionibus temporum (Short DDT 7) (f.125r - 126r)",
+        "anon., De ratione conputandi (ch. 70) (f.124v)",
+        "anon., Dionysiac Easter Table (standard, AD 532-1063) (f.9r - 23r)",
+        "anon., Multiplication Tables (f.142v - 144v)",
+        "anon., Ser. nov. (f.91r - 93r)",
+        "anon., Ser. nov. (continuation of regnal list to year 41 of Philipp I of France, AD 1100) (f.93r - 94r)",
+        "anon., Summary of Abbo of Fleury's Epistola prima ad Geraldum et Vitalem (f.9r)",
+        "Bede, De natura rerum (f.75v - 85r)",
+        "Bede, De temporibus (f.85r - 90v)",
+        "Bede, De temporum ratione (f.25r - 76r)",
+        "Bede, Epistola ad Wicthedum (f.126v - 129r)",
+        "Dionysius Exiguus, Epistola ad Petronium (f.7r - 9r)",
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.117v - 118r)",
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.142v - 144v)",
+        "Isidore of Seville, Etymologiae (De temporibus) (f.148v - 153v)",
+        "Isidore of Seville, Etymologiae (De temporibus) (f.158r - 171r)",
+        "Ps-Dionysius, Argumentum XIV (f.113v - 114r)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BNF_LAT_894_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BNF_LAT_894_COD",
+      "display": "Paris, Bibliothèque Nationale de France, Lat. 894",
+      "archive": null,
+      "shelfmark": "Lat. 894",
+      "origin": "Loire",
+      "date_citca": "AD 850 x 874",
+      "date_computistical": null,
+      "archive_ms_page": "https://gallica.bnf.fr/ark:/12148/btv1b8529701g",
+      "text_count_indexed": 3,
+      "texts": [
+        "anon., Acta synodi Caesareae (recension A) (f.39bisv - 41v)",
+        "anon., Computus Fardulfi (f.30r - 39bisv)",
+        "anon., De divisionibus temporum (f.41v - 44v)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "BSB_CLM_14725_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/BSB_CLM_14725_COD",
+      "display": "Munich, Bayerische Staatsbibliothek, Clm 14725",
+      "archive": null,
+      "shelfmark": "Clm 14725",
+      "origin": "Saint-Amand (9th century additions at St. Emmeram in Regensburg)",
+      "date_citca": "AD 783 x 797 (783x797)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 9,
+      "texts": [
+        "anon., Dionysiac Easter Table (extensive) (f.17v - 18v)",
+        "anon., Multiplication Tables (f.19r)",
+        "Bede, De temporum ratione (f.25v - 166v)",
+        "Bede, De temporum ratione (ch. 22) (f.16v)",
+        "Bede, De temporum ratione (ch. 48) (f.14v - 15r)",
+        "Bede, De temporum ratione (ch. 49) (f.15v - 16r)",
+        "Bonus, Exemplum suggestionis ad Iohannem papam (f.23v)",
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.6r - 6v)",
+        "Ps-Dionysius, Argumentum XIV (f.12r - 13r)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "DB_103_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/DB_103_COD",
+      "display": "Cologne, Dombibliothek, 103",
+      "archive": null,
+      "shelfmark": "103",
+      "origin": "Cologne",
+      "date_citca": "AD 795",
+      "date_computistical": null,
+      "archive_ms_page": "https://elmss.nuigalway.ie/catalogue/1629",
+      "text_count_indexed": 8,
+      "texts": [
+        "anon., Acta synodi Caesareae (recension B) (f.190v - 192r)",
+        "anon., Calendar (f.3r - 8v)",
+        "anon., Computus Rhenanus of AD 775 (f.184v - 190v)",
+        "anon., Dionysiac Easter Table (standard, AD 532-1063) (f.9r - 22v)",
+        "Bede, De natura rerum (f.23v - 35r)",
+        "Bede, De natura rerum (f.52v - 184r)",
+        "Bede, De temporibus (f.35r - 43v)",
+        "Bede, Epistola ad Wicthedum (f.45r - 51r)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "HABCODGUELF_91_WEISS_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/HABCODGUELF_91_WEISS_COD",
+      "display": "Wolfenbüttel, Herzog August Bibliothek, Cod. Guelf. 91 Weiss.",
+      "archive": null,
+      "shelfmark": "Cod. Guelf. 91 Weiss.",
+      "origin": "Worms",
+      "date_citca": "AD 800 x 815",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 4,
+      "texts": [
+        "anon., Calculatio Albini (f.164v - 165v)",
+        "anon., Computus Rhenanus of AD 775 (f.169r - 173v)",
+        "Bede, De temporum ratione (ch. 64) (f.165v - 168r)",
+        "Bede, De temporum ratione (ch. 65) (f.165v - 168r)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "KBR_10127_44_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/KBR_10127_44_COD",
+      "display": "Brussels, Koninklijke Bibliotheek van België / Bibliothèque royale de Belgique, 10127-44",
+      "archive": null,
+      "shelfmark": "10127-44",
+      "origin": "North-east France (Lowe)",
+      "date_citca": "AD 775 (computistical: 80r, 81r)",
+      "date_computistical": "AD 775 (80r, 81r)",
+      "archive_ms_page": "https://elmss.nuigalway.ie/catalogue/273",
+      "text_count_indexed": 2,
+      "texts": [
+        "anon., Acta synodi Caesareae (f.82v - 84r)",
+        "anon., Computus of AD 775 (f.80r - 82r)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "KBR_5413_22__CU1",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/KBR_5413_22__CU1",
+      "display": "Brussels, Koninklijke Bibliotheek van België / Bibliothèque royale de Belgique, 5413-22 (CU 1)",
+      "archive": null,
+      "shelfmark": "5413-22 (CU 1)",
+      "origin": "Northern France (Borst)",
+      "date_citca": "AD 867 x 899 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 3,
+      "texts": [
+        "anon., De ratione conputandi (f.77v - 107v)",
+        "anon., Ser. ant. (f.73v - 74v)",
+        "anon., Ser. nov. (f.74v - 77v)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "KBR_8654_72_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/KBR_8654_72_COD",
+      "display": "Brussels, Koninklijke Bibliotheek van België / Bibliothèque royale de Belgique, 8654-72",
+      "archive": null,
+      "shelfmark": "8654-72",
+      "origin": "North-east France (Bischoff)",
+      "date_citca": "AD 800 x 832 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 1,
+      "texts": [
+        "Bede, De temporum ratione (f.206r)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "KBR_9311_19_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/KBR_9311_19_COD",
+      "display": "Brussels, Koninklijke Bibliotheek van België / Bibliothèque royale de Belgique, 9311-19",
+      "archive": null,
+      "shelfmark": "9311-19",
+      "origin": "Saint-Amand (Bischoff)",
+      "date_citca": "AD 800 x 832 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "KBR_9565_66_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/KBR_9565_66_COD",
+      "display": "Brussels, Koninklijke Bibliotheek van België / Bibliothèque royale de Belgique, 9565-66",
+      "archive": null,
+      "shelfmark": "9565-66",
+      "origin": "Lake Constance (Bischoff)",
+      "date_citca": "AD 875 x 899 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "KBR_9581_95_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/KBR_9581_95_COD",
+      "display": "Brussels, Koninklijke Bibliotheek van België / Bibliothèque royale de Belgique, 9581-95",
+      "archive": null,
+      "shelfmark": "9581-95",
+      "origin": "France (Bischoff)",
+      "date_citca": "AD 875 x 899 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 1,
+      "texts": [
+        "anon., Cap. comp. (f.55v - 56v)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "Leiden_UB_VLF_26_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/Leiden_UB_VLF_26_COD",
+      "display": "Leiden, Universitaire Bibliotheken, VLF 26",
+      "archive": null,
+      "shelfmark": "VLF 26",
+      "origin": "Amiens (Bischoff)",
+      "date_citca": "AD 800 x 832 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 1,
+      "texts": [
+        "pseudo-Athanasius, De pascha (f.48v - 49r)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "Leiden_UB_VLF_74_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/Leiden_UB_VLF_74_COD",
+      "display": "Leiden, Universitaire Bibliotheken, VLF 74",
+      "archive": null,
+      "shelfmark": "VLF 74",
+      "origin": "Loire (Bischoff)",
+      "date_citca": "AD 825 x 849 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": "https://db.innovatingknowledge.nl/#detail/M0145",
+      "text_count_indexed": 3,
+      "texts": [
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.58v - 60v)",
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.60r - 60v)",
+        "Lupus of Ferrières, Easter table 632-721 (f.59r - 59v)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "Leiden_UB_VLF_82_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/Leiden_UB_VLF_82_COD",
+      "display": "Leiden, Universitaire Bibliotheken, VLF 82",
+      "archive": null,
+      "shelfmark": "VLF 82",
+      "origin": "Saint-Germain-des-Prés (Bischoff)",
+      "date_citca": "AD 800 x 815 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": "https://db.innovatingknowledge.nl/#detail/M0147",
+      "text_count_indexed": 1,
+      "texts": [
+        "Isidore of Seville, Etymologiae (De cyclo Paschali) (f.57r - 58v)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "Leiden_UB_VLQ_69_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/Leiden_UB_VLQ_69_COD",
+      "display": "Leiden, Universitaire Bibliotheken, VLQ 69",
+      "archive": null,
+      "shelfmark": "VLQ 69",
+      "origin": "St. Gall (Bischoff, Lowe)",
+      "date_citca": "AD 795 x 805 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": "https://elmss.nuigalway.ie/catalogue/316",
+      "text_count_indexed": 1,
+      "texts": [
+        "Charlemagne, Epistola ad Alcuinum (f.46v - 47v)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "Leiden_UB_VLQ_75_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/Leiden_UB_VLQ_75_COD",
+      "display": "Leiden, Universitaire Bibliotheken, VLQ 75",
+      "archive": null,
+      "shelfmark": "VLQ 75",
+      "origin": "Eastern France/ Burgandy (Bischoff)",
+      "date_citca": "AD 850 x 899 (Bischoff, Borst)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "Leiden_UB_VMI_11_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/Leiden_UB_VMI_11_COD",
+      "display": "Leiden, Universitaire Bibliotheken, VMI 11",
+      "archive": null,
+      "shelfmark": "VMI 11",
+      "origin": "Weissenburg (Bischoff)",
+      "date_citca": "AD 795 x 805 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": "https://elmss.nuigalway.ie/catalogue/317",
+      "text_count_indexed": 1,
+      "texts": [
+        "anon., Visigothic Computus of AD 722 (f.26r - 27v)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "MILAN_BA_H_150_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/MILAN_BA_H_150_COD",
+      "display": "Milan, Biblioteca Ambrosiana, H 150 inf.",
+      "archive": null,
+      "shelfmark": "H 150 inf.",
+      "origin": "North-east France (computistical similarity)",
+      "date_citca": "AD 810",
+      "date_computistical": null,
+      "archive_ms_page": "https://ambrosiana.comperio.it/opac/detail/view/ambro:catalog:58504",
+      "text_count_indexed": 12,
+      "texts": [
+        "anon., Bobbio Computus (f.5r - 110v)",
+        "anon., Computistical verse (f.162r - 162v)",
+        "anon., Countdown of AD 673 (f.129v)",
+        "anon., In commentariis Victorini (f.137v - 138r)",
+        "anon., Prologus Cyrilli (f.1r - 4v)",
+        "anon., Supputatio Romana (Ambrosiana) (f.135v - 137v)",
+        "anon., Tractatus Adthanasii (f.132v - 135v)",
+        "anon., Victorian Easter Table (AP 1-120 + 144-154) (f.130r - 132r)",
+        "anon., Victorius prologus (f.125r - 129v)",
+        "Hilarus, Epistola ad Victorium (f.125r)",
+        "Isidore of Seville, Etymologiae (De astronomia) (f.116r - 124v)",
+        "Isidore of Seville, Etymologiae (De temporibus) (f.110v - 115v)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "MILAN_SAAC_13_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/MILAN_SAAC_13_COD",
+      "display": "Milan, Basilica di Sant’Ambrogio, Archivio Capitolare, 13",
+      "archive": null,
+      "shelfmark": "13",
+      "origin": "Northern Italy",
+      "date_citca": "AD 850 x 874 (Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 1,
+      "texts": [
+        "Bede, De temporum ratione (ch. 1) (f.145r - 147r)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "MONTPELLIER_BISM_H_157_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/MONTPELLIER_BISM_H_157_COD",
+      "display": "Montpellier, Bibliothèque interuniversitaire, Section Médecine, H 157",
+      "archive": null,
+      "shelfmark": "H 157",
+      "origin": "Lyon",
+      "date_citca": "AD 848",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 19,
+      "texts": [
+        "anon., Dionysiac Easter Table (extensive) (f.81v - 109r)",
+        "anon., Epistola Cyrilli (f.42v - 44r)",
+        "anon., Liber Timothei episcopi de pascha (f.1v - 7r)",
+        "anon., Lyon formulary of AD 848 (f.75v - 81r)",
+        "anon., Lyon textbook of AD 848 (f.60v - 72r)",
+        "anon., Multiplication Tables (f.73r - 75r)",
+        "Bede, Historia ecclesiastica gentis Anglorum (iii, 25) (f.53r - 55r)",
+        "Ceolfrith, Epistola ad Naitanum (f.55r - 60r)",
+        "Dionysius Exiguus, Epistola ad Bonifatium et Bonum (f.48v - 50v)",
+        "Dionysius Exiguus, Epistola ad Petronium (f.50v - 53r)",
+        "Eusebius of Caesarea, Historia ecclesiastica (f.41r - 42v)",
+        "Gregory the Great, Homilae in Evangelia (f.7r - 9v)",
+        "Jerome, Epistola ad Theophilus (no. 99) (f.10r - 10v)",
+        "Jerome, Epistola paschalis Theophili, Alexandrinae urbis episcopi, ad totius Aegypti episcopus (no. 100) (f.31v - 40v)",
+        "Jerome, Epistola paschalis Theophili, Alexandrinae urbis episcopi, ad totius Aegypti episcopus (no. 98) (f.10v - 22v)",
+        "Jerome, Epistola Theophili, episcopi paschalis (no. 96) (f.22v - 31v)",
+        "Leo I, Epistola ad episcopos Galliae et Hispaniae(no. 138) (f.48r - 48v)",
+        "Pascasinus of Lilybaeum, Epistola (f.47r - 48r)",
+        "Proterius of Alexandria, Epistola (f.44r - 47r)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "ROME_BC_641_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/ROME_BC_641_COD",
+      "display": "Rome, Biblioteca Casanatense, 641",
+      "archive": null,
+      "shelfmark": "641",
+      "origin": "Montecassino",
+      "date_citca": "AD 811 x 812 (Borst/Bischoff)",
+      "date_computistical": null,
+      "archive_ms_page": "https://www.mirabileweb.it/manuscript/roma-biblioteca-casanatense-ms-641-manuscript/8311",
+      "text_count_indexed": 4,
+      "texts": [
+        "anon., Calendar (f.76r - 81v)",
+        "anon., Dionysiac Easter Table (standard, AD 532-1063) (f.49r - 75v)",
+        "anon., Ser. nov. (Leithandschrift) (f.45r - 46v)",
+        "anon., Visigothic Computus of AD 811 (f.1r - 6r)"
+      ],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "ROME_BV_E_26_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/ROME_BV_E_26_COD",
+      "display": "Rome, Biblioteca Vallicelliana, E 26",
+      "archive": null,
+      "shelfmark": "E 26",
+      "origin": "Lyon",
+      "date_citca": "AD 816",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 9,
+      "texts": [
+        "anon., Calculatio Albini (f.43r - 74r)",
+        "anon., Calendar (f.3r - 8v)",
+        "anon., De divisionibus temporum (f.140v - 152v)",
+        "anon., Dionysiac Easter Table (extensive) (f.9v - 37v)",
+        "anon., Visigothic formulary of AD 816 (f.74v - 90v)",
+        "Bede, De temporum ratione (ch. 66-71) (f.91r - 136v)",
+        "Bede, De temporum ratione (excerpts) (f.43r - 74r)",
+        "Polemius Silvius, Laterculus (f.136v - 137v)",
+        "Polemius Silvius, Laterculus (f.155v - 158r)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_110_cod",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_110_cod",
+      "display": "St. Gall, Stiftsbibliothek, 110",
+      "archive": null,
+      "shelfmark": "110",
+      "origin": "Verona",
+      "date_citca": "AD 796 x 799 (796x799)",
+      "date_computistical": null,
+      "archive_ms_page": "https://www.e-codices.unifr.ch/de/list/one/csg/0110",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_184_cod",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_184_cod",
+      "display": "St. Gall, Stiftsbibliothek, 184",
+      "archive": null,
+      "shelfmark": "184",
+      "origin": "St. Gall",
+      "date_citca": "AD 895 x 900 (895x900)",
+      "date_computistical": null,
+      "archive_ms_page": "https://www.e-codices.unifr.ch/de/list/one/csg/0184",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_225_cod",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_225_cod",
+      "display": "St. Gall, Stiftsbibliothek, 225",
+      "archive": null,
+      "shelfmark": "225",
+      "origin": "St. Gall",
+      "date_citca": "AD 760 x 778 (computistical)",
+      "date_computistical": "AD 760 x 778 (p. 114, 115; cross at AD 773 in Easter table)",
+      "archive_ms_page": "https://elmss.nuigalway.ie/catalogue/1390",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_248_cod",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_248_cod",
+      "display": "St. Gall, Stiftsbibliothek, 248",
+      "archive": null,
+      "shelfmark": "248",
+      "origin": "Northern France",
+      "date_citca": "AD 835 x 865",
+      "date_computistical": null,
+      "archive_ms_page": "https://e-codices.unifr.ch/en/list/one/csg/0248",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_250_cod",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_250_cod",
+      "display": "St. Gall, Stiftsbibliothek, 250",
+      "archive": null,
+      "shelfmark": "250",
+      "origin": "St. Gall",
+      "date_citca": "AD 850 x 899",
+      "date_computistical": null,
+      "archive_ms_page": "https://e-codices.unifr.ch/en/list/one/csg/0250",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_251_1",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_251_1",
+      "display": "St. Gall, Stiftsbibliothek, 251 (CU 1)",
+      "archive": null,
+      "shelfmark": "(codicological unit) : 251 (CU 1)",
+      "origin": "St. Gall",
+      "date_citca": "AD 816 (computistical: 22, 31)",
+      "date_computistical": "AD 816 (pg. 22, 31)",
+      "archive_ms_page": "https://e-codices.unifr.ch/en/list/one/csg/0251",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_251_2",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_251_2",
+      "display": "St. Gall, Stiftsbibliothek, 251 (CU 2)",
+      "archive": null,
+      "shelfmark": "(codicological unit) : 251 (CU 2)",
+      "origin": "St. Gall",
+      "date_citca": "AD 825 x 849",
+      "date_computistical": null,
+      "archive_ms_page": "https://e-codices.unifr.ch/en/list/one/csg/0251",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_682_cod",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_682_cod",
+      "display": "St. Gall, Stiftsbibliothek, 682",
+      "archive": null,
+      "shelfmark": "682",
+      "origin": "Western Germany",
+      "date_citca": "AD 816 x 844 (816x844)",
+      "date_computistical": "AD 816 x 844 (pg. 1-6)",
+      "archive_ms_page": "https://e-codices.unifr.ch/en/list/one/csg/0682",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_732_COD",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_732_COD",
+      "display": "St. Gall, Stiftsbibliothek, 732",
+      "archive": null,
+      "shelfmark": "732",
+      "origin": "Bavaria",
+      "date_citca": "AD 817 x 835 (computistical: pg. 179)",
+      "date_computistical": "AD 817 x 835 (pg. 179)",
+      "archive_ms_page": "https://e-codices.unifr.ch/en/list/one/csg/0732",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_878_cod",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_878_cod",
+      "display": "St. Gall, Stiftsbibliothek, 878",
+      "archive": null,
+      "shelfmark": "878",
+      "origin": "Reichenau",
+      "date_citca": "AD 849 (computistical: 305)",
+      "date_computistical": "AD 849 (pg. 305)",
+      "archive_ms_page": "https://e-codices.unifr.ch/en/list/one/csg/0878",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SB_913_cod",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SB_913_cod",
+      "display": "St. Gall, Stiftsbibliothek, 913",
+      "archive": null,
+      "shelfmark": "913",
+      "origin": "Germany (Insular schriftprovinz)",
+      "date_citca": "AD 750 x 799",
+      "date_computistical": null,
+      "archive_ms_page": "https://e-codices.unifr.ch/en/list/one/csg/0913",
+      "text_count_indexed": 0,
+      "texts": [],
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "SUBMSC_0046_cod",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/SUBMSC_0046_cod",
+      "display": "Bremen, Staats- und Universitätsbibliothek, msc 0046",
+      "archive": null,
+      "shelfmark": "msc 0046",
+      "origin": "St. Gall",
+      "date_citca": "AD 895 x 905",
+      "date_computistical": null,
+      "archive_ms_page": null,
+      "text_count_indexed": 15,
+      "texts": [
+        "anon., Disputatio Chori et Praetextati (f.44r - 54r)",
+        "anon., Disputatio Morini (f.25r - 27r)",
+        "anon., Epistola Cyrilli (f.11r - 14r)",
+        "anon., Prologue to the Supputatio Romana (f.27r - 27v)",
+        "anon., Victorian Prologue of AD 699 (f.38r - 38v)",
+        "anon., Victorius prologus (f.30r - 38r)",
+        "Dionysius Exiguus, Epistola ad Bonifatium et Bonum (f.20v - 25r)",
+        "Dionysius Exiguus, Epistola ad Petronium (f.14v - 20v)",
+        "Hilarus, Epistola ad Victorium (f.29v - 30r)",
+        "Leo I, Epistola ad Julianum episcopum (no. 122) (f.39r - 40r)",
+        "Leo I, Epistola ad Martianum Augustum (no. 121) (f.27v - 29r)",
+        "Leo I, Epistola ad Martianum Augustum (no. 137) (f.40r - 40v)",
+        "Leo monachus, Epistola (f.41r - 44r)",
+        "Pascasinus of Lilybaeum, Epistola (f.8v - 11r)",
+        "Proterius of Alexandria, Epistola (f.1v - 8v)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "VATICAN_BAV_PAL_LAT_1447_CU1",
+      "source": "citca",
+      "citca_url": "https://computus.huma-num.fr/mss/VATICAN_BAV_PAL_LAT_1447_CU1",
+      "display": "Vatican City, Biblioteca Apostolica Vaticana, Pal. Lat. 1447",
+      "archive": null,
+      "shelfmark": "Pal. Lat. 1447",
+      "origin": "Mainz",
+      "date_citca": "AD 798 x 813 (Computistical)",
+      "date_computistical": "AD 798 x 813 (19v; 19r)",
+      "archive_ms_page": null,
+      "text_count_indexed": 9,
+      "texts": [
+        "anon., Calendar (f.12r - 17r)",
+        "anon., Dionysiac Easter Table (extensive, AD 798-854) (f.19v - 22r)",
+        "anon., Multiplication Tables (f.27v - 28r)",
+        "anon., Prologue to Bede's De temporibus, describing 13 divisions of time DT (f.3r - 3v)",
+        "Bede, De temporibus (ch. 14) (f.20r - 21v)",
+        "Bede, De temporibus (ch. 2-13) (f.4r - 6r)",
+        "Dionysius Exiguus, Argumenta (f.6v - 8r)",
+        "Dionysius Exiguus, Epistola ad Bonifatium et Bonum (f.9r - 10v)",
+        "Ps-Dionysius, Argumentum XIV (f.8r - 8v)"
+      ],
+      "strigil_acquire": false,
+      "doc_type": "computus_medieval_latin",
+      "bib_keys": [
+        "ComputusCarolingianAge"
+      ]
+    },
+    {
+      "id": "tours_bm_746",
+      "source": "local",
+      "display": "Tours, Bibliothèque municipale, MS 746",
+      "archive": "Bibliothèque municipale de Tours",
+      "shelfmark": "MS 746",
+      "origin": "Western France",
+      "local_image_root": "~/Library/CloudStorage/Dropbox/Seth/Cornell/Spring 2018/Vatican Film Library Fellowship Summer 2018/Bibliotheque Municipale De Tours 746",
+      "doc_type": "computus_medieval_latin",
+      "pipeline_status": "batch_transcription_in_progress",
+      "bib_keys": [],
+      "notes": "Primary transcription-shell test corpus; not indexed on computus.huma-num.fr."
+    },
+    {
+      "id": "morgan_m925",
+      "source": "local",
+      "display": "New York, Morgan Library, MS M.925",
+      "archive": "The Morgan Library & Museum",
+      "shelfmark": "M.925",
+      "archive_ms_page": "https://www.themorgan.org/manuscript/160011",
+      "strigil_acquire": true,
+      "bib_keys": [
+        "ComputusCollectionMS"
+      ],
+      "doc_type": "computus_medieval_latin"
+    },
+    {
+      "id": "bl_harley_3667",
+      "source": "local",
+      "display": "London, British Library, Harley MS 3667",
+      "archive": "British Library",
+      "shelfmark": "Harley MS 3667",
+      "archive_ms_page": "https://www.bl.uk/collection-items/byrhtferths-computus",
+      "strigil_acquire": true,
+      "bib_keys": [
+        "Computus"
+      ],
+      "doc_type": "computus_medieval_latin",
+      "notes": "Byrhtferth Enchiridion / computus diagram."
+    },
+    {
+      "id": "oxford_sjc_17",
+      "source": "local",
+      "display": "Oxford, St John's College, MS 17 (Thorney Computus)",
+      "archive": "St John's College, Oxford",
+      "shelfmark": "MS 17",
+      "archive_ms_page": "http://archive.org/details/TheByrhtferthsManuscriptms17SaintJohnsCollegeOxford",
+      "strigil_acquire": true,
+      "bib_keys": [
+        "themonkbyrhtferthByrhtferthsManuscriptMS1111"
+      ],
+      "doc_type": "computus_medieval_latin"
+    },
+    {
+      "id": "cambridge_sjc_a22",
+      "source": "local",
+      "display": "Cambridge, St John's College, MS A.22 (Reading Computus)",
+      "archive": "St John's College, Cambridge",
+      "shelfmark": "MS A.22",
+      "bib_keys": [
+        "lawrence-mathersReadingComputusManuscriptSt"
+      ],
+      "doc_type": "computus_medieval_latin"
+    },
+    {
+      "id": "wellcome_computistical_miscellany",
+      "source": "local",
+      "display": "Wellcome Collection, Computistical miscellany",
+      "archive": "Wellcome Collection",
+      "shelfmark": "x3knvt2r",
+      "archive_ms_page": "https://wellcomecollection.org/works/x3knvt2r",
+      "strigil_acquire": true,
+      "bib_keys": [
+        "ComputisticalMiscellany"
+      ],
+      "doc_type": "computus_medieval_latin",
+      "texts": [
+        "John of Erfurt, Computus chirometralis minor (ff. 1r–8r)",
+        "Computus chirometralis maior (ff. 8r–16r)",
+        "Peter of Dacia, Tabulae cum explicationibus (ff. 17v–18r)",
+        "Computus judaicus (ff. 19v–22v)"
+      ]
+    },
+    {
+      "id": "nypl_computus_text_3",
+      "source": "local",
+      "display": "NYPL Digital Collections, Computus Text 3",
+      "archive": "New York Public Library",
+      "archive_ms_page": "https://digitalcollections.nypl.org/",
+      "bib_keys": [
+        "ComputusText3"
+      ],
+      "notes": "Resolve exact item URL in NYPL before strigil acquire."
+    }
+  ]
+}

@@ -24,6 +24,7 @@ segmentation:
 prompt: prompt_computus.yaml
 
 notes: >
+  Bibliography and shelfmark map: references/computus.bib and references/computus-manuscript-map.md.
   Targets computus manuscripts in Caroline Minuscule: calendrical, astronomical, and
   mathematical content from the Carolingian reform period (roughly 6th-11th century).
   Expect:
