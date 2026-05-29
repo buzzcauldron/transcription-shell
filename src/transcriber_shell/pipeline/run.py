@@ -574,11 +574,20 @@ def run_pipeline(
             llm_usage=None,
         )
 
+    _MAX_SEGMENTS_PER_CALL = 80
     if not job.line_hint and text_line_count > 0:
-        job.line_hint = (
-            f"PageXML line detector reports {text_line_count} TextLine element(s); "
-            "align segment lineRange fields accordingly."
-        )
+        if text_line_count <= _MAX_SEGMENTS_PER_CALL:
+            job.line_hint = (
+                f"PageXML line detector reports {text_line_count} TextLine element(s); "
+                "your segment count must match it exactly."
+            )
+        else:
+            job.line_hint = (
+                f"PageXML line detector reports {text_line_count} TextLine element(s). "
+                f"This page is too dense for a single pass — transcribe the first "
+                f"{_MAX_SEGMENTS_PER_CALL} TextLines only (lineRange 1–{_MAX_SEGMENTS_PER_CALL}); "
+                "mark the final segment notes field with 'page_continues: true'."
+            )
 
     # ── HTR ───────────────────────────────────────────────────────────────
     htr_future: Future | None = None
