@@ -71,13 +71,19 @@ scriptNotesOptional: >
         an explicit separator character, keep it AND add a | beside it for clarity,
         e.g. "xix · | v | xviiii".
     (3) COLUMN HEADER SEGMENT — if a header row (column labels) is present, transcribe
-        it as its own segment with position: table_header. In that segment's notes
-        field, list the inferred column sequence, e.g. "columns: year | epact |
-        concurrentes | luna_xiv | feria_paschalis". All subsequent row segments inherit
-        that column order — do NOT re-describe it per row.
-    (4) TABLE TYPE — in the notes field of the first table row, name the table type:
-        "tableType: metonic_cycle", "tableType: easter_table",
-        "tableType: calendar_kalends", "tableType: feria_regulares", etc.
+        it as its own segment with position: table_header. All subsequent row segments
+        inherit that column order — do NOT re-describe it per row.
+    (4) TABLE TYPE — in the notes field of the FIRST table row (not every row), name
+        the table type using one of these canonical keys:
+          tableType: metonic_cycle       columns: year | epact | concurrentes | luna_xiv | feria_paschalis
+          tableType: easter_table        columns: year | epact | luna_xiv | feria_paschalis | dies_paschae
+          tableType: calendar_kalends    columns: KL | feria | luna | festum
+          tableType: feria_regulares     columns: month | regulares | concurrentes
+          tableType: indiction_cycle     columns: year | indictio | cyclus_solaris | cyclus_lunaris
+          tableType: index_folio         columns: title | folio
+          tableType: unknown             (use when the table type cannot be identified)
+        If the table matches a canonical type, the column order above is authoritative —
+        use it to align cells even when MS column labels are absent or abbreviated.
     (5) POSITION FIELD — set position: table_row for data rows,
         position: table_header for the header row.
     (6) BLANK/DAMAGED CELLS — if a cell is empty or illegible, write [lacuna] in that
@@ -85,6 +91,8 @@ scriptNotesOptional: >
     (7) Do NOT reorder entries within a row to match an expected Easter-table schema.
         Transcribe the columns in left-to-right visual order only.
     (8) Ruling lines (dry-point or ink) are not text — omit them from the transcript.
+    (9) INDEX TABLES — folio-reference tables (author / title on left, folio number on
+        right) use tableType: index_folio. The folio number is always the last cell.
 
   GREEK: some computus MSS include Greek loanwords or genuine Greek passages (especially
   in texts derived from Dionysius Exiguus or Irish computistica). If a term is a
