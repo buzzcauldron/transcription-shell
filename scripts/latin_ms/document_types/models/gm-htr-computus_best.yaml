@@ -1,6 +1,6 @@
 # Carolingian/computus HTR — fine-tune from gm-htr-r2_best on early medieval Latin scientific MSS.
 # Specialist model targeting Caroline minuscule computus and astronomical texts, 6th-11th c.
-# Not yet trained — placeholder path; will be rsynced from CMU once training completes.
+# Trained on akdeniz (RTX 4090), epoch 17 best checkpoint exported 2026-05-29.
 name: gm-htr-computus_best
 kind: htr
 path: "${HOME}/src/latin_documents/gm-htr-computus_best.mlmodel"
@@ -14,17 +14,26 @@ era_range: "500-1100"
 training:
   base_model: gm-htr-r2_best
   round: "c1"
-  date: null
+  date: 2026-05-29
+  epochs_run: 17
   corpora: [caroline-minuscule, carolingian-latin-2025, carolingian-latin-vienna, paris-bible, eutyches, catmus-medieval, cremma-medieval-lat]
+  train_lines: 185307
+  val_lines: 9753
   hyperparams:
     learning_rate: 0.00001
-    batch_size: 8
+    batch_size: 16
     schedule: cosine
     augment: true
     precision: bf16-mixed
     lag: 20
 
 metrics:
-  val_cer: null
+  val_accuracy: 0.9434
+  val_word_accuracy: 0.759
   per_corpus_cer: {}
-  notes: "Carolingian minuscule specialist; target: computus and early medieval Latin scientific texts. Not yet trained — run scripts/train_computus_htr.sh."
+  notes: >
+    Carolingian minuscule specialist trained on akdeniz RTX 4090. Epoch 17 best
+    checkpoint (val_accuracy 0.9434 vs r2 baseline 0.841 — +10.2pp).
+    Training was still improving at epoch 17; model OOM'd at ep18 before saving
+    _best.mlmodel naturally. Checkpoint exported via VGSLRecognitionModel.net.save_model().
+    c2 round planned to continue from this checkpoint once GPU is free.
