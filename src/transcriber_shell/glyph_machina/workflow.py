@@ -27,6 +27,19 @@ from transcriber_shell.glyph_machina.browser import playwright_glyph_context
 
 _log = logging.getLogger(__name__)
 
+_PAGE_NS = "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15"
+
+
+def _count_text_lines(xml_path: Path) -> int:
+    """Return the number of TextLine elements in a PageXML file."""
+    try:
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(xml_path)
+        return len(tree.findall(f".//{{{_PAGE_NS}}}TextLine"))
+    except Exception:
+        return 0
+
+
 # Max pixels before downscaling for upload (4 MP keeps layout stable in browser)
 _GM_MAX_PIXELS = 4_000_000
 
@@ -243,7 +256,19 @@ def fetch_lines_xml(
             fetch_lines_xml_kraken,
         )
         try:
-            return fetch_lines_xml_kraken(image_path, job_id, settings=s)
+            result = fetch_lines_xml_kraken(image_path, job_id, settings=s)
+            n_lines = _count_text_lines(result)
+            if n_lines > 0:
+                return result
+            # 0 TextLines is a soft failure — the model ran but found nothing.
+            # Fall through to the next backend rather than returning empty XML.
+            has_next = s.gm_htr_repo_path or s.gm_website_fallback
+            if not has_next:
+                return result  # nothing else to try; caller handles 0-line case
+            _log.warning(
+                "Kraken seg model returned 0 TextLines for %s; trying next backend.",
+                image_path.name,
+            )
         except KrakenLineationError as e:
             has_next = s.gm_htr_repo_path or s.gm_website_fallback
             if not has_next:
@@ -259,7 +284,18 @@ def fetch_lines_xml(
             fetch_lines_xml_gm_local,
         )
         try:
-            return fetch_lines_xml_gm_local(image_path, job_id, settings=s)
+            result = fetch_lines_xml_gm_local(image_path, job_id, settings=s)
+            n_lines = _count_text_lines(result)
+            if n_lines > 0:
+                return result
+            # GM local also returned 0 lines — still fall through to website if enabled,
+            # but return this result if there's nowhere else to go.
+            if not s.gm_website_fallback:
+                return result
+            _log.warning(
+                "GM local seg.mlmodel returned 0 TextLines for %s; falling back to website.",
+                image_path.name,
+            )
         except GlyphMachinaLocalError as e:
             if not s.gm_website_fallback:
                 raise GlyphMachinaError(

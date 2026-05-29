@@ -18,8 +18,7 @@ htr:
   path: "${HOME}/src/latin_documents/gm-htr-computus_best.mlmodel"
 
 segmentation:
-  model: kraken-merged-seg_best
-  path: "${HOME}/src/latin_documents/kraken-merged-seg.mlmodel_best.mlmodel"
+  model: gm-seg
 
 prompt: prompt_computus.yaml
 

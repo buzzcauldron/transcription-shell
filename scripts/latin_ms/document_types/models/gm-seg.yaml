@@ -1,0 +1,23 @@
+# Glyph Machina segmentation model (seg.mlmodel from ideasrule/glyph_machina_public).
+# GPL-3.0 — https://github.com/ideasrule/glyph_machina_public
+# Training data: mzzhang2014/glyph_machina (HuggingFace)
+# This model outperforms the generic kraken BLLA on complex manuscript layouts.
+name: gm-seg
+kind: segmentation
+path: "${TRANSCRIBER_SHELL_GM_HTR_REPO_PATH}/seg.mlmodel"
+size_mb: 4.8
+
+languages: [lat-Latn, fra-Latn, eng-Latn]
+eras: [medieval, early_modern, late_antique, early_medieval]
+scripts: ["*"]
+era_range: "700-1800"
+
+training:
+  base_model: pretrained_backbone_blla.mlmodel
+  round: gm-public
+  date: null
+  corpora: [glyph-machina-hf]
+  notes: "ideasrule/glyph_machina_public bundled model. Fine-tune via segtrain.sh in the repo."
+
+metrics:
+  notes: "Default GM seg model. Supercedes kraken-merged-seg_best for computus/Carolingian pages."
