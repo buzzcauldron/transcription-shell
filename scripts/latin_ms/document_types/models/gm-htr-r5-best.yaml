@@ -1,0 +1,34 @@
+name: gm-htr-r5-best
+description: >
+  Round 5 HTR model — broad Carolingian/medieval Latin corpus, 290k train / 15k val lines.
+  Trained on akdeniz (RTX 4090) from the r2 baseline; SIGTERM'd at epoch 23, epoch 22
+  checkpoint exported (best validated). Slightly below the computus-specific model on
+  computus pages but stronger across diverse script types.
+path: "${HOME}/src/latin_documents/gm-htr-r5-best.mlmodel"
+val_accuracy: 0.9289
+val_word_accuracy: 0.737
+epoch: 22
+trained: "2026-06-02"
+base_model: gm-htr-r2
+training_lines_train: 290414
+training_lines_val: 15285
+batch_size: 16
+learning_rate: 0.00001
+schedule: cosine
+scripts:
+  - caroline_minuscule
+  - protogothic
+  - pregothic
+  - insular_minuscule
+era_range: "500-1400"
+corpora:
+  - carolingian-latin-2025
+  - carolingian-latin-vienna
+  - catmus-medieval
+  - cremma-medieval-lat
+  - paris-bible
+  - eutyches
+  - konigsfelden-charters
+notes: >
+  Use gm-htr-computus_best (0.9434) for computus-specific pages where available;
+  prefer r5 for diverse or non-computus Latin pages.
