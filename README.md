@@ -4,28 +4,51 @@
 **Version 0.1.0** · Python 3.11+ — canonical metadata in [`pyproject.toml`](pyproject.toml). After a pull or version bump, run `python scripts/sync_repo_docs.py`.
 <!-- transcriber-shell-sync:end:pyproject.version -->
 
-**Python 3.11+** package **`transcriber-shell`** (`transcriber_shell`), built with **[Hatchling](https://hatch.pypa.io/)** from [`pyproject.toml`](pyproject.toml). Install from a **git checkout** using the **installer scripts** ([`scripts/install-local.sh`](scripts/install-local.sh) / [`scripts/install-local.ps1`](scripts/install-local.ps1)), **manual venv + pip**, or **Docker** — see [Installation](#installation) and [PACKAGING.md](PACKAGING.md).
+**Python 3.11+** package **`transcriber-shell`** (`transcriber_shell`), built with **[Hatchling](https://hatch.pypa.io/)** from [`pyproject.toml`](pyproject.toml). It installs from a **git checkout** — see [Quick start](#quick-start) for the fast path, or [Installation](#installation) / [PACKAGING.md](PACKAGING.md) for installer scripts, manual venv, and Docker.
 
-**Simple mental model:** pre-cropped image → **lines XML** (default: Glyph Machina in the browser) → **LLM** with a protocol prompt → **`<image_stem>_transcription.yaml`** (e.g. `page_transcription.yaml` for `page.jpg`). Start with **`transcriber-shell gui`** or **`transcriber-shell run --job-id … --image … --prompt …`**. Optional pieces (mask/Kraken, HTTP API, batch, extra validators) are documented in **[docs/simple-workflow.md](docs/simple-workflow.md)**; details below are for reference.
+**Simple mental model:** pre-cropped image → **lines XML** (default: Glyph Machina in the browser) → **LLM** with a protocol prompt → **`<image_stem>_transcription.yaml`** (e.g. `page_transcription.yaml` for `page.jpg`). Optional pieces (mask/Kraken, HTTP API, batch, extra validators) are documented in **[docs/simple-workflow.md](docs/simple-workflow.md)**; details below are for reference.
 
-Pipeline glue for **manuscript transcription** that combines:
+## Quick start
 
-1. **Lineation** (choose via `TRANSCRIBER_SHELL_LINEATION_BACKEND` or `--lineation-backend`):
-   - **`glyph_machina` (default)** — **[Glyph Machina](https://glyphmachina.com/)** in the browser (Playwright). See [docs/glyph-machina-automation.md](docs/glyph-machina-automation.md).
-   - **`mask`** — per-line masks → PageXML baselines (`TextLine` / `Baseline`). Supply **`TRANSCRIBER_SHELL_MASK_INFERENCE_CALLABLE`** (`pkg.mod:function`) and/or **`TRANSCRIBER_SHELL_MASK_PRED_NPY_PATH`** (path with `{stem}` / `{job_id}`). Lineation methods and training context align with **[ideasrule/latin_documents](https://github.com/ideasrule/latin_documents)** (credit also in generated XML metadata).
-   - **`kraken`** — local **[Kraken](https://github.com/mittagessen/kraken)** BLLA + PageXML (`pip install 'transcriber-shell[kraken]'`, set **`TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH`**).
-2. **XML checks** — well-formed XML + `TextLine` counts; optional **XSD** validation with `lxml` (`pip install 'transcriber-shell[xml-xsd]'`). What **`text_line_count`** in CLI/GUI logs means (and why it differs across jobs): **[docs/log-lines-xml-text-line-count.md](docs/log-lines-xml-text-line-count.md)**.
-3. **LLM APIs** (Anthropic / OpenAI / optional Gemini) using prompts from the **[Academic Handwriting Transcription Protocol](https://github.com/buzzcauldron/transcription-protocol)**.
-4. **YAML validation** via vendored `validate_schema.py` from that protocol.
-5. **HTR backends** (optional, parallel) — set `TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH` and/or `TRANSCRIBER_SHELL_GM_HTR_REPO_PATH` to enable; script/language detection routes images to the appropriate model. Results are returned in `PipelineResult.htr_results` alongside the LLM output. See [Credits](#credits) for model and dataset attribution.
+From zero to a first transcription:
 
-**Trained segmentation / HTR models, training recipe, and how to reproduce them:** [docs/MODELS.md](docs/MODELS.md).
+```bash
+# 1. Clone with the protocol submodule (required for LLM + YAML validation)
+git clone --recurse-submodules https://github.com/buzzcauldron/transcription-shell.git
+cd transcription-shell
 
-Downstream **baseline → rectified line image** tooling from the same research line lives in [ideasrule/latin_documents](https://github.com/ideasrule/latin_documents); line exports aim for compatible `Baseline@points` where possible. Glyph Machina outputs are used for **lineation only** when that backend is selected — not as canonical diplomatic text.
+# 2. Install: creates .venv, installs deps, Playwright Chromium, inits the submodule
+./scripts/install-local.sh          # Windows: .\scripts\install-local.ps1
+source .venv/bin/activate           # Windows: .\.venv\Scripts\Activate.ps1
 
-To **train** a mask model on that project’s public page data (`data/` — paired `.jpg` + PageXML), use the optional **[examples/latin_lineation_mvp](examples/latin_lineation_mvp/README.md)** package (`latin-lineation-train`, then `latin_lineation_mvp.infer:predict_masks`), or see **[docs/latin-documents-training-data.md](docs/latin-documents-training-data.md)** and **`scripts/clone-latin-documents.sh`**. **`scripts/benchmark_gm_parity.py`** scores local `lines.xml` against a Glyph Machina reference.
+# 3. Add at least one LLM API key
+cp .env.example .env                # then edit: ANTHROPIC_API_KEY=...  (or OPENAI_API_KEY / GOOGLE_API_KEY)
+```
 
-**Human ground truth** (PAGE XML comparable to GM for metrics): **[docs/ground-truth-human-annotation.md](docs/ground-truth-human-annotation.md)**, calibration workflow **[docs/ground-truth-calibration.md](docs/ground-truth-calibration.md)**, folder layout **[ground_truth/README.md](ground_truth/README.md)**. Validate with **`transcriber-shell validate-gt-pagexml page.xml page.png`**.
+Then transcribe one page, either way:
+
+```bash
+# Easiest — desktop GUI (drag images in, pick prompt + model, click Transcribe)
+transcriber-shell gui
+
+# Or one page from the CLI (default lineation runs Glyph Machina in a browser)
+transcriber-shell run --job-id demo1 --image ./crop.jpg \
+  --prompt ./fixtures/prompt.example.yaml --provider anthropic
+# → output: artifacts/demo1/crop_transcription.yaml
+```
+
+No browser? Add `--skip-gm --lines-xml ./lines.xml` to supply line boxes from another tool. More backends, batch mode, and Docker are in [Installation](#installation) and the [CLI](#cli) section below.
+
+## How it works
+
+Four stages, each swappable:
+
+1. **Lineation** — detect the text lines on the page and write a PageXML `lines.xml`. Default backend is **[Glyph Machina](https://glyphmachina.com/)** (runs in a browser via Playwright); switch to a local **Kraken** model or a custom **mask** model with `--lineation-backend` (details in [Configuration](#configuration)).
+2. **XML check** — confirm the lines file is well-formed and has the expected `TextLine` count before spending an LLM call.
+3. **LLM transcription** — send the image plus a protocol prompt to Anthropic / OpenAI / Gemini, following the **[Academic Handwriting Transcription Protocol](https://github.com/buzzcauldron/transcription-protocol)**.
+4. **YAML validation** — check the model's output against the protocol schema (vendored `validate_schema.py`).
+
+Output lands at `artifacts/<job_id>/<image_stem>_transcription.yaml`. Optional **HTR backends** (Kraken and/or Glyph Machina) can run alongside the LLM for comparison — enable them in [Configuration](#configuration). Trained segmentation / HTR models and how to reproduce them: **[docs/MODELS.md](docs/MODELS.md)**.
 
 ## Installation
 
@@ -108,7 +131,7 @@ pip install -e ".[kraken]"   # optional: Kraken BLLA lineation
 
 ## Desktop GUI (simple, academic)
 
-Primary way to run the pipeline interactively — **tkinter** plus **tkinterdnd2** (declared dependency) for drag-and-drop onto the **Page images** list. At the top, **Provider keys (LLM)** for Anthropic / OpenAI / Gemini: paste keys or leave empty and use `.env` (keys are **masked** by default; uncheck **Mask keys** to show). **Save keys to .env** writes the current fields into `.env` in the working directory; you can also opt in to **save after a successful run** so keys persist without an extra click. The optional **HTTP API** (`transcriber-shell serve`) is separate — use **HTTP API docs** in the GUI only after the server is running. Choose **Lineation backend** when not skipping lineation. Queue **multiple page images** via **Add files…**, **Add folder…**, or **drag files/folders onto the list** (non-recursive folder scan, same as CLI batch). With **skip automated lineation** and **more than one image**, set **Lines XML dir** to a folder of `<stem>.xml` files (one per page). Then pick prompt, provider, and **Model** (all catalog IDs in one list; **Budget models only** narrows it). Optional **Efficient mode** (bottom bar, next to **Transcribe**) sets `runMode: efficient` for that run (protocol §2.9 single-pass). **Transcribe** (bottom bar); **Save log…** is on the **right** of that bar. **Scan for Ollama / local tools** lists local models and PATH tools; provider **ollama** uses `ollama serve` (no cloud key).
+The primary way to run the pipeline interactively (**tkinter** + **tkinterdnd2** for drag-and-drop). Launch it with:
 
 ```bash
 transcriber-shell gui
@@ -116,9 +139,20 @@ transcriber-shell gui
 transcriber-shell-gui
 ```
 
-Requires **Playwright Chromium** only when **lineation backend** is **glyph_machina** and you are not using `--skip-gm`. On Linux over SSH, use X11 forwarding or run with `--skip-gm` and a saved lines file.
+**Typical workflow:**
 
-**Recommended workflow (desktop):** (1) Add page images and choose prompt YAML/JSON. (2) Set provider and model (or custom id). (3) Configure mask / Kraken / Glyph Machina in `.env`, or enable **skip automated lineation** and point to a lines XML file (one image) or folder of `<stem>.xml` files (batch). (4) **Transcribe** (bottom bar), then use **Open artifacts folder** (and the log for paths). Agent-oriented context lives in **[docs/claude.md](docs/claude.md)** (links to [architecture.md](docs/architecture.md), decisions, plan, progress).
+1. **Add page images** — **Add files…**, **Add folder…**, or drag files/folders onto the **Page images** list (non-recursive folder scan, same as CLI batch).
+2. **Set provider keys** — paste Anthropic / OpenAI / Gemini keys at the top, or leave empty to use `.env`. Keys are **masked** by default (uncheck **Mask keys** to show). **Save keys to .env** persists them; opt into **save after a successful run** to skip the extra click.
+3. **Choose lineation** — pick a **Lineation backend**, or enable **skip automated lineation** and point to a lines XML file (one image) / **Lines XML dir** of `<stem>.xml` files (batch).
+4. **Pick prompt, provider, and Model** — all catalog IDs appear in one list; **Budget models only** narrows it. Optional **Efficient mode** (next to **Transcribe**) sets `runMode: efficient` for that run (protocol §2.9, single-pass).
+5. **Transcribe** (bottom bar), then **Open artifacts folder** for outputs. **Save log…** is at the right of the bottom bar.
+
+**Notes:**
+
+- Requires **Playwright Chromium** only when the lineation backend is **glyph_machina** and you are not using `--skip-gm`. On Linux over SSH, use X11 forwarding or run with `--skip-gm` and a saved lines file.
+- **Scan for Ollama / local tools** lists local models and PATH tools; provider **ollama** uses `ollama serve` (no cloud key).
+- The optional **HTTP API** (`transcriber-shell serve`) is separate — the GUI's **HTTP API docs** button only works once that server is running.
+- Agent-oriented context lives in **[docs/claude.md](docs/claude.md)** (links to [architecture.md](docs/architecture.md), decisions, plan, progress).
 
 ## CLI
 
@@ -216,6 +250,15 @@ pytest
 ```
 
 Continuous integration runs the same suite on Python 3.11 and 3.12 (see `.github/workflows/ci.yml`).
+
+## Research & training extras
+
+For contributors and metric work — not needed for normal transcription:
+
+- **Downstream line-image tooling** — baseline → rectified line image tooling from the same research line lives in [ideasrule/latin_documents](https://github.com/ideasrule/latin_documents); line exports aim for compatible `Baseline@points`. Glyph Machina outputs are used for **lineation only** when that backend is selected — not as canonical diplomatic text.
+- **Train a mask model** — on that project's public page data (`data/` — paired `.jpg` + PageXML), use the optional **[examples/latin_lineation_mvp](examples/latin_lineation_mvp/README.md)** package (`latin-lineation-train`, then `latin_lineation_mvp.infer:predict_masks`), or see **[docs/latin-documents-training-data.md](docs/latin-documents-training-data.md)** and **`scripts/clone-latin-documents.sh`**. **`scripts/benchmark_gm_parity.py`** scores local `lines.xml` against a Glyph Machina reference.
+- **Human ground truth** (PAGE XML comparable to GM for metrics) — **[docs/ground-truth-human-annotation.md](docs/ground-truth-human-annotation.md)**, calibration workflow **[docs/ground-truth-calibration.md](docs/ground-truth-calibration.md)**, folder layout **[ground_truth/README.md](ground_truth/README.md)**. Validate with **`transcriber-shell validate-gt-pagexml page.xml page.png`**.
+- **`text_line_count` in logs** — what it means and why it differs across jobs: **[docs/log-lines-xml-text-line-count.md](docs/log-lines-xml-text-line-count.md)**.
 
 ## Layout
 
