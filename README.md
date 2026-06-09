@@ -151,6 +151,30 @@ transcriber-shell batch ./scans/ --prompt ./fixtures/prompt.example.yaml --batch
 transcriber-shell batch ./scans/ --prompt ./fixtures/prompt.example.yaml --skip-gm --lines-xml-dir ./lines/
 ```
 
+## TEI Export
+
+Convert `*_transcription.yaml` artifacts to TEI P5 XML:
+
+```bash
+# Single file
+transcriber-shell yaml-to-tei artifacts/page_001/page_001_transcription.yaml -o page_001_tei.xml
+
+# Batch: all YAMLs in an artifacts directory
+transcriber-shell yaml-to-tei --dir artifacts/ --out-dir tei/
+```
+
+Each segment becomes a `<p rend="{position}">` element in `<body>`. When the segment carries a `lineRange`, physical manuscript lines are emitted as `<lb n="N"/>` milestones — one per newline-delimited line in the transcript text:
+
+```xml
+<p rend="body">
+  <lb n="3"/>prima linea
+  <lb n="4"/>secunda linea
+  <lb n="5"/>tertia linea
+</p>
+```
+
+Special positions: `interlinear` → `<add place="above">`; `table_row` / `table_header` → `<table><row><cell>` (pipe-delimited columns). `confidence` maps to `@cert`. The logic lives in [src/transcriber_shell/xml_tools/tei.py](src/transcriber_shell/xml_tools/tei.py); position→TEI mapping details are in [vendor/transcription-protocol/README.md](vendor/transcription-protocol/README.md#tei-export).
+
 ## HTTP API (optional)
 
 Requires `pip install -e ".[api]"`.
