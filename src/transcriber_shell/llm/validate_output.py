@@ -24,6 +24,8 @@ _VALID_POSITION = frozenset(
         "margin_bottom",
         "interlinear",
         "footnote",
+        "table_row",
+        "table_header",
     }
 )
 _POSITION_ALIASES: dict[str, str] = {
@@ -51,11 +53,32 @@ _POSITION_ALIASES: dict[str, str] = {
     "margin_bottom_left": "margin_bottom",
     "margin_top_right": "margin_top",
     "margin_top_left": "margin_top",
+    # Hyphenated and "corner" spellings LLMs produce for margin positions.
+    "top_right_corner": "margin_top",
+    "top_left_corner": "margin_top",
+    "bottom_right_corner": "margin_bottom",
+    "bottom_left_corner": "margin_bottom",
+    "top_right": "margin_top",
+    "top_left": "margin_top",
+    "bottom_right": "margin_bottom",
+    "bottom_left": "margin_bottom",
     # Models sometimes invent labels outside OUTPUT_SCHEMA; map to closest protocol bucket.
     "title": "header",
     "subtitle": "header",
     "attestation_block": "footer",
     "attestation": "footer",
+    # Letter/document structure labels LLMs emit for epistolary documents.
+    "heading": "header",
+    "address": "header",
+    "date_line": "header",
+    "salutation": "body",
+    "greeting": "body",
+    "closing": "body",
+    "valediction": "body",
+    "signature": "body",
+    "full_page": "body",
+    "full_text": "body",
+    "text": "body",
 }
 # ISO 15924 script codes → ISO 639-2 language codes for known equivalents.
 # The protocol expects language codes; some models emit script codes by mistake.
@@ -143,6 +166,14 @@ def load_yaml_or_json_path(path: Path) -> Any:
     return yaml.safe_load(text)
 
 
+_MARGIN_DIRECTIONS = (
+    ("left",   "margin_left"),
+    ("right",  "margin_right"),
+    ("top",    "margin_top"),
+    ("bottom", "margin_bottom"),
+)
+
+
 def _normalize_position_value(raw: Any) -> Any:
     if not isinstance(raw, str):
         return raw
@@ -152,7 +183,16 @@ def _normalize_position_value(raw: Any) -> Any:
     while "__" in s:
         s = s.replace("__", "_")
     s = _POSITION_ALIASES.get(s, s)
-    return s if s in _VALID_POSITION else raw
+    if s in _VALID_POSITION:
+        return s
+    # Semantic fallback: compound margin/corner strings the model invents.
+    # "top_left_margin", "top-right-corner", "bottom_right_margin_note", etc.
+    parts = set(s.split("_"))
+    if "margin" in parts or "corner" in parts or "marginalia" in parts:
+        for kw, pos in _MARGIN_DIRECTIONS:
+            if kw in parts:
+                return pos
+    return raw
 
 
 def _normalize_confidence_value(raw: Any) -> Any:
@@ -246,6 +286,7 @@ def normalize_transcription_yaml_data(data: dict[str, Any]) -> None:
         tl_s = tl.strip().lower() if isinstance(tl, str) else ""
         if tl_s and not tl_s.startswith("eng") and tl_s != "mixed":
             meta["englishHandwritingModality"] = None
+    is_normalized = meta.get("normalizationMode") == "normalized"
     segs = root.get("segments")
     if not isinstance(segs, list):
         return
@@ -256,6 +297,8 @@ def normalize_transcription_yaml_data(data: dict[str, Any]) -> None:
             seg["position"] = _normalize_position_value(seg["position"])
         if "confidence" in seg:
             seg["confidence"] = _normalize_confidence_value(seg["confidence"])
+        if is_normalized and isinstance(seg.get("text"), str):
+            seg["text"] = re.sub(r"=\s*\n", "", seg["text"])
 
 
 def validate_transcript_file(

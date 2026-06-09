@@ -396,7 +396,12 @@ class TestExpandDiplomaticIntegration:
         root = ET.fromstring(xml_str)
         ns = {"t": "http://www.tei-c.org/ns/1.0"}
         paras = root.findall(".//t:p", ns)
-        return "\n".join((p.text or "").strip() for p in paras if (p.text or "").strip())
+        parts = []
+        for p in paras:
+            text = " ".join(t.strip() for t in p.itertext() if t.strip())
+            if text:
+                parts.append(text)
+        return "\n".join(parts)
 
     def test_expand_then_score(
         self, gt_cases: list[GTCase], tmp_path: Path

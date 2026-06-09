@@ -6,6 +6,11 @@ Table segments (position: table_row / table_header) are emitted as TEI
 <table>/<row>/<cell> structures.  Pipe-delimited column text is split at '|'.
 All other segment positions map to <p rend="{position}"> elements, except
 'interlinear' which becomes <add place="above">.
+
+Lineation: when a segment carries a lineRange (e.g. "5-11"), each physical
+manuscript line is prefixed by a <lb n="N"/> milestone.  Segments without
+lineRange that contain only a single line fall back to plain element text for
+backward compatibility.
 """
 
 from __future__ import annotations
@@ -44,6 +49,43 @@ def _tei(tag: str, **attrib: str) -> ET.Element:
 
 def _sub(parent: ET.Element, tag: str, **attrib: str) -> ET.Element:
     return ET.SubElement(parent, f"{_T}{tag}", **attrib)
+
+
+def _parse_line_start(line_range: str | int | None) -> int | None:
+    """Return the first line number from a lineRange like '5' or '2-11'."""
+    if line_range is None:
+        return None
+    part = str(line_range).split("-")[0]
+    try:
+        return int(part)
+    except ValueError:
+        return None
+
+
+def _set_lines(el: ET.Element, text: str, line_start: int | None) -> None:
+    """Populate *el* with <lb n="N"/> milestones for each physical manuscript line.
+
+    Falls back to plain .text when there is exactly one line and no lineRange,
+    so existing callers that read .text directly continue to work.
+
+    Blank lines within *text* are skipped but their offset is preserved so that
+    ``n`` attributes remain consistent with the original lineRange even when the
+    segment text contains interior blank lines.
+    """
+    raw = [ln.rstrip() for ln in text.split("\n")]
+    content = [(off, ln) for off, ln in enumerate(raw) if ln.strip()]
+    if not content:
+        return
+    if len(content) == 1 and line_start is None:
+        el.text = content[0][1]
+        return
+    el.text = None
+    for off, line in content:
+        attrib: dict[str, str] = {}
+        if line_start is not None:
+            attrib["n"] = str(line_start + off)
+        lb = _sub(el, "lb", **attrib)
+        lb.tail = line
 
 
 def _flush_table(body: ET.Element, pending: list[dict[str, Any]]) -> None:
@@ -98,7 +140,7 @@ def yaml_to_tei(src: Path, dst: Path) -> None:
     body = _sub(text_el, "body")
 
     if meta:
-        header = _sub(root, "teiHeader")
+        header = _tei("teiHeader")
         fd = _sub(header, "fileDesc")
         ti = _sub(fd, "titleStmt")
         t = _sub(ti, "title")
@@ -117,6 +159,7 @@ def yaml_to_tei(src: Path, dst: Path) -> None:
         pos = seg.get("position") or "body"
         text = (seg.get("text") or "").strip()
         conf = seg.get("confidence", "")
+        line_start = _parse_line_start(seg.get("lineRange"))
 
         if pos in _TABLE_POSITIONS:
             pending_table.append(seg)
@@ -134,13 +177,13 @@ def yaml_to_tei(src: Path, dst: Path) -> None:
             add = _sub(body, "add", place="above")
             if conf:
                 add.set("cert", conf)
-            add.text = text
+            _set_lines(add, text, line_start)
         else:
             rend = _POSITION_TO_REND.get(pos, pos)
             p = _sub(body, "p", rend=rend)
             if conf:
                 p.set("cert", conf)
-            p.text = text
+            _set_lines(p, text, line_start)
 
     # Flush any trailing table
     if pending_table:

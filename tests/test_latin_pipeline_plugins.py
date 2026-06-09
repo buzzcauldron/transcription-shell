@@ -591,7 +591,7 @@ class TestYamlToTei:
         yaml_to_tei.yaml_to_tei(src, dst)
         tree = ET.parse(dst)
         ns = {"t": "http://www.tei-c.org/ns/1.0"}
-        paras = tree.findall(".//t:p", ns)
+        paras = tree.findall(".//t:body/t:p", ns)
         assert len(paras) == 1
         assert "Radulfus Basset" in (paras[0].text or "")
 
@@ -607,7 +607,7 @@ class TestYamlToTei:
         yaml_to_tei.yaml_to_tei(src, dst)
         tree = ET.parse(dst)
         ns = {"t": "http://www.tei-c.org/ns/1.0"}
-        paras = tree.findall(".//t:p", ns)
+        paras = tree.findall(".//t:body/t:p", ns)
         assert len(paras) == 3
 
     def test_unicode_combining_chars_preserved(self, tmp_path: Path, yaml_to_tei) -> None:
@@ -637,7 +637,7 @@ class TestYamlToTei:
         yaml_to_tei.yaml_to_tei(src, dst)
         tree = ET.parse(dst)
         ns = {"t": "http://www.tei-c.org/ns/1.0"}
-        paras = tree.findall(".//t:p", ns)
+        paras = tree.findall(".//t:body/t:p", ns)
         assert len(paras) == 0
 
     def test_tei_namespace_correct(self, tmp_path: Path, yaml_to_tei) -> None:
@@ -670,6 +670,55 @@ class TestYamlToTei:
 
         tei_files = list(tei_dir.glob("*.xml"))
         assert len(tei_files) == 3
+
+    def test_linerange_produces_lb_milestones(self, tmp_path: Path, yaml_to_tei) -> None:
+        """Segments with lineRange get <lb n="N"/> per physical line."""
+        data = {
+            "transcriptionOutput": {
+                "protocolVersion": "1.1.0",
+                "metadata": {"sourcePageId": "lb-test"},
+                "segments": [
+                    {
+                        "segmentId": 1,
+                        "lineRange": "3-5",
+                        "position": "body",
+                        "text": "prima linea\nsecunda linea\ntertia linea",
+                        "confidence": "high",
+                        "uncertaintyTokenCount": 0,
+                    }
+                ],
+            }
+        }
+        src = tmp_path / "lb_transcription.yaml"
+        src.write_text(yaml.dump(data), encoding="utf-8")
+        dst = tmp_path / "lb_tei.xml"
+        yaml_to_tei.yaml_to_tei(src, dst)
+
+        tree = ET.parse(dst)
+        ns = {"t": "http://www.tei-c.org/ns/1.0"}
+        lbs = tree.findall(".//t:lb", ns)
+        assert len(lbs) == 3, f"expected 3 <lb/> elements, got {len(lbs)}"
+        assert lbs[0].get("n") == "3"
+        assert lbs[1].get("n") == "4"
+        assert lbs[2].get("n") == "5"
+        assert lbs[0].tail == "prima linea"
+        assert lbs[2].tail == "tertia linea"
+
+    def test_single_line_no_linerange_uses_text(self, tmp_path: Path, yaml_to_tei) -> None:
+        """Backward compat: single-line segment without lineRange sets .text directly."""
+        src = tmp_path / "sl_transcription.yaml"
+        src.write_text(
+            yaml.dump(self._make_yaml(["Radulfus Basset de Welledon"])),
+            encoding="utf-8",
+        )
+        dst = tmp_path / "sl_tei.xml"
+        yaml_to_tei.yaml_to_tei(src, dst)
+        tree = ET.parse(dst)
+        ns = {"t": "http://www.tei-c.org/ns/1.0"}
+        paras = tree.findall(".//t:body/t:p", ns)
+        assert len(paras) == 1
+        assert "Radulfus Basset" in (paras[0].text or "")
+        assert tree.findall(".//t:body//t:lb", ns) == []
 
 
 @pytest.mark.skipif(

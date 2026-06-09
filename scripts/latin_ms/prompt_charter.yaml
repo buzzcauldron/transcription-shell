@@ -1,0 +1,73 @@
+# transcriber-shell prompt config for continental medieval Latin charters.
+# Covers Monasterium.net collections: French, German, Italian, papal, monastic.
+# Scripts: caroline minuscule (8th–11th c.), gothic cursiva (12th–15th c.),
+#          gothic textura (formal/liturgical), notarial scripts (Italian).
+# sourcePageId overridden per-image by transcriber-shell batch.
+
+targetLanguage: "lat-Latn"
+targetEra: "medieval"
+eraRange: "800-1450"
+diplomaticProfile: "layout_aware"
+diplomaticToggles: "{\"preserveLineBreaks\": true, \"preserveOriginalAbbreviations\": false, \"captureUnclearGlyphShape\": true}"
+normalizationMode: "diplomatic"
+languageSet: "[]"
+scriptNotesOptional: >
+  Continental medieval Latin charter hand. Scripts range from caroline minuscule
+  (8th–11th c.) through gothic cursiva and textura (12th–15th c.) to notarial
+  scripts in Italian documents. Abbreviation density: moderate.
+
+  CHARTER STRUCTURE — use to orient the transcription:
+  (1) Invocatio: "In nomine Domini" / "In nomine sanctae et individuae Trinitatis"
+  (2) Intitulatio: grantor name and title
+  (3) Inscriptio / Salutatio: addressee, greeting
+  (4) Arenga: pious preamble (not always present)
+  (5) Dispositio: the legal act — dono, vendo, concedo, confirmo, etc.
+  (6) Sanctio / Corroboratio: penalty and authentication clause
+  (7) Datatio: Anno Domini / Incarnationis + regnal year + place
+  (8) Witness list: "Huius rei testes sunt / Signum N." etc.
+  (9) Notarial subscription (Italian): "Ego N. notarius..." with signum tabellionis
+
+  SEGMENTATION: one segment per TextLine from the supplied PageXML; count must
+  match exactly. Set lineRange to the single line number for each segment.
+
+  ABBREVIATIONS: preserve all suspension and contraction marks verbatim using
+  Unicode combining characters (macron = U+0305, tilde = U+0303, superscript
+  letters). Do NOT silently expand.
+
+  PAPAL CHARTERS: the first line (arenga) is written in an elongated script
+  with characteristic litterae elongatae — transcribe letterforms exactly,
+  do not force standard proportions.
+
+  DATING CLAUSES: Roman numerals for years are common; transcribe them as
+  written (e.g. MCCXLII, not 1242). Anno/anno may be abbreviated a°.
+
+  UNCERTAINTY: use [uncertain: X / Y] for ambiguous letterforms. Confidence
+  defaults to medium; use low for faded ink, water damage, or damage at folds.
+
+  ANTI-HALLUCINATION — PROPER NOUNS:
+  Personal names (grantors, grantees, witnesses) and place names are the
+  highest-risk hallucination points.
+  (1) Never supply a name from training data or charter formula expectations.
+  (2) Read each proper noun letter by letter; use [uncertain: X / Y] for any
+      ambiguous letter; use [illegible] if wholly unreadable.
+  (3) Do NOT substitute a plausible continental name for one you cannot read.
+  (4) Titles (episcopus, abbas, comes, dux, rex) must match visible letterforms;
+      do not infer from the surrounding formula.
+  (5) Place names: transcribe visible letters exactly; do not replace with a
+      known toponym.
+
+  ANTI-HALLUCINATION — DOCUMENT SCOPE:
+  Transcribe only the charter visible in the supplied image region. Do not
+  blend content from dorse inscriptions, later additions, or adjacent documents.
+  If the image shows more than one charter, transcribe the one whose opening
+  words appear first in the supplied TextLine region.
+
+  GROUND RULE: every word in your output must be anchored to a visible
+  letterform. When in doubt, mark uncertain or illegible — never guess to
+  produce fluent Latin.
+
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "standard"
+sourcePageId: "PLACEHOLDER"
+protocolVersion: "1.1.0"
