@@ -151,6 +151,19 @@ transcriber-shell batch ./scans/ --prompt ./fixtures/prompt.example.yaml --batch
 transcriber-shell batch ./scans/ --prompt ./fixtures/prompt.example.yaml --skip-gm --lines-xml-dir ./lines/
 ```
 
+## Prompt Configs
+
+Ready-made prompt YAML files live in [`scripts/latin_ms/`](scripts/latin_ms/). Each document type has a **diplomatic** variant (abbreviations preserved as Unicode combining chars) and an **expansion** variant (abbreviations written out as full words, evaluable against expanded PAGE XML ground truth):
+
+| File | Mode | Corpus |
+|---|---|---|
+| [`prompt_charter.yaml`](scripts/latin_ms/prompt_charter.yaml) | diplomatic | Continental charters (Monasterium.net, 8th–15th c.) |
+| [`prompt_charter_expanded.yaml`](scripts/latin_ms/prompt_charter_expanded.yaml) | **expansion** | Same corpus — use for GT-scored evaluation |
+| [`prompt_anglicana_legal_diplomatic.yaml`](scripts/latin_ms/prompt_anglicana_legal_diplomatic.yaml) | diplomatic | English royal court plea rolls (KB27, CP40, AALT) |
+| [`prompt_anglicana_legal.yaml`](scripts/latin_ms/prompt_anglicana_legal.yaml) | **expansion** | Same corpus — use for GT-scored evaluation |
+
+**Firewall rule:** diplomatic outputs (`preserveOriginalAbbreviations: true`) must never be scored against expanded PAGE XML ground truth — the CER will be artificially inflated by 20–40 points. The evaluator in `benchmark/evaluate.py` enforces this and will abort with an error if the modes are mixed. Use `--force` only for acknowledged ad-hoc comparisons.
+
 ## TEI Export
 
 Convert `*_transcription.yaml` artifacts to TEI P5 XML:
