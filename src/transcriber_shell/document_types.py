@@ -83,7 +83,6 @@ _MODEL_ALIASES: dict[str, tuple[str, str]] = {
     "claude-haiku-4":         ("anthropic", "claude-haiku-4-5-20251001"),
     "gemini-2.5-pro":         ("gemini",    "gemini-2.5-pro"),
     "gemini-2.5-flash":       ("gemini",    "gemini-2.5-flash"),
-    "gemini-2.0-flash":       ("gemini",    "gemini-2.0-flash"),
     "gpt-4o":                 ("openai",    "gpt-4o"),
 }
 
