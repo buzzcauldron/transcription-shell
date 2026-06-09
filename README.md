@@ -19,6 +19,8 @@ Pipeline glue for **manuscript transcription** that combines:
 4. **YAML validation** via vendored `validate_schema.py` from that protocol.
 5. **HTR backends** (optional, parallel) — set `TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH` and/or `TRANSCRIBER_SHELL_GM_HTR_REPO_PATH` to enable; script/language detection routes images to the appropriate model. Results are returned in `PipelineResult.htr_results` alongside the LLM output. See [Credits](#credits) for model and dataset attribution.
 
+**Trained segmentation / HTR models, training recipe, and how to reproduce them:** [docs/MODELS.md](docs/MODELS.md).
+
 Downstream **baseline → rectified line image** tooling from the same research line lives in [ideasrule/latin_documents](https://github.com/ideasrule/latin_documents); line exports aim for compatible `Baseline@points` where possible. Glyph Machina outputs are used for **lineation only** when that backend is selected — not as canonical diplomatic text.
 
 To **train** a mask model on that project’s public page data (`data/` — paired `.jpg` + PageXML), use the optional **[examples/latin_lineation_mvp](examples/latin_lineation_mvp/README.md)** package (`latin-lineation-train`, then `latin_lineation_mvp.infer:predict_masks`), or see **[docs/latin-documents-training-data.md](docs/latin-documents-training-data.md)** and **`scripts/clone-latin-documents.sh`**. **`scripts/benchmark_gm_parity.py`** scores local `lines.xml` against a Glyph Machina reference.
