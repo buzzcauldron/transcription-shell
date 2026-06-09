@@ -1,14 +1,14 @@
-# transcriber-shell prompt config for continental medieval Latin charters.
-# Covers Monasterium.net collections: French, German, Italian, papal, monastic.
-# Scripts: caroline minuscule (8th–11th c.), gothic cursiva (12th–15th c.),
-#          gothic textura (formal/liturgical), notarial scripts (Italian).
-# sourcePageId overridden per-image by transcriber-shell batch.
+# transcriber-shell prompt config — continental medieval Latin charters, EXPANSION mode.
+# Use this file when producing output to compare against expanded PAGE XML ground truth.
+# Paired with: prompt_charter.yaml (diplomatic / abbreviation-preserved mode).
+# FIREWALL: outputs from this file have preserveOriginalAbbreviations=false and may be
+#           scored against expanded GT.  Outputs from prompt_charter.yaml must not be.
 
 targetLanguage: "lat-Latn"
 targetEra: "medieval"
 eraRange: "800-1450"
 diplomaticProfile: "layout_aware"
-diplomaticToggles: "{\"preserveLineBreaks\": true, \"preserveOriginalAbbreviations\": true, \"captureUnclearGlyphShape\": true}"
+diplomaticToggles: "{\"preserveLineBreaks\": true, \"preserveOriginalAbbreviations\": false, \"markExpansions\": false, \"captureUnclearGlyphShape\": true}"
 normalizationMode: "diplomatic"
 languageSet: "[]"
 scriptNotesOptional: >
@@ -30,11 +30,33 @@ scriptNotesOptional: >
   SEGMENTATION: one segment per TextLine from the supplied PageXML; count must
   match exactly. Set lineRange to the single line number for each segment.
 
-  ABBREVIATIONS (preserveOriginalAbbreviations=true — DIPLOMATIC MODE):
-  Reproduce all suspension and contraction marks verbatim using Unicode
-  combining characters: macron U+0305 over the base letter, tilde U+0303,
-  superscript letters as combining or raised Unicode. Do NOT silently expand.
-  Preserve every abbreviation mark visible on the page exactly as it appears.
+  ABBREVIATIONS (preserveOriginalAbbreviations=false — EXPANSION REQUIRED):
+  Write out every abbreviation as its full expanded Latin word. Do NOT output
+  Unicode combining diacritics (macron U+0305, tilde U+0303) or superscript
+  abbreviation letters. Write the complete, unabbreviated Latin word.
+
+  Common continental charter expansions:
+    p̄  (macron on p) → per / pre / pro (choose by context; use [uncertain:] if ambiguous)
+    q̄  (macron on q) → quod / quia / que
+    dn̄s / dñs        → dominus
+    ec̄ia / ecl̄ia     → ecclesia
+    ep̄s               → episcopus
+    ab̄b               → abbas / abbatis
+    p̄dcus             → predictus
+    p̄dictus           → predictus
+    ip̄m               → ipsum
+    tṗe / tẽpore      → tempore
+    s̃c̃i / sc̄i        → sancti
+    sp̄s               → spiritus
+    d̄ni               → domini
+    rōgamus            → rogamus (tilde = con/m nasal)
+    ōmnes             → omnes
+    fr̄es              → fratres
+    p̄ceptum           → preceptum
+
+  When the correct expansion is genuinely ambiguous between two plausible words,
+  use [uncertain: expansion1 / expansion2]. Never leave a combining-diacritic
+  form in the output text.
 
   PAPAL CHARTERS: the first line (arenga) is written in an elongated script
   with characteristic litterae elongatae — transcribe letterforms exactly,
@@ -61,8 +83,6 @@ scriptNotesOptional: >
   ANTI-HALLUCINATION — DOCUMENT SCOPE:
   Transcribe only the charter visible in the supplied image region. Do not
   blend content from dorse inscriptions, later additions, or adjacent documents.
-  If the image shows more than one charter, transcribe the one whose opening
-  words appear first in the supplied TextLine region.
 
   GROUND RULE: every word in your output must be anchored to a visible
   letterform. When in doubt, mark uncertain or illegible — never guess to

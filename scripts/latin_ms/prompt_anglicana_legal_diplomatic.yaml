@@ -1,0 +1,72 @@
+# transcriber-shell prompt config — English royal court legal registers, DIPLOMATIC mode.
+# Target documents: KB27 (King's Bench), CP40 (Common Pleas), AALT plea rolls.
+# Script: 14th–15th c. anglicana cursiva legal hand (court hand).
+# Use this file to produce paleographic transcriptions preserving abbreviation marks.
+# Paired with: prompt_anglicana_legal.yaml (expansion / GT-comparable mode).
+# FIREWALL: outputs from this file have preserveOriginalAbbreviations=true.
+#           Do NOT compare against expanded PAGE XML GT.
+
+targetLanguage: "lat-Latn"
+targetEra: "medieval"
+eraRange: "1290-1500"
+diplomaticProfile: "layout_aware"
+diplomaticToggles: "{\"preserveLineBreaks\": true, \"preserveOriginalAbbreviations\": true, \"markExpansions\": false, \"captureDeletionsAndInsertions\": true, \"captureUnclearGlyphShape\": true}"
+normalizationMode: "diplomatic"
+languageSet: "[]"
+scriptNotesOptional: >
+  English royal court legal hand (anglicana cursiva), 14th–15th century.
+  Documents: King's Bench (KB27), Common Pleas (CP40), Chancery rolls.
+  Brown ink on parchment, dense columnar text, heavily abbreviated formulaic Latin.
+
+  SCRIPT CHARACTERISTICS — anglicana cursiva legal hand:
+  - Long s (ſ) used medially and finally; preserve as U+017F.
+  - Double compartment a (looks like "ci" to untrained eye).
+  - Looped ascenders on b, d, h, k, l.
+  - Final -d often looks like 8 or closed loop.
+  - Minims (i, m, n, u): count carefully — "minimum" minims = "mm" or "in" errors common.
+  - Pilcrow ¶ marks new plea entries; transcribe verbatim.
+  - Abbreviation density: very high — virtually every Latin word is abbreviated.
+
+  PLEA ROLL STRUCTURE — use to orient the transcription:
+  Each membrane entry follows the pattern:
+  (1) County heading (e.g. "Cornubie", "Norff", "Kanc"): shire name in margin or column head
+  (2) ¶ (pilcrow) + party name + action type ("summonitus fuit ad respondendum")
+  (3) Demandant's narratio: the writ or claim, citing regnal years and ancestors
+  (4) Tenant's pleading: defence, exceptions
+  (5) Jury / judgment / continuance note (often interlinear or in margin)
+
+  SEGMENTATION: one segment per TextLine from the supplied PageXML; count must
+  match exactly. Set lineRange to the single line number for each segment.
+
+  ABBREVIATIONS (preserveOriginalAbbreviations=true — DIPLOMATIC MODE):
+  Reproduce all suspension and contraction marks verbatim using Unicode combining
+  characters: macron U+0305 (combining overline) over the base letter, tilde
+  U+0303 (combining tilde), superscript letters as raised Unicode codepoints.
+  Do NOT silently expand. Every visible abbreviation mark must appear in output.
+
+  Unicode combining character reference:
+    Macron/overline: base-letter + U+0305 (e.g. p + U+0305 = p̄)
+    Tilde:           base-letter + U+0303 (e.g. p + U+0303 = p̃)
+    Superscript letters: use Unicode superscript codepoints where available,
+                         otherwise combining above (U+0307 dot, U+030A ring, etc.)
+    Long s: U+017F (ſ) — do not substitute modern s.
+    Pilcrow: U+00B6 (¶) — transcribe at start of new entry.
+
+  INTERLINEAR INSERTIONS: encode as [insertion: interlinear: "text"].
+  MARGINAL MATTER: position: margin_left for left-margin content.
+
+  ANTI-HALLUCINATION — PROPER NOUNS AND LEGAL FORMULAS:
+  (1) Personal and place names must be read letter-by-letter from the image.
+  (2) Regnal years must match visible letterforms exactly.
+  (3) Legal formulas must expand only what is anchored to visible marks.
+  (4) Use [uncertain: X / Y] for ambiguous letterforms.
+  (5) Use [illegible] for wholly unreadable text.
+
+  GROUND RULE: every character in your output must be anchored to a visible
+  mark on the page. Never guess to produce fluent Latin.
+
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "standard"
+sourcePageId: "PLACEHOLDER"
+protocolVersion: "1.1.0"

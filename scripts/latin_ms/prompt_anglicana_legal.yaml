@@ -1,0 +1,112 @@
+# transcriber-shell prompt config — English royal court legal registers, EXPANSION mode.
+# Target documents: KB27 (King's Bench), CP40 (Common Pleas), AALT plea rolls.
+# Script: 14th–15th c. anglicana cursiva legal hand (court hand).
+# Use this file when producing output to compare against expanded PAGE XML ground truth.
+# Paired with: prompt_anglicana_legal_diplomatic.yaml (abbreviation-preserved mode).
+# FIREWALL: outputs from this file have preserveOriginalAbbreviations=false and may be
+#           scored against expanded GT.  Diplomatic outputs must not be.
+
+targetLanguage: "lat-Latn"
+targetEra: "medieval"
+eraRange: "1290-1500"
+diplomaticProfile: "layout_aware"
+diplomaticToggles: "{\"preserveLineBreaks\": true, \"preserveOriginalAbbreviations\": false, \"markExpansions\": false, \"captureDeletionsAndInsertions\": true, \"captureUnclearGlyphShape\": true}"
+normalizationMode: "diplomatic"
+languageSet: "[]"
+scriptNotesOptional: >
+  English royal court legal hand (anglicana cursiva), 14th–15th century.
+  Documents: King's Bench (KB27), Common Pleas (CP40), Chancery rolls.
+  Brown ink on parchment, dense columnar text, heavily abbreviated formulaic Latin.
+
+  SCRIPT CHARACTERISTICS — anglicana cursiva legal hand:
+  - Long s (ſ) used medially and finally; preserve as U+017F.
+  - Double compartment a (looks like "ci" to untrained eye).
+  - Looped ascenders on b, d, h, k, l.
+  - Final -d often looks like 8 or closed loop.
+  - Minims (i, m, n, u): count carefully — "minimum" minims = "mm" or "in" errors common.
+  - Pilcrow ¶ marks new plea entries; transcribe verbatim.
+  - Abbreviation density: very high — virtually every Latin word is abbreviated.
+
+  PLEA ROLL STRUCTURE — use to orient the transcription:
+  Each membrane entry follows the pattern:
+  (1) County heading (e.g. "Cornubie", "Norff", "Kanc"): shire name in margin or column head
+  (2) ¶ (pilcrow) + party name + action type ("summonitus fuit ad respondendum")
+  (3) Demandant's narratio: the writ or claim, citing regnal years and ancestors
+  (4) Tenant's pleading: defence, exceptions
+  (5) Jury / judgment / continuance note (often interlinear or in margin)
+
+  SEGMENTATION: one segment per TextLine from the supplied PageXML; count must
+  match exactly. Set lineRange to the single line number for each segment.
+
+  ABBREVIATIONS (preserveOriginalAbbreviations=false — EXPANSION REQUIRED):
+  Write out every abbreviation as its full expanded Latin word. Do NOT output
+  Unicode combining diacritics (macron U+0305, tilde U+0303) or superscript
+  abbreviation letters. Write the complete, unabbreviated word exactly as the
+  scribe intended.
+
+  High-frequency anglicana legal abbreviations and their expansions:
+    dn̄s / dñs              → dominus
+    dnō / dño              → domino (dative)
+    d̄ni / dñi              → domini (genitive)
+    rēgis / r̄egis          → regis
+    p̄dictus / p̄dcus        → predictus
+    p̄dicti / p̄dcī          → predicti
+    p̄dictum / p̄dctm        → predictum
+    p̄dicte / p̄dcte         → predicte
+    p̄mittit̄ / p̄mttit̄      → permittit
+    q̄d / qd̄               → quod
+    p̄ (macron on p) initial → per / pre / pro (context: "per" before consonant,
+                              "pre" in compounds like "presentare", "pro" + gerund)
+    ip̄m / ip̄sm             → ipsum
+    ip̄i                    → ipsi
+    ip̄s / ips̄a             → ipsa
+    q̄  / qm̄               → quam / quia (context-dependent)
+    t̄pe / tẽpore           → tempore
+    pl̄ito / p̄lacito        → placito
+    aduocac̄ / aduocacōis   → advocacio / advocacionis
+    ec̄ia / eccl̄ia          → ecclesia
+    ꝑsonam / p̄ sonam       → personam
+    p̄sōnam                 → personam
+    ẽ / ē                  → est / enim (context-dependent)
+    s̃ / s̄imil̄r            → similiter
+    nōīe                   → nomine
+    iur̄e                   → iure
+    rat̄ione                → ratione
+    h̄er                    → heres / heredi / heredem
+    h̄eredis                → heredis
+    p̄tinent̄               → pertinent
+    c̄ō / cōīa             → communia
+    ꝑtinencie              → pertinencię / pertinenciis
+    fr̄es                   → fratres
+    etc̄ / etc              → etc (leave as "etc" — scribal contraction already conventional)
+
+  When the correct expansion is genuinely ambiguous between two plausible words,
+  use [uncertain: expansion1 / expansion2].
+
+  INTERLINEAR INSERTIONS: common in plea rolls. Encode as:
+  [insertion: interlinear: "text"] on its own line within the segment text.
+
+  MARGINAL MATTER: county headings or judges' names in the left margin belong
+  in the body of segment 1 if the PageXML TextLine covers that area, or as a
+  separate segment with position: margin_left.
+
+  ANTI-HALLUCINATION — PROPER NOUNS AND LEGAL FORMULAS:
+  (1) Personal and place names must be read letter-by-letter from the image.
+      Do NOT supply a plausible Anglo-Norman or Latin name from training data.
+  (2) Regnal years ("tempore Henrici Regis proavi", "Edwardi Regis avi") must
+      match visible letterforms exactly; do not infer the correct king.
+  (3) Legal formulas (summonitus, attornatum, seisinam, etc.) are heavily
+      abbreviated — expand only what is anchored to visible marks.
+  (4) Numbers and money (dampnum, Librarum): transcribe numerals as written.
+  (5) "Etc" in the text is a conventional scribal marker meaning the full
+      formula is implied; transcribe as "etc" verbatim.
+
+  GROUND RULE: every word in your output must be anchored to a visible
+  letterform in the image. Mark [uncertain:] for ambiguous readings and
+  [illegible] for wholly unreadable text. Never guess to produce fluent Latin.
+
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "standard"
+sourcePageId: "PLACEHOLDER"
+protocolVersion: "1.1.0"
