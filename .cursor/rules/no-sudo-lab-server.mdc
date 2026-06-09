@@ -1,0 +1,24 @@
+---
+description: Lab/training servers have no sudo; avoid privileged commands and suggest user-space alternatives
+alwaysApply: true
+---
+
+# No sudo on training / lab servers
+
+The maintainer may use shared lab machines (e.g. SSH training hosts) **without `sudo`**.
+
+## Do not assume
+
+- `sudo apt install`, `sudo reboot`, `sudo nvidia-smi --gpu-reset`
+- `sudo nvidia-cuda-mps-control` or other NVIDIA daemon control
+- System-wide `pip` / PEP 668 overrides (`--break-system-packages`)
+- `chown`/`chmod` on system directories
+
+## Prefer instead
+
+- **Python:** `python3 -m venv ~/.venv-…` and `venv/bin/python -m pip` (no sudo).
+- **GPU / MPS / driver errors (e.g. CUDA 805):** resolution usually needs **admin/IT**; suggest **contacting lab support** with `nvidia-smi` + the full error, not sudo-only fixes.
+- **Workaround without admin:** `export CUDA_VISIBLE_DEVICES=` for CPU-only runs when GPU init fails.
+- **System packages:** point to **admin docs** or user-space installs (`pip`/`conda` in home) only.
+
+When giving runbooks for training or server workflows in this repo, use steps that work in an **unprivileged** shell unless the user says they have elevated access.

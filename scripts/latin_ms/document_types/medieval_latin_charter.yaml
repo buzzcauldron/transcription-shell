@@ -1,0 +1,34 @@
+# Document type: medieval Latin continental charters (Monasterium.net corpus)
+# Caroline minuscule → gothic cursiva → gothic textura, 8th–15th c.
+# Covers: French, German, Italian, Iberian, papal charters in Latin.
+name: medieval_latin_charter
+language: lat-Latn
+era: 800-1450
+script: gothic_cursiva
+
+llm:
+  primary: claude-sonnet-4
+  fallback: gemini-2.5-pro
+
+htr:
+  # Broad medieval/early-modern model (covers gothic_cursiva, gothic_textura,
+  # caroline_minuscule).  Narrower than legal r4 but better generalisation
+  # across continental hands.
+  model: gm-htr-r2_best
+  path: "${HOME}/src/latin_documents/gm-htr-r2.mlmodel_best.mlmodel"
+
+segmentation:
+  model: kraken-merged-seg_best
+  path: "${HOME}/src/latin_documents/kraken-merged-seg_best.mlmodel"
+
+prompt: prompt_charter.yaml
+
+notes: >
+  Primary corpus: Monasterium.net CEI XML + image collection.
+  Charter formulas differ substantially from plea rolls: opening invocatio
+  (In nomine Domini), dispositio (dono/vendo/concedo), corroboratio, witness
+  list (Huius rei testes sunt), dating clause (Anno Domini / Incarnationis).
+  Notarial subscriptions and signum marks common in Italian charters.
+  Papal charters (litterae): distinctive elongated script in first line.
+  Abbreviation density: moderate (lower than plea rolls); contractions favour
+  suspension marks over interlinear notation.
