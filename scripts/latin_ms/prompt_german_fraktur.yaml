@@ -1,0 +1,15 @@
+# transcriber-shell prompt — early modern German Fraktur print (16th-19th c.).
+# Use Tesseract with deu+frk traineddata for best HTR accuracy.
+
+targetLanguage: "deu-Latn"
+targetEra: "early_modern"
+eraRange: "1500-1850"
+diplomaticProfile: "strict"
+normalizationMode: "normalized"
+languageSet: "[\"lat-Latn\"]"
+scriptNotesOptional: "Fraktur blackletter print; long-s; umlauts; Latin section headings common"
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "efficient"
+sourcePageId: "page-1"
+protocolVersion: "1.1.0"

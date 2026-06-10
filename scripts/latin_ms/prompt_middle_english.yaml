@@ -1,0 +1,15 @@
+# transcriber-shell prompt — Middle English vernacular manuscripts (12th-15th c.).
+# Anglicana, secretary, and textualis scripts; verse and prose.
+
+targetLanguage: "enm-Latn"
+targetEra: "medieval"
+eraRange: "1150-1500"
+diplomaticProfile: "semi_strict"
+normalizationMode: "normalized"
+languageSet: "[\"lat-Latn\"]"
+scriptNotesOptional: "anglicana or secretary hand; yogh, thorn, eth common; Latin rubrics"
+englishHandwritingModality: "insular_anglicana"
+epistemicNotesOptional: ""
+runMode: "efficient"
+sourcePageId: "folio-1r"
+protocolVersion: "1.1.0"

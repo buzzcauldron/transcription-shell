@@ -1,0 +1,21 @@
+# Early modern German Fraktur print (1500-1850).
+name: german_fraktur
+language: deu-Latn
+era: 1500-1850
+script: fraktur
+
+llm:
+  primary: claude-sonnet-4
+  fallback: gemini-2.5-pro
+
+htr:
+  # No Kraken model — enable Tesseract with deu+frk traineddata in the HTR section.
+
+segmentation:
+  model: kraken-merged-seg_best
+
+prompt: prompt_german_fraktur.yaml
+
+notes: >
+  Fraktur blackletter print. Enable Tesseract (HTR section) with lang=deu+frk.
+  Latin headings and marginalia common; long-s normalised by LLM in normalized mode.

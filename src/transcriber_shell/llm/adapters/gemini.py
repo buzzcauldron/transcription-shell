@@ -41,14 +41,8 @@ def transcribe_gemini(
             "in .env or paste under Provider keys in the GUI."
         )
     client = genai.Client(api_key=s.google_api_key)
-    raw = image_path.read_bytes()
-    suf = image_path.suffix.lower()
-    if suf in (".jpg", ".jpeg"):
-        mime = "image/jpeg"
-    elif suf == ".png":
-        mime = "image/png"
-    else:
-        mime = "image/jpeg"
+    from transcriber_shell.llm.image_prep import prepare_image
+    raw, mime = prepare_image(image_path)
 
     model_id = model or s.resolved_model("gemini")
     proxy = (s.llm_http_proxy or "").strip()

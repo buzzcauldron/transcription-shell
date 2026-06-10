@@ -1,0 +1,21 @@
+# 19th-century English copperplate: letters, deeds, legal instruments (c. 1780-1900).
+name: nineteenth_century_english_copperplate
+language: eng-Latn
+era: 1780-1900
+script: copperplate
+
+llm:
+  primary: gemini-2.5-flash
+  fallback: claude-sonnet-4
+
+htr:
+  model: gm-htr-computus_best
+
+segmentation:
+  model: kraken-merged-seg_best
+
+prompt: prompt_english_copperplate.yaml
+
+notes: >
+  Round hand / copperplate / Spencerian. Familiar letters, legal deeds, account books.
+  Computus HTR model covers this era well; abbreviation density low.

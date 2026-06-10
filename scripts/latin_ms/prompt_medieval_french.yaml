@@ -1,0 +1,15 @@
+# transcriber-shell prompt — medieval Old French / Anglo-Norman manuscripts.
+# Mixed Latin-French texts common; charters, romances, administrative registers.
+
+targetLanguage: "fra-Latn"
+targetEra: "medieval"
+eraRange: "1100-1500"
+diplomaticProfile: "layout_aware"
+normalizationMode: "normalized"
+languageSet: "[\"lat-Latn\"]"
+scriptNotesOptional: "gothic cursiva or textualis; Old French with Latin formulae; nasal marks and brevigraphs"
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "efficient"
+sourcePageId: "folio-1r"
+protocolVersion: "1.1.0"

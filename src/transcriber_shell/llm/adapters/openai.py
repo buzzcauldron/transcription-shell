@@ -51,9 +51,9 @@ def transcribe_openai(
     if http_client is not None:
         client_kw["http_client"] = http_client
     client = OpenAI(**client_kw)
-    raw = image_path.read_bytes()
+    from transcriber_shell.llm.image_prep import prepare_image
+    raw, media = prepare_image(image_path)
     b64 = base64.standard_b64encode(raw).decode("ascii")
-    media = _mime_for_path(image_path)
     url = f"data:{media};base64,{b64}"
 
     model_id = model or s.resolved_model("openai")

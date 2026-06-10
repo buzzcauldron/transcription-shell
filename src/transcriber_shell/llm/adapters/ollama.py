@@ -24,7 +24,8 @@ def transcribe_ollama(
     base = str(s.ollama_base_url).rstrip("/")
     model_id = model or s.resolved_model("ollama")
 
-    raw = image_path.read_bytes()
+    from transcriber_shell.llm.image_prep import prepare_image
+    raw, _mime = prepare_image(image_path)
     b64 = base64.standard_b64encode(raw).decode("ascii")
 
     payload = {

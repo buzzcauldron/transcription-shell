@@ -1,0 +1,21 @@
+# Italian humanist manuscripts: Latin and Italian vernacular (1400-1600).
+name: italian_humanist
+language: lat-Latn
+era: 1400-1600
+script: humanistica
+
+llm:
+  primary: claude-sonnet-4
+  fallback: gemini-2.5-pro
+
+htr:
+  model: gm-htr-r5-best
+
+segmentation:
+  model: kraken-merged-seg_best
+
+prompt: prompt_italian_humanist.yaml
+
+notes: >
+  Humanistica antiqua and corsiva. Classical Latin texts, chancery documents,
+  Italian vernacular. Sparse abbreviation; high LLM accuracy without deep HTR.

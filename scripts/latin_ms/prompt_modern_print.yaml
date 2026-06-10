@@ -1,0 +1,15 @@
+# transcriber-shell prompt — 20th-century printed text (newspapers, pamphlets, books).
+# Any language in Latin script; use Tesseract HTR for best accuracy.
+
+targetLanguage: "eng-Latn"
+targetEra: "twentieth_century"
+eraRange: "1900-2000"
+diplomaticProfile: "strict"
+normalizationMode: "normalized"
+languageSet: "[]"
+scriptNotesOptional: "printed type; preserve column structure; headlines and bylines as separate segments"
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "efficient"
+sourcePageId: "page-1"
+protocolVersion: "1.1.0"

@@ -1,0 +1,15 @@
+# transcriber-shell prompt — medieval Latin ecclesiastical (charters, liturgical, monastic).
+# Gothic textualis / caroline minuscule, 11th-15th c.
+
+targetLanguage: "lat-Latn"
+targetEra: "medieval"
+eraRange: "1000-1450"
+diplomaticProfile: "layout_aware"
+normalizationMode: "normalized"
+languageSet: "[]"
+scriptNotesOptional: "gothic textualis or caroline minuscule; many standard formulae; rubrication common"
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "efficient"
+sourcePageId: "folio-1r"
+protocolVersion: "1.1.0"

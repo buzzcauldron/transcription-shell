@@ -37,9 +37,9 @@ def _anthropic_user_message(
     image_path: Path,
     user_text: str,
 ) -> dict:
-    raw = image_path.read_bytes()
+    from transcriber_shell.llm.image_prep import prepare_image
+    raw, media = prepare_image(image_path)
     b64 = base64.standard_b64encode(raw).decode("ascii")
-    media = _mime_for_path(image_path)
     return {
         "role": "user",
         "content": [

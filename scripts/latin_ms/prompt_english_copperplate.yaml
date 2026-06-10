@@ -1,0 +1,16 @@
+# transcriber-shell prompt config — 19th-century English copperplate.
+# Letters, deeds, legal instruments, account books (c. 1780-1900).
+# Script: English round hand / copperplate / Spencerian.
+
+targetLanguage: "eng-Latn"
+targetEra: "nineteenth_century"
+eraRange: "1780-1900"
+diplomaticProfile: "semi_strict"
+normalizationMode: "normalized"
+languageSet: "[]"
+scriptNotesOptional: "copperplate cursive; preserve punctuation and capitalisation exactly as written"
+englishHandwritingModality: "copperplate"
+epistemicNotesOptional: ""
+runMode: "efficient"
+sourcePageId: "page-1"
+protocolVersion: "1.1.0"

@@ -1,0 +1,15 @@
+# transcriber-shell prompt — Italian humanist manuscripts (15th-16th c.).
+# Latin and Italian vernacular; humanistica antiqua and corsiva scripts.
+
+targetLanguage: "lat-Latn"
+targetEra: "early_modern"
+eraRange: "1400-1600"
+diplomaticProfile: "semi_strict"
+normalizationMode: "normalized"
+languageSet: "[\"ita-Latn\"]"
+scriptNotesOptional: "humanistica antiqua or corsiva; classical Latin texts and Italian vernacular; sparse abbreviation"
+englishHandwritingModality: ""
+epistemicNotesOptional: ""
+runMode: "efficient"
+sourcePageId: "folio-1r"
+protocolVersion: "1.1.0"

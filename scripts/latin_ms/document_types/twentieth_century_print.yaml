@@ -1,0 +1,22 @@
+# 20th-century printed text: newspapers, pamphlets, books (1900-2000).
+name: twentieth_century_print
+language: eng-Latn
+era: 1900-2000
+script: print_latin
+
+llm:
+  primary: gemini-2.5-flash
+  fallback: claude-sonnet-4
+
+htr:
+  # No specialist HTR — Tesseract handles printed type well.
+  # Enable Tesseract in the HTR section and set lang to match document language.
+
+segmentation:
+  model: kraken-merged-seg_best
+
+prompt: prompt_modern_print.yaml
+
+notes: >
+  Printed Latin-script text. Enable Tesseract (HTR section) with lang=eng+fra+deu
+  as appropriate. LLM corrects OCR and applies column / headline segmentation.

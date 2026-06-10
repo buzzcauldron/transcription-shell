@@ -177,7 +177,9 @@ class TranscriberGui:
         self._gm_user_data_dir = tk.StringVar(value=str(self._settings.gm_user_data_dir))
         self._gm_htr_repo_path = tk.StringVar(value=str(self._settings.gm_htr_repo_path or ""))
         self._gm_website_fallback = tk.BooleanVar(value=self._settings.gm_website_fallback)
-        self._doc_type = tk.StringVar(value="medieval_latin_legal")
+        self._doc_type = tk.StringVar(value="auto-detect")
+        self._detected_doc_type = tk.StringVar(value="")
+        self._detecting = False
         self._kraken_seg_model_path = tk.StringVar(value=str(self._settings.kraken_model_path or ""))
         self._kraken_htr_model_path = tk.StringVar(value=str(self._settings.kraken_htr_model_path or ""))
         self._htr_parallel = tk.BooleanVar(value=self._settings.htr_parallel)
@@ -593,24 +595,18 @@ class TranscriberGui:
         doc_row = ttk.Frame(llm, style="Main.TFrame")
         doc_row.pack(fill=tk.X, pady=4)
         ttk.Label(doc_row, text="Document type", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        from transcriber_shell.document_types import list_doc_types as _list_doc_types
+        _doc_type_values = ["auto-detect"] + _list_doc_types()
         self._cb_doc_type = ttk.Combobox(
             doc_row,
             textvariable=self._doc_type,
-            values=(
-                "medieval_latin_legal",
-                "medieval_latin_ecclesiastical",
-                "early_modern_latin",
-                "early_modern_english",
-            ),
+            values=_doc_type_values,
             state="readonly",
-            width=28,
+            width=34,
         )
         self._cb_doc_type.pack(side=tk.LEFT, padx=(0, 8))
-        ttk.Label(
-            doc_row,
-            text="sets HTR model, seg model, prompt (document_types/)",
-            style="Muted.TLabel",
-        ).pack(side=tk.LEFT)
+        self._detect_label = ttk.Label(doc_row, text="", style="Muted.TLabel")
+        self._detect_label.pack(side=tk.LEFT)
 
         prov_row = ttk.Frame(llm, style="Main.TFrame")
         prov_row.pack(fill=tk.X, pady=4)
@@ -1357,6 +1353,8 @@ class TranscriberGui:
                             self._job_id.set(p2.stem[:120] or "job")
         if added_any:
             self._refresh_image_list()
+            if self._doc_type.get() == "auto-detect":
+                self._kick_auto_detect()
         elif show_empty_warning and items:
             self._gui_notify(
                 "Add images: No supported inputs were added. Use jpg, jpeg, png, webp, tif/tiff, gif, bmp, or pdf, "
@@ -1383,6 +1381,32 @@ class TranscriberGui:
         if not d:
             return
         self._ingest_paths([Path(d)], show_empty_warning=True)
+
+    def _kick_auto_detect(self) -> None:
+        """Spawn a background thread to detect the doc type from the first loaded image."""
+        if self._detecting:
+            return
+        images = self._dedupe_sorted_images()
+        if not images:
+            return
+        self._detecting = True
+        self._detect_label.configure(text="→ detecting…")
+
+        def _run_detect() -> None:
+            from transcriber_shell.detect_doc_type import detect_doc_type
+
+            def _progress(msg: str) -> None:
+                self._q.put(("detect_progress", msg))
+
+            result = detect_doc_type(
+                images[0],
+                provider=self._provider.get().strip().lower() or "gemini",
+                progress_cb=_progress,
+            )
+            self._q.put(("detect_done", result))
+
+        import threading
+        threading.Thread(target=_run_detect, daemon=True).start()
 
     def _add_from_url(self) -> None:
         url = self._url_entry.get().strip()
@@ -1788,7 +1812,13 @@ class TranscriberGui:
         try:
             while True:
                 kind, payload = self._q.get_nowait()
-                if kind == "open_folder":
+                if kind == "detect_progress":
+                    self._detect_label.configure(text=f"→ {payload}")
+                elif kind == "detect_done":
+                    self._detecting = False
+                    self._detected_doc_type.set(str(payload))
+                    self._detect_label.configure(text=f"→ {payload}")
+                elif kind == "open_folder":
                     self._open_folder(str(payload))
                 elif kind == "discovery":
                     self._discovered_ollama = list(payload) if isinstance(payload, list) else []
@@ -1905,7 +1935,23 @@ class TranscriberGui:
         model_override = self._effective_model_override()
         prov = self._provider.get().strip().lower()
         env_overrides = self._env_overrides_from_form()
-        if dt := self._doc_type.get().strip():
+        dt = self._doc_type.get().strip()
+        if dt == "auto-detect":
+            dt = self._detected_doc_type.get().strip()
+            if not dt:
+                # Detection not yet complete — kick it synchronously before run.
+                from transcriber_shell.detect_doc_type import detect_doc_type
+                images_for_detect = self._dedupe_sorted_images()
+                if images_for_detect:
+                    self._put_log("doc-type: auto-detecting…")
+                    dt = detect_doc_type(
+                        images_for_detect[0],
+                        provider=prov or "gemini",
+                    )
+                    self._detected_doc_type.set(dt)
+                    self._detect_label.configure(text=f"→ {dt}")
+                    self._put_log(f"doc-type: detected {dt!r}")
+        if dt:
             env_overrides["LATIN_MS_DOC_TYPE"] = dt
         eff_mode = self._efficient_mode.get()
         diplomatic = self._diplomatic.get()
