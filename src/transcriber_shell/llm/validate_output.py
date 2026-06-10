@@ -32,10 +32,21 @@ _POSITION_ALIASES: dict[str, str] = {
     "main": "body",
     "main_body": "body",
     "center": "body",
+    "full_page": "body",
+    "full_text": "body",
+    "text": "body",
     "left_margin": "margin_left",
     "right_margin": "margin_right",
     "top_margin": "margin_top",
     "bottom_margin": "margin_bottom",
+    # Bare direction words LLMs emit.
+    "top": "margin_top",
+    "bottom": "margin_bottom",
+    "left": "margin_left",
+    "right": "margin_right",
+    # Centered header variants.
+    "top_center": "header",
+    "top_centered": "header",
     # Models often say "marginalia"; protocol vocabulary is margin_* only.
     "marginalia_left": "margin_left",
     "marginalia_right": "margin_right",

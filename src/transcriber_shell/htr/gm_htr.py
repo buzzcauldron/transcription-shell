@@ -64,19 +64,36 @@ def _extract_predictions(xml_path: Path) -> list[str]:
     return texts
 
 
+def _best_torch_device() -> str:
+    """Return the best available torch device: cuda:0 > mps > cpu."""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda:0"
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
+    return "cpu"
+
+
 def run_gm_htr(
     image_path: Path,
     lines_xml_path: Path,
     *,
     repo_path: Path,
-    device: str = "cpu",
+    device: str = "auto",
 ) -> HtrResult:
     """Run GM line-image generator then HTR net; return concatenated predictions.
 
-    The device parameter is accepted for API consistency but run_htr.py uses cuda:0
-    unconditionally; a NVIDIA GPU must be present.  best_HTR.net is loaded from
+    run_htr.py hardcodes cuda:0; we patch the device line in a temp copy so the
+    model can also run on Apple Silicon (mps) or CPU.  Pass device="auto" (default)
+    to pick the best available device automatically.  best_HTR.net is loaded from
     repo_path (the script's CWD).
     """
+    if device == "auto":
+        device = _best_torch_device()
+
     repo_path = Path(repo_path).expanduser().resolve()
     image_path = Path(image_path).expanduser().resolve()
     lines_xml_path = Path(lines_xml_path).expanduser().resolve()
@@ -126,9 +143,20 @@ def run_gm_htr(
             )
 
         # Stage 2: HTR — best_HTR.net is loaded from CWD (repo_path); predictions are
-        # written back into tmp_xml in-place.
+        # written back into tmp_xml in-place.  When device is not cuda:0 we write a
+        # patched copy of run_htr.py into tmp so upstream isn't modified.
+        if device == "cuda:0":
+            htr_script_to_run = run_htr_script
+        else:
+            patched_src = run_htr_script.read_text(encoding="utf-8")
+            patched_src = patched_src.replace(
+                'device = "cuda:0"', f'device = "{device}"', 1
+            )
+            htr_script_to_run = tmp_dir / "run_htr_patched.py"
+            htr_script_to_run.write_text(patched_src, encoding="utf-8")
+
         htr = subprocess.run(
-            [sys.executable, str(run_htr_script), str(tmp_xml)],
+            [sys.executable, str(htr_script_to_run), str(tmp_xml)],
             capture_output=True,
             text=True,
             cwd=str(repo_path),

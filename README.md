@@ -253,19 +253,18 @@ Continuous integration runs the same suite on Python 3.11 and 3.12 (see `.github
 
 ## Blind-test benchmarks
 
-Scored against protocol ground truth (additions + omissions vs. GT character count). Run date: **2026-06-10**. All cases use Gemini 2.5 Pro as the LLM; "shell" configs add a Kraken HTR draft in correct-mode. See [`scripts/stress_shell_run.py`](scripts/stress_shell_run.py) and [`artifacts/blind-test-training/plan.md`](artifacts/blind-test-training/plan.md) for methodology.
+Scored against protocol ground truth (word-level additions + omissions). Run date: **2026-06-10**. All cases use Gemini 2.5 Pro as LLM; "shell" configs add a Kraken HTR draft in correct-mode. GM HTR results pending (next run). See [`scripts/stress_shell_run.py`](scripts/stress_shell_run.py) for methodology.
 
-| Case | Manuscript | Era | Script | Best shell (HTR model) | Image-only | Δ | Status |
-|------|-----------|-----|--------|----------------------|-----------|---|--------|
-| BM-KB27 | King's Bench plea roll | ~1340 | Anglicana legal | 26.9% (r2) | 31.7% | −4.8pt | Anglicana retraining in progress |
-| BM-MED-001 | Walters W.25 psalter | ~1200 | Gothic Latin | **88.0% (r5)** | 86.0% | **+2.0pt** | Shell beats image-only |
-| BM-001 | Lincoln letter | 1837 | English copperplate | 94.5% (r5) | 95.1% | −0.6pt | Solved (schema violation on position field) |
-| BM-MOD-DEED | 1865 deed | 1865 | Modern hand | **97.4% (computus)** | 98.7%† | −1.3pt | Solved; shell fixes schema failures |
-| BM-MOD-LOVEJOY | Lovejoy letter | 1864 | English copperplate | **82.4% (computus)** | — *(YAML parse fail)* | — | Shell fixes parse errors |
+| Case | Manuscript | Era | Script | Best shell (HTR model) | Image-only | Δ | Notes |
+|------|-----------|-----|--------|----------------------|-----------|---|-------|
+| BM-KB27 | King's Bench plea roll | ~1340 | Anglicana legal | 26.9% (r2) | 31.7% | −4.8pt | Anglicana fine-tune in training on Bridges; GM (9.2%) rejected HTR hint due to line count mismatch |
+| BM-MED-001 | Walters W.25 psalter | ~1200 | Gothic Latin | **88.0% (r5)** | 86.0% | **+2.0pt** | r5 beats GM (85%); specialization matters |
+| BM-001 | Lincoln letter | 1837 | Copperplate English | 94.5% (r5) | 95.1% | −0.6pt | Essentially solved |
+| BM-MOD-DEED | 1865 deed | 1865 | Modern copperplate | 97.4% (computus) | 98.7% | −1.3pt | Both schema-valid after position fix |
+| BM-MOD-LOVEJOY | Lovejoy letter | 1864 | Copperplate English | 81.1% (r5) | 81.1% (flash) | ±0 | Parity; no English training corpus |
+| BM-MOD-JOHNSON | Johnson letter | 1864 | Copperplate English | **31.3% (r5)** | 29.9% | **+1.4pt** | Low overall; GT/segment alignment suspected |
 
-† Image-only reaches 98.7% but fails schema validation (`position` enum); shell result is lower accuracy but schema-valid.
-
-> **Schema note:** Most runs fail the protocol validation gate due to `position` enum drift — the LLM outputs values like `top`, `marginalia`, `address` that aren't in the protocol's controlled vocabulary. The shell normalizes these for Latin cases. A fix pass for English cases is pending.
+Accuracy is word-level (matches / GT words). All runs are blind (GT never in model context). Disposition column shows FAIL for any word addition — this is the strict rubric gate, not a quality ceiling. Position enum normalization (`top`, `marginalia`, `address` → protocol vocabulary) was applied in this rescore pass.
 
 ## Research & training extras
 
