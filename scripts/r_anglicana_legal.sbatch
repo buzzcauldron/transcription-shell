@@ -23,9 +23,13 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 
-# Build corpus if needed (no Bullinger required).
-export SKIP_BULLINGER_EXTRACT=1
-bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
+# Run corpus prep if metadata.jsonl is missing (normally provided by a prior r6-core job).
+if [[ -s "$GT/metadata.jsonl" ]]; then
+  echo "[anglicana] using existing corpus ($GT/metadata.jsonl)"
+else
+  echo "[anglicana] metadata.jsonl missing — running corpus prep inline (SKIP_BULLINGER_EXTRACT=1)"
+  SKIP_BULLINGER_EXTRACT=1 bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
+fi
 
 # Filter metadata.jsonl to Anglicana-only manifests.
 python3 - <<'PYEOF'

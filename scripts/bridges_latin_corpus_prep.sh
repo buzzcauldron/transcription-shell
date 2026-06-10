@@ -11,7 +11,6 @@
 set -euo pipefail
 
 export PYTHONNOUSERSITE=True
-module load python 2>/dev/null || module load anaconda3 2>/dev/null || true
 
 SRC="${SRC:-/ocean/projects/hum260002p/sstrickland/transcriber-shell/src}"
 GT_MSS="${GT_MSS:-$SRC/../gt-mss}"
@@ -21,6 +20,14 @@ GT="$SRC/latin-corpus-gt"
 R6="$SRC/r6"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
+# Activate venv only if not already active (sbatch jobs pre-activate via bridges_kraken_activate.sh).
+# Do NOT run module load here -- it loads system Python 3.6 and clobbers the venv PATH.
+if [[ -z "${VIRTUAL_ENV:-}" && -f "$VENV/bin/activate" ]]; then
+  source "$VENV/bin/activate"
+fi
+
+PY_RUN="${BRIDGES_PYTHON:-python3}"
+echo "[prep] python: $($PY_RUN --version 2>&1) at $(which "$PY_RUN" 2>/dev/null || echo "$PY_RUN")"
 echo "[prep] cwd:          $(pwd)  (expect: $SRC)"
 echo "[prep] corpora root: $CORPORA"
 echo "[prep] gt-mss root:  $GT_MSS"
@@ -35,17 +42,8 @@ if [[ ! -f "$HERE/regularize_latin_htr_corpus.py" ]]; then
   exit 1
 fi
 
-if [[ ! -d "$CORPORA" ]]; then
-  echo "ERROR: corpora not found at $CORPORA — finish rsync first." >&2
-  exit 1
-fi
-
-# Kraken venv optional for regularize (only needed before train)
-if [[ -f "$VENV/bin/activate" ]]; then
-  source "$VENV/bin/activate"
-fi
-
-python3 -m pip install -q pyyaml
+# pyyaml is already in the kraken venv — no pip install needed
+"$PY_RUN" -c "import yaml" 2>/dev/null || "$PY_RUN" -m pip install -q pyyaml
 
 EXTRACT_ARGS=()
 if [[ "${SKIP_BULLINGER_EXTRACT:-0}" != "1" ]]; then
@@ -54,7 +52,7 @@ else
   echo "[prep] SKIP_BULLINGER_EXTRACT=1 — skipping zip extract (r6-core does not need it)"
 fi
 
-python3 "$HERE/regularize_latin_htr_corpus.py" \
+"$PY_RUN" "$HERE/regularize_latin_htr_corpus.py" \
   --corpora-root "$CORPORA" \
   --out-dir "$GT" \
   --src-root "$SRC" \
@@ -62,7 +60,7 @@ python3 "$HERE/regularize_latin_htr_corpus.py" \
   "${EXTRACT_ARGS[@]}" \
   --workers 8
 
-python3 "$HERE/split_retrain_manifests.py" --gt-dir "$GT"
+"$PY_RUN" "$HERE/split_retrain_manifests.py" --gt-dir "$GT"
 
 mkdir -p "$R6"
 ln -sf "$GT/full_train_manifest.txt" "$R6/r6_train.txt"

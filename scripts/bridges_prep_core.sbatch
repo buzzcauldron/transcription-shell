@@ -1,15 +1,14 @@
 #!/bin/bash
+# DEPRECATED — RM partition requires QoS not available to this allocation (hum260002p).
+# Prep now runs inline inside r6_core_retrain.sbatch on GPU-shared.
+# Use bridges_start.sh instead of this file.
 #SBATCH -J htr-prep-core
-#SBATCH -p RM-shared
+#SBATCH -p RM
 #SBATCH -N 1
-#SBATCH --ntasks-per-node=8
+#SBATCH --ntasks-per-node=16
 #SBATCH -t 02:00:00
 #SBATCH -A hum260002p
 #SBATCH -o %x-%j.out
-# CPU-only prep: regularize corpus + build core_train/val manifests (no Bullinger).
-# Submit before r6-core:
-#   PREP_JOB=$(sbatch --parsable scripts/bridges_prep_core.sbatch)
-#   sbatch --dependency=afterok:$PREP_JOB scripts/r6_core_retrain.sbatch
 set -euo pipefail
 
 SRC=/ocean/projects/hum260002p/sstrickland/transcriber-shell/src

@@ -22,9 +22,13 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 
-# Run corpus prep on this compute node (SKIP_BULLINGER -- not needed for core train).
-export SKIP_BULLINGER_EXTRACT=1
-bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
+# Run corpus prep (no Bullinger) unless manifests already exist.
+if [[ "${SKIP_CORPUS_PREP:-0}" == "1" ]] && [[ -s "$GT/core_train_manifest.txt" ]]; then
+  echo "[r6-core] using existing core manifests"
+else
+  echo "[r6-core] running corpus prep (SKIP_BULLINGER_EXTRACT=1)"
+  SKIP_BULLINGER_EXTRACT=1 bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
+fi
 
 [[ -f "$BASE" ]] || { echo "Missing base model: $BASE"; exit 1; }
 [[ -s "$GT/core_train_manifest.txt" ]] || { echo "Prep failed: no core manifests"; exit 1; }
