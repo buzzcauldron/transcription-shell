@@ -251,6 +251,12 @@ def _normalize_position_value(raw: Any) -> Any:
     s = _POSITION_ALIASES.get(s, s)
     if s in _VALID_POSITION:
         return s
+    # Try de-pluralised form (e.g. "bylines" → "byline").
+    if s.endswith("s"):
+        singular = s[:-1]
+        s = _POSITION_ALIASES.get(singular, singular)
+        if s in _VALID_POSITION:
+            return s
     # Semantic fallback: compound margin/corner strings the model invents.
     # "top_left_margin", "top-right-corner", "bottom_right_margin_note", etc.
     parts = set(s.split("_"))
