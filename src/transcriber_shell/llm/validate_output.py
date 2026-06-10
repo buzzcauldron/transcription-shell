@@ -117,6 +117,18 @@ _POSITION_ALIASES: dict[str, str] = {
     "masthead": "header",
     "kicker": "header",
     "deck": "header",
+    "attribution": "body",
+    "credit": "body",
+    "source": "body",
+    "subheading": "header",
+    "sub_heading": "header",
+    "standfirst": "header",
+    "lede": "body",
+    "lead": "body",
+    "paragraph": "body",
+    "article": "body",
+    "editorial": "body",
+    "column": "body",
 }
 # ISO 15924 script codes → ISO 639-2 language codes for known equivalents.
 # The protocol expects language codes; some models emit script codes by mistake.
