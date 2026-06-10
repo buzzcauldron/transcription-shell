@@ -262,7 +262,6 @@ Scored against protocol ground truth (additions + omissions vs. GT character cou
 | BM-001 | Lincoln letter | 1837 | English copperplate | 94.5% (r5) | 95.1% | −0.6pt | Solved (schema violation on position field) |
 | BM-MOD-DEED | 1865 deed | 1865 | Modern hand | **97.4% (computus)** | 98.7%† | −1.3pt | Solved; shell fixes schema failures |
 | BM-MOD-LOVEJOY | Lovejoy letter | 1864 | English copperplate | **82.4% (computus)** | — *(YAML parse fail)* | — | Shell fixes parse errors |
-| BM-MOD-JOHNSON | Johnson letter | 1864 | English copperplate | **31.3% (r5)** | 29.9% | **+1.5pt** | Blocked — no English copperplate corpus |
 
 † Image-only reaches 98.7% but fails schema validation (`position` enum); shell result is lower accuracy but schema-valid.
 
