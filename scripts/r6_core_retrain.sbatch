@@ -50,3 +50,11 @@ for candidate in \
     break
   fi
 done
+
+bash "$SRC/scripts/bridges_post_training.sh" \
+  --model-name gm-htr-r6-core \
+  --model-path "$SRC/gm-htr-r6-core_best.mlmodel" \
+  --val-manifest "$GT/core_val_manifest.txt" \
+  --round r6-core \
+  --base gm-htr-r2_best \
+  --notes "Phase 1: clean medieval Latin corpus, Bridges2 GPU-shared V100"

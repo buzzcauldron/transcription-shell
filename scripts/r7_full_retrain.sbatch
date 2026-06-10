@@ -49,3 +49,11 @@ for candidate in \
     break
   fi
 done
+
+bash "$SRC/scripts/bridges_post_training.sh" \
+  --model-name gm-htr-r7-full \
+  --model-path "$SRC/gm-htr-r7-full_best.mlmodel" \
+  --val-manifest "$GT/full_val_manifest.txt" \
+  --round r7-full \
+  --base gm-htr-r6-core_best \
+  --notes "Phase 2: full corpus + Bullinger, resize union, Bridges2 GPU-shared V100"
