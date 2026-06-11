@@ -134,6 +134,7 @@ Tune **`--centroid-match-px`** if line pairing is poor. See [`xml_tools/lines_co
 ## 8. GUI and HTTP API
 
 - **GUI:** `transcriber-shell gui` — keys in UI or `.env`; pick **lineation backend** when not skipping automated lineation. Drag-and-drop onto the file list uses **tkinterdnd2**, installed as a core dependency with `pip install -e .` (see [PACKAGING.md](../PACKAGING.md)); you still need **tkinter** (system `python3-tk` / equivalent on Linux).
+- **Dev GUI rebuild:** `./scripts/rebuild-gui.sh` reinstalls the editable package and launches the GUI; add `--watch` to auto-rebuild when `src/transcriber_shell/` changes.
 - **API:** `transcriber-shell serve` (requires `[api]` extra). Lineation uses the same `.env` as the CLI; the HTTP route does not support `skip_gm`—use the CLI for offline lines XML.
 
 ## 9. Docker

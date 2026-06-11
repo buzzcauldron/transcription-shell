@@ -10,23 +10,17 @@
 
 set -euo pipefail
 
-export PYTHONNOUSERSITE=True
-
 SRC="${SRC:-/ocean/projects/hum260002p/sstrickland/transcriber-shell/src}"
 GT_MSS="${GT_MSS:-$SRC/../gt-mss}"
-VENV="${VENV:-$SRC/../kraken-venv}"
 CORPORA="$SRC/htr-corpora"
 GT="$SRC/latin-corpus-gt"
 R6="$SRC/r6"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
-# Activate venv only if not already active (sbatch jobs pre-activate via bridges_kraken_activate.sh).
-# Do NOT run module load here -- it loads system Python 3.6 and clobbers the venv PATH.
-if [[ -z "${VIRTUAL_ENV:-}" && -f "$VENV/bin/activate" ]]; then
-  source "$VENV/bin/activate"
-fi
+# shellcheck disable=SC1091
+source "$HERE/bridges_prep_env.sh"
 
-PY_RUN="${BRIDGES_PYTHON:-python3}"
+cd "$SRC"
 echo "[prep] python: $($PY_RUN --version 2>&1) at $(which "$PY_RUN" 2>/dev/null || echo "$PY_RUN")"
 echo "[prep] cwd:          $(pwd)  (expect: $SRC)"
 echo "[prep] corpora root: $CORPORA"

@@ -173,51 +173,17 @@ def _apply_doc_type(
     settings: Settings,
     prompt_arg: str | None,
 ) -> tuple[Settings, str | None]:
-    """Load doc-type spec and apply it to settings + prompt path.
-
-    Returns (updated_settings, resolved_prompt_path_str).
-    CLI args always win over spec defaults.
-    """
+    """Load doc-type spec and apply it to settings + prompt path."""
     if not doc_type:
         return settings, prompt_arg
 
-    from transcriber_shell.document_types import load_doc_type, list_doc_types
+    from transcriber_shell.doc_type_apply import apply_doc_type
 
-    extra = [settings.document_types_dir] if settings.document_types_dir else []
     try:
-        spec = load_doc_type(doc_type, extra_dirs=extra)
+        return apply_doc_type(doc_type, settings, prompt_arg)
     except KeyError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1)
-
-    updates: dict = {}
-
-    # Provider / model — only override when not already set in env/cli
-    if not settings.default_model:
-        updates["default_provider"] = spec.primary_provider
-        updates["default_model"] = spec.primary_model
-
-    # HTR model — only when not already set in env
-    if spec.htr_path and not settings.kraken_htr_model_path:
-        updates["kraken_htr_model_path"] = spec.htr_path
-
-    # Seg model — only when not already set in env
-    if spec.seg_path and not settings.kraken_model_path:
-        updates["kraken_model_path"] = spec.seg_path
-
-    new_settings = settings.model_copy(update=updates) if updates else settings
-
-    # Prompt — CLI arg wins; otherwise resolve from spec
-    resolved_prompt = prompt_arg
-    if resolved_prompt is None:
-        pp = spec.prompt_path()
-        if pp:
-            resolved_prompt = str(pp)
-        else:
-            # fallback: look alongside the cli's own prompt default
-            resolved_prompt = spec.prompt
-
-    return new_settings, resolved_prompt
 
 
 def _auto_doc_type_for_image(

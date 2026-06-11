@@ -54,6 +54,15 @@ from transcriber_shell.pipeline.transcription_paths import transcription_yaml_pa
 
 _NONE_LABEL = "(none — use .env default)"
 
+# One-click presets for non-expert users (maps label → document_types/*.yaml stem).
+_SIMPLE_DOC_PRESETS: tuple[tuple[str, str], ...] = (
+    ("Auto", "auto-detect"),
+    ("Latin manuscript", "computus_medieval_latin"),
+    ("Legal roll", "medieval_latin_legal"),
+    ("Letter / deed", "nineteenth_century_english_copperplate"),
+    ("Printed page", "twentieth_century_print"),
+)
+
 
 def _merge_llm_usage(
     acc: dict[str, int] | None, new: dict[str, int] | None
@@ -190,8 +199,9 @@ class TranscriberGui:
         self._tesseract_enabled = tk.BooleanVar(value=self._settings.tesseract_enabled)
         self._tesseract_lang = tk.StringVar(value=self._settings.tesseract_lang)
         self._tesseract_psm = tk.IntVar(value=self._settings.tesseract_psm)
-        self._keys_expanded = tk.BooleanVar(value=True)
-        self._htr_section_expanded = tk.BooleanVar(value=True)
+        self._simple_mode = tk.BooleanVar(value=True)
+        self._keys_expanded = tk.BooleanVar(value=False)
+        self._htr_section_expanded = tk.BooleanVar(value=False)
         self._advanced_expanded = tk.BooleanVar(value=False)
         self._status = tk.StringVar(value="Ready.")
         self._metrics_elapsed = tk.StringVar(value="Elapsed: —")
@@ -262,35 +272,42 @@ class TranscriberGui:
         self._scroll_canvas.bind("<Configure>", _on_canvas_configure)
 
         ttk.Label(outer, text="Transcriber shell", style="Title.TLabel").pack(anchor=tk.W)
-        ttk.Label(
-            outer,
-            text="Image → lines XML (default: Glyph Machina) → LLM → <image_stem>_transcription.yaml under artifacts/",
-            style="Sub.TLabel",
-        ).pack(anchor=tk.W, pady=(0, 4))
-        ttk.Label(
-            outer,
-            text=(
-                "Add images and a prompt, set provider/model if needed, then Transcribe. "
-                "See docs/simple-workflow.md for the short path; docs/claude.md for repo context."
-            ),
-            style="Muted.TLabel",
-            wraplength=540,
-        ).pack(anchor=tk.W, pady=(0, 8))
+        self._subtitle_lbl = ttk.Label(outer, text="", style="Sub.TLabel")
+        self._subtitle_lbl.pack(anchor=tk.W, pady=(0, 4))
+        self._help_lbl = ttk.Label(outer, text="", style="Muted.TLabel", wraplength=540)
+        self._help_lbl.pack(anchor=tk.W, pady=(0, 8))
+
+        mode_hdr = ttk.Frame(outer, style="Main.TFrame")
+        mode_hdr.pack(fill=tk.X, pady=(0, 6))
+        ttk.Checkbutton(
+            mode_hdr,
+            text="Simple mode (recommended)",
+            variable=self._simple_mode,
+            command=self._toggle_simple_mode,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            mode_hdr,
+            text="Show all settings",
+            command=self._enter_advanced_mode,
+        ).pack(side=tk.LEFT, padx=(12, 0))
 
         self._build_images_section(outer)
+        self._build_doc_type_section(outer)
+        self._doc_type_section_anchor = outer.winfo_children()[-1]
 
-        # Prompt file row
-        pf = ttk.Frame(outer, style="Main.TFrame")
-        pf.pack(fill=tk.X, pady=4)
-        ttk.Label(pf, text="Prompt file", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        ttk.Entry(pf, textvariable=self._prompt_path).pack(
+        # Prompt file row (hidden in simple mode — resolved from document type)
+        self._prompt_frame = ttk.Frame(outer, style="Main.TFrame")
+        self._prompt_frame.pack(fill=tk.X, pady=4)
+        ttk.Label(self._prompt_frame, text="Prompt file", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        ttk.Entry(self._prompt_frame, textvariable=self._prompt_path).pack(
             side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8)
         )
-        ttk.Button(pf, text="Browse…", command=self._browse_prompt).pack(side=tk.RIGHT)
+        ttk.Button(self._prompt_frame, text="Browse…", command=self._browse_prompt).pack(side=tk.RIGHT)
 
         # Job ID
-        job_block = ttk.Frame(outer, style="Main.TFrame")
-        job_block.pack(fill=tk.X, pady=4)
+        self._job_block = ttk.Frame(outer, style="Main.TFrame")
+        self._job_block.pack(fill=tk.X, pady=4)
+        job_block = self._job_block
         job_row = ttk.Frame(job_block, style="Main.TFrame")
         job_row.pack(fill=tk.X)
         ttk.Label(job_row, text="Job ID", width=14, anchor=tk.W).pack(side=tk.LEFT)
@@ -337,26 +354,27 @@ class TranscriberGui:
         )
         self._banner_inner.pack(fill=tk.X, padx=14, pady=8)
 
-        mode_row = ttk.Frame(bottom_bar, style="Main.TFrame")
-        mode_row.pack(fill=tk.X, pady=(0, 6))
+        self._mode_row = ttk.Frame(bottom_bar, style="Main.TFrame")
+        self._mode_row.pack(fill=tk.X, pady=(0, 6))
         ttk.Checkbutton(
-            mode_row,
-            text="Diplomatic (normalizationMode=diplomatic)",
+            self._mode_row,
+            text="Diplomatic (preserve abbreviations & original spelling)",
             variable=self._diplomatic,
         ).pack(side=tk.LEFT)
         ttk.Checkbutton(
-            mode_row,
-            text="Efficient mode (protocol §2.9 — single pass, core tokens only)",
+            self._mode_row,
+            text="Efficient mode (single pass, fewer tokens)",
             variable=self._efficient_mode,
         ).pack(side=tk.LEFT, padx=(20, 0))
         ttk.Checkbutton(
-            mode_row,
+            self._mode_row,
             text="XML only (lines XML; no LLM)",
             variable=self._xml_only,
         ).pack(side=tk.LEFT, padx=(20, 0))
 
-        mode_row2 = ttk.Frame(bottom_bar, style="Main.TFrame")
-        mode_row2.pack(fill=tk.X, pady=(0, 6))
+        self._mode_row2 = ttk.Frame(bottom_bar, style="Main.TFrame")
+        self._mode_row2.pack(fill=tk.X, pady=(0, 6))
+        mode_row2 = self._mode_row2
         ttk.Checkbutton(
             mode_row2,
             text="Translate to English (post-pass; saves *_translation.txt)",
@@ -419,6 +437,7 @@ class TranscriberGui:
         self._refresh_model_combos()
         self._refresh_image_list()
         self._refresh_ui_state()
+        self._toggle_simple_mode()
 
     def _collapsible_section(
         self,
@@ -466,6 +485,199 @@ class TranscriberGui:
             w.bind("<Button-1>", on_click)
 
         return body, apply_fn
+
+    def _build_doc_type_section(self, outer: ttk.Frame) -> None:
+        """Document type presets — drives prompt, models, and HTR automatically."""
+        block = ttk.LabelFrame(outer, text="What are you transcribing?", padding=(10, 8))
+        block.pack(fill=tk.X, pady=(0, 10))
+
+        preset_row = ttk.Frame(block, style="Main.TFrame")
+        preset_row.pack(fill=tk.X, pady=(0, 6))
+        for label, value in _SIMPLE_DOC_PRESETS:
+            ttk.Button(
+                preset_row,
+                text=label,
+                command=lambda v=value: self._select_doc_type_preset(v),
+                width=max(10, len(label) + 2),
+            ).pack(side=tk.LEFT, padx=(0, 4))
+
+        doc_row = ttk.Frame(block, style="Main.TFrame")
+        doc_row.pack(fill=tk.X, pady=4)
+        ttk.Label(doc_row, text="Document type", width=14, anchor=tk.W).pack(side=tk.LEFT)
+        from transcriber_shell.document_types import list_doc_types as _list_doc_types
+
+        _doc_type_values = ["auto-detect"] + _list_doc_types()
+        self._cb_doc_type = ttk.Combobox(
+            doc_row,
+            textvariable=self._doc_type,
+            values=_doc_type_values,
+            state="readonly",
+            width=34,
+        )
+        self._cb_doc_type.pack(side=tk.LEFT, padx=(0, 8))
+        self._cb_doc_type.bind("<<ComboboxSelected>>", self._on_doc_type_selected)
+        self._detect_label = ttk.Label(doc_row, text="", style="Muted.TLabel")
+        self._detect_label.pack(side=tk.LEFT)
+        self._doc_type_status = ttk.Label(block, text="", style="Muted.TLabel", wraplength=520)
+        self._doc_type_status.pack(anchor=tk.W, pady=(4, 0))
+
+    def _select_doc_type_preset(self, value: str) -> None:
+        self._doc_type.set(value)
+        if value == "auto-detect":
+            self._detect_label.configure(text="")
+            self._detected_doc_type.set("")
+            self._kick_auto_detect()
+        else:
+            self._apply_doc_type_preset(value)
+        self._schedule_gui_state_save()
+
+    def _on_doc_type_selected(self, _event: object = None) -> None:
+        value = self._doc_type.get().strip()
+        if value == "auto-detect":
+            self._detect_label.configure(text="")
+            self._kick_auto_detect()
+        else:
+            self._apply_doc_type_preset(value)
+        self._schedule_gui_state_save()
+
+    def _apply_doc_type_preset(self, doc_type: str | None) -> None:
+        if not doc_type or doc_type == "auto-detect":
+            self._doc_type_status.set("")
+            return
+        try:
+            from transcriber_shell.doc_type_apply import form_preset_for_doc_type
+
+            preset = form_preset_for_doc_type(
+                doc_type,
+                settings=self._settings,
+                existing_prompt=self._prompt_path.get().strip() or None,
+            )
+        except KeyError as e:
+            self._doc_type_status.set(str(e))
+            return
+
+        if preset.provider:
+            self._provider.set(preset.provider)
+        if preset.model_id:
+            self._model_custom.set("")
+            self._refresh_model_combos()
+            vals = tuple(self._cb_model["values"])
+            if preset.model_id in vals:
+                self._model_selected.set(preset.model_id)
+            else:
+                self._model_custom.set(preset.model_id)
+        if preset.prompt_path and Path(preset.prompt_path).expanduser().is_file():
+            self._prompt_path.set(preset.prompt_path)
+        if preset.kraken_seg_model_path:
+            self._kraken_seg_model_path.set(preset.kraken_seg_model_path)
+        if preset.kraken_htr_model_path:
+            self._kraken_htr_model_path.set(preset.kraken_htr_model_path)
+        self._tesseract_enabled.set(preset.tesseract_enabled)
+        if preset.tesseract_lang:
+            self._tesseract_lang.set(preset.tesseract_lang)
+        if preset.htr_combination:
+            self._htr_combination.set(preset.htr_combination)
+
+        bits: list[str] = []
+        if preset.model_id:
+            bits.append(f"{preset.provider}/{preset.model_id}")
+        if preset.tesseract_enabled:
+            bits.append(f"Tesseract ({preset.tesseract_lang or 'on'})")
+        elif preset.kraken_htr_model_path:
+            bits.append("Kraken HTR")
+        self._doc_type_status.set(
+            f"Preset applied: {doc_type}"
+            + (f" — {' · '.join(bits)}" if bits else "")
+        )
+        self._refresh_ui_state()
+
+    def _enter_advanced_mode(self) -> None:
+        self._simple_mode.set(False)
+        self._toggle_simple_mode()
+
+    def _toggle_simple_mode(self) -> None:
+        simple = self._simple_mode.get()
+        if simple:
+            self._subtitle_lbl.configure(
+                text="Drop page images, pick a document type (or Auto), then Transcribe."
+            )
+            self._help_lbl.configure(
+                text=(
+                    "Prompt, models, and OCR backends are chosen from the document type. "
+                    "Add API keys under Provider keys if .env is empty."
+                )
+            )
+            self._prompt_frame.pack_forget()
+            self._job_block.pack_forget()
+            if hasattr(self, "_lineation_frame"):
+                self._lineation_frame.pack_forget()
+            if hasattr(self, "_lines_row_frame"):
+                self._lines_row_frame.pack_forget()
+            if hasattr(self, "_lines_dir_row_frame"):
+                self._lines_dir_row_frame.pack_forget()
+            if hasattr(self, "_lines_help_lbl"):
+                self._lines_help_lbl.pack_forget()
+            self._mode_row2.pack_forget()
+            for child in self._mode_row.winfo_children():
+                if isinstance(child, ttk.Checkbutton):
+                    txt = str(child.cget("text"))
+                    if "Efficient" in txt or "XML only" in txt:
+                        child.pack_forget()
+        else:
+            self._subtitle_lbl.configure(
+                text="Image → lines XML → LLM → <image_stem>_transcription.yaml under artifacts/"
+            )
+            self._help_lbl.configure(
+                text=(
+                    "Full control over prompt, lineation, HTR backends, and validation. "
+                    "See docs/simple-workflow.md for the short path."
+                )
+            )
+            self._prompt_frame.pack(fill=tk.X, pady=4, after=self._doc_type_section_anchor)
+            self._job_block.pack(fill=tk.X, pady=4, after=self._prompt_frame)
+            if hasattr(self, "_lineation_frame"):
+                self._lineation_frame.pack(fill=tk.X, pady=(4, 6), after=self._job_block)
+            if hasattr(self, "_lines_row_frame"):
+                self._lines_row_frame.pack(fill=tk.X, pady=4, after=self._lineation_frame)
+            if hasattr(self, "_lines_dir_row_frame"):
+                self._lines_dir_row_frame.pack(fill=tk.X, pady=4, after=self._lines_row_frame)
+            if hasattr(self, "_lines_help_lbl"):
+                self._lines_help_lbl.pack(anchor=tk.W, pady=(0, 2), after=self._lines_dir_row_frame)
+            self._mode_row2.pack(fill=tk.X, pady=(0, 6), before=self._transcribe_btn.master)
+            for child in self._mode_row.winfo_children():
+                if isinstance(child, ttk.Checkbutton):
+                    txt = str(child.cget("text"))
+                    if "Efficient" in txt or "XML only" in txt:
+                        child.pack(side=tk.LEFT, padx=(20, 0))
+
+    def _resolve_effective_doc_type(self) -> str | None:
+        dt = self._doc_type.get().strip()
+        if dt == "auto-detect":
+            dt = self._detected_doc_type.get().strip()
+            if not dt:
+                from transcriber_shell.detect_doc_type import detect_doc_type
+
+                images = self._dedupe_sorted_images()
+                if images:
+                    self._put_log("doc-type: auto-detecting…")
+                    dt = detect_doc_type(
+                        images[0],
+                        provider=self._provider.get().strip().lower() or "gemini",
+                    )
+                    self._detected_doc_type.set(dt)
+                    self._detect_label.configure(text=f"→ {dt}")
+                    self._put_log(f"doc-type: detected {dt!r}")
+        return dt or None
+
+    def _resolve_prompt_for_run(self, doc_type: str | None) -> str | None:
+        pr = self._prompt_path.get().strip()
+        if pr and Path(pr).expanduser().is_file():
+            return pr
+        if not doc_type:
+            return pr or None
+        self._apply_doc_type_preset(doc_type)
+        pr = self._prompt_path.get().strip()
+        return pr if pr and Path(pr).expanduser().is_file() else None
 
     def _build_keys_section(self, outer: ttk.Frame) -> None:
         cred, self._keys_section_apply = self._collapsible_section(
@@ -592,22 +804,6 @@ class TranscriberGui:
             command=self._refresh_model_combos,
         ).pack(anchor=tk.W, pady=(0, 6))
 
-        doc_row = ttk.Frame(llm, style="Main.TFrame")
-        doc_row.pack(fill=tk.X, pady=4)
-        ttk.Label(doc_row, text="Document type", width=14, anchor=tk.W).pack(side=tk.LEFT)
-        from transcriber_shell.document_types import list_doc_types as _list_doc_types
-        _doc_type_values = ["auto-detect"] + _list_doc_types()
-        self._cb_doc_type = ttk.Combobox(
-            doc_row,
-            textvariable=self._doc_type,
-            values=_doc_type_values,
-            state="readonly",
-            width=34,
-        )
-        self._cb_doc_type.pack(side=tk.LEFT, padx=(0, 8))
-        self._detect_label = ttk.Label(doc_row, text="", style="Muted.TLabel")
-        self._detect_label.pack(side=tk.LEFT)
-
         prov_row = ttk.Frame(llm, style="Main.TFrame")
         prov_row.pack(fill=tk.X, pady=4)
         ttk.Label(prov_row, text="Provider", width=14, anchor=tk.W).pack(side=tk.LEFT)
@@ -709,7 +905,8 @@ class TranscriberGui:
         self._setup_image_drop_target()
 
     def _build_lineation_section(self, outer: ttk.Frame) -> None:
-        lineation_src = ttk.LabelFrame(outer, text="Lineation source", padding=(8, 6))
+        self._lineation_frame = ttk.LabelFrame(outer, text="Lineation source", padding=(8, 6))
+        lineation_src = self._lineation_frame
         lineation_src.pack(fill=tk.X, pady=(4, 6))
         self._lineation_auto_hint = ttk.Label(
             lineation_src,
@@ -746,7 +943,8 @@ class TranscriberGui:
             wraplength=500,
         ).pack(anchor=tk.W, pady=(6, 0))
 
-        lines_row = ttk.Frame(outer, style="Main.TFrame")
+        self._lines_row_frame = ttk.Frame(outer, style="Main.TFrame")
+        lines_row = self._lines_row_frame
         lines_row.pack(fill=tk.X, pady=4)
         ttk.Label(lines_row, text="Lines XML file", width=14, anchor=tk.W).pack(side=tk.LEFT)
         self._lines_entry = ttk.Entry(
@@ -758,7 +956,8 @@ class TranscriberGui:
         )
         self._lines_btn.pack(side=tk.RIGHT)
 
-        lines_dir_row = ttk.Frame(outer, style="Main.TFrame")
+        self._lines_dir_row_frame = ttk.Frame(outer, style="Main.TFrame")
+        lines_dir_row = self._lines_dir_row_frame
         lines_dir_row.pack(fill=tk.X, pady=4)
         ttk.Label(lines_dir_row, text="Lines XML dir", width=14, anchor=tk.W).pack(side=tk.LEFT)
         self._lines_dir_entry = ttk.Entry(
@@ -770,8 +969,9 @@ class TranscriberGui:
         )
         self._lines_dir_btn.pack(side=tk.RIGHT)
 
-        self._lines_help = ttk.Label(outer, text="", style="Muted.TLabel", wraplength=520)
-        self._lines_help.pack(anchor=tk.W, pady=(0, 2))
+        self._lines_help_lbl = ttk.Label(outer, text="", style="Muted.TLabel", wraplength=520)
+        self._lines_help = self._lines_help_lbl
+        self._lines_help_lbl.pack(anchor=tk.W, pady=(0, 2))
 
     def _build_advanced_section(self, outer: ttk.Frame) -> None:
         """Collapsible advanced settings: proxy, Chromium profile, XML validation."""
@@ -1816,8 +2016,11 @@ class TranscriberGui:
                     self._detect_label.configure(text=f"→ {payload}")
                 elif kind == "detect_done":
                     self._detecting = False
-                    self._detected_doc_type.set(str(payload))
-                    self._detect_label.configure(text=f"→ {payload}")
+                    detected = str(payload)
+                    self._detected_doc_type.set(detected)
+                    self._detect_label.configure(text=f"→ {detected}")
+                    if self._doc_type.get().strip() == "auto-detect":
+                        self._apply_doc_type_preset(detected)
                 elif kind == "open_folder":
                     self._open_folder(str(payload))
                 elif kind == "discovery":
@@ -1871,7 +2074,6 @@ class TranscriberGui:
 
     def _run(self) -> None:
         images = self._dedupe_sorted_images()
-        pr = self._prompt_path.get().strip()
         if not images:
             self._gui_notify(
                 "Missing images: Add one or more page images using Add files… or Add folder… "
@@ -1879,13 +2081,19 @@ class TranscriberGui:
                 "warning",
             )
             return
-        if not pr or not Path(pr).expanduser().is_file():
+
+        dt = self._resolve_effective_doc_type()
+        if dt:
+            self._apply_doc_type_preset(dt)
+        pr = self._resolve_prompt_for_run(dt)
+        if not pr:
             self._gui_notify(
-                "Missing prompt: Browse to a prompt YAML or JSON file (Academic Transcription Protocol CONFIGURATION). "
-                "The fixtures/ folder has an example if you cloned the repo.",
+                "Missing prompt: Pick a document type with a known prompt, or browse to a prompt YAML "
+                "(fixtures/prompt.example.yaml in the repo).",
                 "warning",
             )
             return
+        self._prompt_path.set(pr)
         xsd_raw = self._xsd_path.get().strip()
         xsd_path: Path | None = None
         if xsd_raw:
@@ -1935,22 +2143,6 @@ class TranscriberGui:
         model_override = self._effective_model_override()
         prov = self._provider.get().strip().lower()
         env_overrides = self._env_overrides_from_form()
-        dt = self._doc_type.get().strip()
-        if dt == "auto-detect":
-            dt = self._detected_doc_type.get().strip()
-            if not dt:
-                # Detection not yet complete — kick it synchronously before run.
-                from transcriber_shell.detect_doc_type import detect_doc_type
-                images_for_detect = self._dedupe_sorted_images()
-                if images_for_detect:
-                    self._put_log("doc-type: auto-detecting…")
-                    dt = detect_doc_type(
-                        images_for_detect[0],
-                        provider=prov or "gemini",
-                    )
-                    self._detected_doc_type.set(dt)
-                    self._detect_label.configure(text=f"→ {dt}")
-                    self._put_log(f"doc-type: detected {dt!r}")
         if dt:
             env_overrides["LATIN_MS_DOC_TYPE"] = dt
         eff_mode = self._efficient_mode.get()
@@ -2415,6 +2607,8 @@ class TranscriberGui:
             "persist_keys_after_run": self._persist_keys_after_run.get(),
             "skip_successful": self._skip_successful.get(),
             "image_paths": [str(p) for p in self._dedupe_sorted_images()],
+            "doc_type": self._doc_type.get().strip(),
+            "simple_mode": self._simple_mode.get(),
         }
 
     def _schedule_gui_state_save(self) -> None:
@@ -2551,6 +2745,10 @@ class TranscriberGui:
                 self._persist_keys_after_run.set(bool(data["persist_keys_after_run"]))
             if "skip_successful" in data:
                 self._skip_successful.set(bool(data["skip_successful"]))
+            if "doc_type" in data and isinstance(data["doc_type"], str) and data["doc_type"].strip():
+                self._doc_type.set(data["doc_type"].strip())
+            if "simple_mode" in data:
+                self._simple_mode.set(bool(data["simple_mode"]))
             imgs = data.get("image_paths")
             if isinstance(imgs, list):
                 paths: list[Path] = []
@@ -2568,6 +2766,10 @@ class TranscriberGui:
         finally:
             self._loading_gui_state = False
         self._refresh_ui_state()
+        self._toggle_simple_mode()
+        dt = self._doc_type.get().strip()
+        if dt and dt != "auto-detect":
+            self._apply_doc_type_preset(dt)
 
     def _install_gui_state_persistence(self) -> None:
         def _on_state_var(_a: str, _b: str, _c: str) -> None:
@@ -2613,6 +2815,8 @@ class TranscriberGui:
             self._advanced_expanded,
             self._persist_keys_after_run,
             self._skip_successful,
+            self._doc_type,
+            self._simple_mode,
         ):
             v.trace_add("write", _on_state_var)
 

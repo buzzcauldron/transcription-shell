@@ -1,0 +1,73 @@
+# Print-OCR corpora for Tesseract fine-tuning (pre-1800 emphasis).
+# PAGE-XML corpora are line-cropped; GT4HistOCR ships line PNG + .gt.txt pairs.
+#
+# Download: ./scripts/download_htr_corpora.sh  (set SKIP_LARGE=0 for GT4HistOCR)
+
+corpora:
+  gt4histocr-kallimachos:
+    path: gt4histocr/Kallimachos
+    languages: [latin, german]
+    era: "1480-1500"
+    script: [fraktur, antiqua]
+    format: gt4histocr
+    citation: springmann2018gt4histocr
+    notes: "Incunabula; ~15k lines"
+
+  gt4histocr-early-modern-latin:
+    path: gt4histocr/EarlyModernLatin
+    languages: [latin]
+    era: "1476-1688"
+    script: [antiqua, fraktur]
+    format: gt4histocr
+    citation: springmann2018gt4histocr
+    notes: "Humanist and scholastic Latin print"
+
+  gt4histocr-ridges-fraktur:
+    path: gt4histocr/RIDGES-Fraktur
+    languages: [german]
+    era: "16th-18th c"
+    script: fraktur
+    format: gt4histocr
+    citation: springmann2018gt4histocr
+
+  gt4histocr-incunabula:
+    path: gt4histocr/RefCorpus-ENHG-Incunabula
+    languages: [english, latin]
+    era: "15th c"
+    script: [fraktur, antiqua]
+    format: gt4histocr
+    citation: springmann2018gt4histocr
+
+  gt4histocr-dta19:
+    path: gt4histocr/dta19
+    languages: [german]
+    era: "19th c"
+    script: fraktur
+    format: gt4histocr
+    citation: springmann2018gt4histocr
+    notes: "Post-1800; off by default for pre-1800 profile"
+
+  ocrd-gt-structure-text:
+    path: ocrd-gt-structure-text
+    languages: [latin, german]
+    era: early_modern
+    script: mixed
+    format: pagexml
+    citation: ocrd_gt_structure_text
+
+  cremma-early-modern:
+    path: cremma-early-modern
+    languages: [latin, french]
+    era: "16th-17th c"
+    script: antiqua
+    format: pagexml
+    citation: cremma_early_modern
+
+# Default bundle for pre-1800 fine-tune (excludes dta19).
+pre1800_default:
+  - gt4histocr-kallimachos
+  - gt4histocr-early-modern-latin
+  - gt4histocr-ridges-fraktur
+  - gt4histocr-incunabula
+  - ocrd-gt-structure-text
+  - cremma-early-modern

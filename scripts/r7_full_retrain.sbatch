@@ -6,7 +6,7 @@
 #SBATCH --ntasks-per-node=5
 #SBATCH -t 48:00:00
 #SBATCH -A hum260002p
-#SBATCH -o %x-%j.out
+#SBATCH -o /ocean/projects/hum260002p/sstrickland/transcriber-shell/src/%x-%j.out
 # Phase 2: full regularized corpus + Bullinger, charset union from r6-core.
 # Submit after r6-core finishes:
 #   sbatch --dependency=afterok:<r6-core-jobid> scripts/r7_full_retrain.sbatch
@@ -17,14 +17,21 @@ GT="$SRC/latin-corpus-gt"
 BASE="$SRC/gm-htr-r6-core_best.mlmodel"
 OUT="$SRC/gm-htr-r7-full"
 
+cd "$SRC"
+
+# Rebuild full manifests with Bullinger (clean python, before kraken env).
+if [[ -s "$GT/full_train_manifest.txt" ]] && [[ -s "$GT/metadata.jsonl" ]]; then
+  echo "[r7-full] using existing full manifests"
+else
+  echo "[r7-full] running full corpus prep (with Bullinger if present)"
+  bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
+fi
+
 # shellcheck disable=SC1091
 source "$SRC/scripts/bridges_kraken_activate.sh"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
-
-# Rebuild full manifests with Bullinger on this compute node.
-bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
 
 [[ -f "$BASE" ]] || BASE="$SRC/gm-htr-r6-core.mlmodel_best.mlmodel"
 [[ -f "$BASE" ]] || { echo "Missing r6-core best model at $SRC/gm-htr-r6-core_best.mlmodel"; exit 1; }

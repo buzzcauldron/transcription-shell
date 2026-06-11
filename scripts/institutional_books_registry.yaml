@@ -1,0 +1,45 @@
+# Institutional Books 1.0 (Harvard / IDI, HF paper 2506.08300)
+# Metadata: institutional/institutional-books-1.0-metadata (open)
+# Full OCR text: institutional/institutional-books-1.0 (gated NC license + click-through)
+#
+# Page scan images are not in the public release — these profiles target LLM /
+# domain-text training and volume discovery, not tesstrain or Kraken HTR.
+
+profiles:
+  pre1800_latin_llm:
+    description: >
+      Pre-1800 volumes with substantial Latin (language_distribution_gen) and
+      decent OCR — source OCR text for LLM domain adaptation (complements
+      GT4HistOCR line-image training).
+    languages: [lat]
+    language_field: any   # language_src, language_gen, or language_distribution_gen
+    year_end_before: 1800
+    min_ocr_score: 80
+    min_tokens: 5000
+    topics: []            # any topic
+    max_volumes: null
+
+  pre1800_law_latin_llm:
+    description: Pre-1800 Latin legal print (LCC class K).
+    languages: [lat]
+    language_field: any
+    year_end_before: 1800
+    min_ocr_score: 80
+    min_tokens: 3000
+    topics: [LAW]
+    max_volumes: 500
+
+  early_modern_latin_broad:
+    description: Latin through 1700 — tight era match for incunabula / humanist print.
+    languages: [lat]
+    language_field: any
+    year_end_before: 1701
+    min_ocr_score: 75
+    min_tokens: 2000
+    topics: []
+    max_volumes: null
+
+# Default bundle for transcription-shell LLM corpus export.
+default_profile: pre1800_latin_llm
+
+citation: cargnelutti2025institutionalbooks

@@ -6,7 +6,7 @@
 #SBATCH --ntasks-per-node=5
 #SBATCH -t 48:00:00
 #SBATCH -A hum260002p
-#SBATCH -o %x-%j.out
+#SBATCH -o /ocean/projects/hum260002p/sstrickland/transcriber-shell/src/%x-%j.out
 # Phase 1: clean medieval Latin from r2. GPU-shared max walltime is 48h.
 # If early-stop has not fired by 48h, chain: sbatch --dependency=afterany:<jobid> scripts/r6_core_resume.sbatch
 set -euo pipefail
@@ -16,19 +16,21 @@ GT="$SRC/latin-corpus-gt"
 BASE="$SRC/gm-htr-r2.mlmodel_best.mlmodel"
 OUT="$SRC/gm-htr-r6-core"
 
+cd "$SRC"
+
+# Corpus prep MUST run before kraken_activate (PYTHONPATH breaks stdlib imports).
+if [[ -s "$GT/core_train_manifest.txt" ]] && [[ -s "$GT/metadata.jsonl" ]]; then
+  echo "[r6-core] using existing core manifests"
+else
+  echo "[r6-core] running corpus prep (SKIP_BULLINGER_EXTRACT=1) — may take 1-3h on first run"
+  SKIP_BULLINGER_EXTRACT=1 bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
+fi
+
 # shellcheck disable=SC1091
 source "$SRC/scripts/bridges_kraken_activate.sh"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
-
-# Run corpus prep (no Bullinger) unless manifests already exist.
-if [[ "${SKIP_CORPUS_PREP:-0}" == "1" ]] && [[ -s "$GT/core_train_manifest.txt" ]]; then
-  echo "[r6-core] using existing core manifests"
-else
-  echo "[r6-core] running corpus prep (SKIP_BULLINGER_EXTRACT=1)"
-  SKIP_BULLINGER_EXTRACT=1 bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
-fi
 
 [[ -f "$BASE" ]] || { echo "Missing base model: $BASE"; exit 1; }
 [[ -s "$GT/core_train_manifest.txt" ]] || { echo "Prep failed: no core manifests"; exit 1; }

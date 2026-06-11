@@ -1,0 +1,116 @@
+# Maps protocol stress cases → HTR training actions.
+# Ground-truth strings in benchmark/ground_truth.py are scoring-only (never in train prompts).
+# Training uses line-level PAGE XML from gt-mss/ or open corpora (see gt_mss_registry.yaml).
+
+cases:
+  BM-KB27:
+    label: "KB27 King's Bench plea roll (~1340)"
+    script: anglicana
+    languages: [latin]
+    era: "1330-1380"
+    evaluator: legal
+    # Existing human GT corpora (gt_mss_registry.yaml)
+    train_corpora:
+      - gt-dropbox-done-lines
+      - gt-done-lines
+      - gt-dropbox-just1
+      - gt-cp40
+      - gt-dropbox-coroners
+    val_corpora:
+      - gt-dropbox-validation
+    base_model: gm-htr-r2.mlmodel_best.mlmodel
+    output_model: gm-htr-anglicana
+    sbatch: scripts/r_anglicana_legal.sbatch
+    metadata_filter:
+      script: anglicana
+    notes: "Primary legal weakness; anglicana fine-tune from r2."
+
+  BM-MED-001:
+    label: "Walters W.25 psalter folio (~1200)"
+    script: gothic
+    languages: [latin]
+    era: "1175-1225"
+    evaluator: medieval
+    train_corpora:
+      - gt-vatlib
+    val_corpora:
+      - gt-dropbox-validation
+    base_model: gm-htr-r5-best.mlmodel
+    output_model: gm-htr-psalter
+    sbatch: scripts/r_blind_weakness_finetune.sbatch
+    metadata_filter:
+      script: gothic
+    notes: "Literary gothic Latin; fine-tune r5 on gothic open/human GT."
+
+  BM-001:
+    label: "Lincoln letter 1837 (copperplate)"
+    script: copperplate
+    languages: [english]
+    era: nineteenth_century
+    evaluator: lincoln
+    train_corpora: []
+    base_model: gm-htr-r2.mlmodel_best.mlmodel
+    output_model: gm-htr-r2-en-copperplate
+    sbatch: null
+    metadata_filter: null
+    notes: >
+      English copperplate — no Latin line GT in corpus yet.
+      Shell weakness is mostly LLM YAML (correct mode), not HTR.
+      Defer HTR retrain until English line GT exists.
+
+  BM-MOD-LOVEJOY:
+    label: "Lovejoy letter 1864"
+    script: copperplate
+    languages: [english]
+    era: nineteenth_century
+    evaluator: modern_lovejoy
+    train_corpora: []
+    base_model: gm-htr-r2.mlmodel_best.mlmodel
+    output_model: null
+    sbatch: null
+    metadata_filter: null
+    notes: "Modern English LOC; pipeline issue is LLM schema, not HTR CER."
+
+  BM-MOD-JOHNSON:
+    label: "Johnson letter 1864"
+    script: copperplate
+    languages: [english]
+    era: nineteenth_century
+    evaluator: modern_johnson
+    train_corpora: []
+    base_model: gm-htr-r2.mlmodel_best.mlmodel
+    output_model: null
+    sbatch: null
+    metadata_filter: null
+    notes: "Low accuracy (~31%) may be GT/segment alignment; no English train corpus."
+
+  BM-MOD-DEED:
+    label: "White deed letter 1865"
+    script: copperplate
+    languages: [english]
+    era: nineteenth_century
+    evaluator: modern_deed
+    train_corpora: []
+    base_model: gm-htr-r2.mlmodel_best.mlmodel
+    output_model: null
+    sbatch: null
+    metadata_filter: null
+    notes: "Already ~97% shell accuracy; HTR not the bottleneck."
+
+  BM-EM-001:
+    label: "Donne letter 1602 (secretary)"
+    script: secretary
+    languages: [english]
+    era: early_modern
+    evaluator: earlymodern
+    train_corpora: []
+    base_model: gm-htr-r2.mlmodel_best.mlmodel
+    output_model: null
+    sbatch: null
+    metadata_filter: null
+    notes: "Blocked on Folger image; early-modern English GT not in corpus."
+
+# Minimum shell accuracy gap (points) vs image-only baseline to flag HTR retrain.
+htr_retrain_gap_threshold: 3.0
+# Minimum accuracy (percent) to consider case "solved" for HTR purposes.
+htr_solved_threshold: 90.0

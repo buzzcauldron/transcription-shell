@@ -83,15 +83,13 @@ def build_htr_tasks(
     # Scripts are not strictly gated — Tesseract has traineddata for many languages — but we
     # still require the operator to opt in via tesseract_enabled to avoid surprise dependencies.
     if getattr(settings, "tesseract_enabled", False):
-        lang = getattr(settings, "tesseract_lang", "lat+frk+eng")
-        psm = int(getattr(settings, "tesseract_psm", 7))
+        from transcriber_shell.htr.tesseract_finetune import configure_tesseract_runtime
+        from transcriber_shell.htr.tesseract_htr import run_tesseract_htr
+
+        _lang, _psm = configure_tesseract_runtime(settings)
         _img = image_path
         _xml = lines_xml_path
 
-        from transcriber_shell.htr.tesseract_htr import run_tesseract_htr
-
-        # Build preprocessing options only when the toggle is on; otherwise pass
-        # None so the OCR loop keeps its existing fast path.
         if getattr(settings, "htr_preprocess_enabled", False):
             from transcriber_shell.htr.preprocessing import PreprocOptions
 
@@ -100,7 +98,7 @@ def build_htr_tasks(
             _pre = None
 
         tasks["tesseract-htr"] = lambda: run_tesseract_htr(
-            _img, _xml, lang=lang, psm=psm, preprocess_opts=_pre
+            _img, _xml, lang=_lang, psm=_psm, preprocess_opts=_pre
         )
 
     # Glyph Machina HTR pipeline

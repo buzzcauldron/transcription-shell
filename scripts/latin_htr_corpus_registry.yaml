@@ -1,0 +1,173 @@
+# Registry for the medieval Latin HTR training corpus.
+# Used by scripts/regularize_latin_htr_corpus.py for splits and metadata.jsonl.
+#
+# split_mode:
+#   upstream — respect train/val/test (or validation) directory names
+#   holdout    — per-corpus 95/5 split with --seed (no cross-corpus leakage)
+#
+# CoMMA (https://comma.inria.fr/homepage) is auto-transcribed browse data built
+# on CATMuS-style models — cite it for reference/eval, not as supervised GT.
+
+corpora:
+  catmus-medieval:
+    languages: [latin, old_french, spanish, italian]
+    era: "8th-19th c"
+    script: mixed
+    split_mode: upstream
+    url: https://huggingface.co/datasets/CATMuS/medieval
+    citation: clerice2023catmus
+    notes: "CATMuS Medieval; upstream of CoMMA browse corpus"
+
+  tridis:
+    languages: [latin, old_french]
+    era: medieval
+    script: documentary
+    split_mode: upstream
+    url: https://huggingface.co/datasets/magistermilitum/Tridis
+    citation: tridis2023
+
+  bullinger-extracted:
+    languages: [latin, german]
+    era: "16th-17th c"
+    script: secretary
+    split_mode: upstream
+    url: https://github.com/pstroe/bullinger-htr
+    citation: bullinger_htr
+    notes: "Line strips extracted from split-zips; early modern correspondence"
+
+  cremma-medieval-lat:
+    languages: [latin]
+    era: "11th-16th c"
+    script: gothic
+    split_mode: holdout
+    url: https://github.com/HTR-United/CREMMA-Medieval-LAT
+    citation: cremma_medieval_lat
+
+  htromance-medieval-latin:
+    languages: [latin]
+    era: "10th-15th c"
+    script: gothic
+    split_mode: holdout
+    url: https://github.com/HTRomance-Project/medieval-latin
+    citation: htromance_latin
+
+  carolingian-latin-vienna:
+    languages: [latin]
+    era: "8th-10th c"
+    script: caroline
+    split_mode: holdout
+    url: https://github.com/HTR-School-Vienna/-2024--carolingian-latin
+    citation: carolingian_vienna
+
+  carolingian-latin-2025:
+    languages: [latin]
+    era: carolingian
+    script: caroline
+    split_mode: holdout
+    url: https://github.com/HTR-School-Vienna/2025--Carolingian_Latin-
+    citation: carolingian_2025
+
+  paris-bible:
+    languages: [latin]
+    era: medieval
+    script: gothic
+    split_mode: holdout
+    url: https://github.com/parisbible/ground_truth
+    citation: paris_bible
+
+  eutyches:
+    languages: [latin, greek]
+    era: medieval
+    script: mixed
+    split_mode: holdout
+    url: https://github.com/malamatenia/Eutyches
+    citation: eutyches
+
+  caroline-minuscule:
+    languages: [latin]
+    era: carolingian
+    script: caroline
+    split_mode: holdout
+    url: https://github.com/rescribe/carolineminuscule-groundtruth
+    citation: caroline_minuscule
+
+  cremma-medieval:
+    languages: [latin, old_french]
+    era: medieval
+    script: mixed
+    split_mode: holdout
+    url: https://github.com/HTR-United/cremma-medieval
+    citation: cremma_medieval
+
+  konigsfelden-charters:
+    languages: [latin, german]
+    era: medieval
+    script: documentary
+    split_mode: holdout
+    url: https://zenodo.org/records/5179361
+    citation: konigsfelden
+
+  anr-endp:
+    languages: [latin, old_french]
+    era: medieval
+    script: documentary
+    split_mode: holdout
+    url: https://zenodo.org/records/7575693
+    citation: anr_endp
+
+  htromance-documentary:
+    languages: [latin, old_french]
+    era: medieval
+    script: documentary
+    split_mode: holdout
+    url: https://zenodo.org/records/7401833
+    citation: htromance_documentary_zenodo
+
+  himanis:
+    languages: [latin, old_french]
+    era: medieval
+    script: documentary
+    split_mode: holdout
+    url: https://zenodo.org/records/5600884
+    citation: himanis_guerin
+
+  home-charters:
+    languages: [latin]
+    era: "11th-16th c"
+    script: documentary
+    split_mode: holdout
+    url: https://zenodo.org/records/1194357
+    citation: home_charters
+
+  ocrd-gt-structure-text:
+    languages: [latin, german]
+    era: early_modern
+    script: mixed
+    split_mode: holdout
+    url: https://github.com/OCR-D/gt_structure_text
+    citation: ocrd_gt_structure
+
+  htromance-medieval-french:
+    languages: [old_french]
+    era: medieval
+    script: gothic
+    split_mode: holdout
+    url: https://github.com/HTRomance-Project/medieval-french
+    citation: htromance_french
+
+  boccace-htr:
+    languages: [latin, italian]
+    era: medieval
+    script: humanist
+    split_mode: holdout
+    url: https://github.com/PSL-Chartes-HTR-Students/HN2021-Boccace
+    citation: boccace_htr
+
+# Corpora present on disk but excluded from training manifests:
+exclude:
+  - bullinger-htr      # raw split-zips + .git; use bullinger-extracted instead
+  - gt4histocr         # printed OCR corpus, different task
+  - comma-jsonl        # CoMMA browse text — inference/eval only, never GT
+  - comma-rerecognition
+  - comma-other-formats
+  - .git

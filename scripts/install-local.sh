@@ -48,5 +48,6 @@ fi
 echo "==> Done. Activate with: source .venv/bin/activate"
 echo "    Local setup guide: docs/local-setup.md"
 echo "    GUI: transcriber-shell gui"
+echo "    Dev GUI (rebuild + watch): ./scripts/rebuild-gui.sh --watch"
 echo "    CLI: transcriber-shell --help   (package name; repo folder is transcription-shell)"
 echo "    Or Docker: ./docker-run.sh / ./docker-run.sh shell"

@@ -46,7 +46,7 @@ show_status() {
 }
 
 show_logs() {
-  for log_file in $(ls -t "$SCRIPTS"/htr-r6-core-*.out "$SCRIPTS"/htr-anglicana-*.out "$SCRIPTS"/htr-r7-full-*.out 2>/dev/null | head -6); do
+  for log_file in $(ls -t "$SRC"/htr-r6-core-*.out "$SRC"/htr-anglicana-*.out "$SRC"/htr-r7-full-*.out 2>/dev/null | head -6); do
     echo ""
     echo "--- $(basename "$log_file") ---"
     tail -10 "$log_file"
@@ -95,12 +95,26 @@ while IFS= read -r line; do
   scancel "$jid" || true
 done < <(squeue -u "$USER" -h -o "%i %j %r" 2>/dev/null | awk '$3 == "DependencyNeverSatisfied" {print $1, $2, $3}')
 
-for f in r6_core_retrain.sbatch r7_full_retrain.sbatch r_anglicana_legal.sbatch; do
+for f in r6_core_retrain.sbatch r7_full_retrain.sbatch r_anglicana_legal.sbatch bridges_prep_env.sh; do
   [[ -f "$SCRIPTS/$f" ]] || { echo "ERROR: missing $SCRIPTS/$f" >&2; exit 1; }
 done
 
+[[ -d "$SRC/htr-corpora" ]] || { echo "ERROR: htr-corpora missing on Ocean" >&2; exit 1; }
+[[ -f "$SRC/gm-htr-r2.mlmodel_best.mlmodel" ]] || { echo "ERROR: base model r2 missing" >&2; exit 1; }
+[[ -x "$SRC/../kraken-venv/bin/ketos" ]] || [[ -f "$SCRIPTS/bridges_kraken_activate.sh" ]] \
+  || { echo "ERROR: kraken venv / activate missing" >&2; exit 1; }
+
+log "preflight: clean python for corpus prep (login node; non-fatal)..."
+# shellcheck disable=SC1091
+if source "$SCRIPTS/bridges_prep_env.sh" 2>/dev/null; then
+  log "preflight OK ($PY_RUN)"
+else
+  log "preflight skipped on login — corpus prep runs on GPU compute node"
+fi
+
+cd "$SRC"
 log "submitting r6-core (inline corpus prep + training from r2)..."
-R6=$(sbatch --parsable "$SCRIPTS/r6_core_retrain.sbatch")
+R6=$(sbatch --parsable -A hum260002p "$SCRIPTS/r6_core_retrain.sbatch")
 log "  r6-core   job $R6"
 
 log "submitting r7-full (afterok:$R6)..."
@@ -115,7 +129,7 @@ echo ""
 log "Chain live. Monitor:"
 log "  bash $SCRIPTS/bridges_start.sh --status"
 log "  bash $SCRIPTS/bridges_start.sh --logs"
-log "  tail -f $SCRIPTS/htr-r6-core-${R6}.out"
+log "  tail -f $SRC/htr-r6-core-${R6}.out"
 echo ""
 log "Auto-pull on Mac (run locally once chain finishes):"
 log "  bash scripts/bridges_watch_pull.sh --job $ANG --rescore"

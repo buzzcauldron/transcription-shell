@@ -1,0 +1,46 @@
+# Print OCR runtime presets — synced from historical-ocr document_types/print/.
+# Regenerate: python scripts/sync_print_ocr_presets_from_historical_ocr.py
+# Applied by doc_type_apply for listed doc_types.
+
+doc_types:
+  twentieth_century_print:
+    tesseract_lang: eng
+    tesseract_psm: 3
+    htr_preprocess_enabled: true
+    htr_preprocess_invert: true
+    htr_preprocess_contrast: 1.5
+  early_modern_english:
+    tesseract_lang: eng+lat+frk
+    tesseract_psm: 6
+    htr_preprocess_enabled: true
+    htr_preprocess_contrast: 2.0
+    htr_preprocess_invert: true
+  early_modern_latin:
+    tesseract_lang: lat+ita+eng
+    tesseract_psm: 6
+    htr_preprocess_enabled: true
+    htr_preprocess_contrast: 2.0
+    htr_preprocess_invert: true
+  german_fraktur:
+    tesseract_lang: deu_latf+deu+lat
+    tesseract_psm: 6
+    htr_preprocess_enabled: true
+    htr_preprocess_contrast: 2.0
+    htr_preprocess_invert: true
+    htr_preprocess_sharpen: true
+  nineteenth_century_english_copperplate:
+    tesseract_lang: eng
+    tesseract_psm: 3
+    htr_preprocess_enabled: true
+    htr_preprocess_invert: true
+    htr_preprocess_contrast: 1.5
+finetune:
+  lang: lat_pre1800
+  candidates:
+  - ${HOME}/Projects/historical ocr/models/lat_pre1800.traineddata
+  - ${HOME}/Projects/historical-ocr/models/lat_pre1800.traineddata
+  - ${HISTORICAL_OCR_ROOT}/models/lat_pre1800.traineddata
+  - ${HISTORICAL_OCR_ROOT}/models/histnews.traineddata
+  - ${LATIN_MS_WORKSPACE}/models/lat_pre1800.traineddata
+  - ${TRANSCRIBER_SHELL_ROOT}/models/lat_pre1800.traineddata
+  - ${TRANSCRIBER_SHELL_ROOT}/models/tessdata/lat_pre1800.traineddata

@@ -6,7 +6,7 @@
 #SBATCH --ntasks-per-node=5
 #SBATCH -t 48:00:00
 #SBATCH -A hum260002p
-#SBATCH -o %x-%j.out
+#SBATCH -o /ocean/projects/hum260002p/sstrickland/transcriber-shell/src/%x-%j.out
 # Anglicana legal fine-tune: KB27/CP40/JUST1/Coroners GT only, from r2.
 # Runs concurrently with r6-core (independent base model + manifest).
 # Expected ~2-4k training lines; 48h is a ceiling, early-stop will fire sooner.
@@ -17,22 +17,18 @@ GT="$SRC/latin-corpus-gt"
 BASE="$SRC/gm-htr-r2.mlmodel_best.mlmodel"
 OUT="$SRC/gm-htr-anglicana"
 
-# shellcheck disable=SC1091
-source "$SRC/scripts/bridges_kraken_activate.sh"
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+cd "$SRC"
 
-python -c "import torch; print('CUDA:', torch.cuda.is_available())"
-
-# Run corpus prep if metadata.jsonl is missing (normally provided by a prior r6-core job).
-if [[ -s "$GT/metadata.jsonl" ]]; then
-  echo "[anglicana] using existing corpus ($GT/metadata.jsonl)"
-else
-  echo "[anglicana] metadata.jsonl missing — running corpus prep inline (SKIP_BULLINGER_EXTRACT=1)"
-  SKIP_BULLINGER_EXTRACT=1 bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
+if [[ ! -s "$GT/metadata.jsonl" ]]; then
+  echo "[anglicana] FATAL: metadata.jsonl missing — r6-core prep must finish first" >&2
+  exit 1
 fi
+echo "[anglicana] using corpus $GT/metadata.jsonl"
 
-# Filter metadata.jsonl to Anglicana-only manifests.
-python3 - <<'PYEOF'
+# Filter metadata.jsonl to Anglicana-only manifests (clean python, no kraken env).
+# shellcheck disable=SC1091
+source "$SRC/scripts/bridges_prep_env.sh"
+"$PY_RUN" - <<'PYEOF'
 import json, os, pathlib, sys
 
 gt = pathlib.Path(os.environ["GT"])
@@ -58,6 +54,12 @@ print(f"[anglicana] train={len(train)} val={len(val)}")
 if len(train) < 100:
     sys.exit(f"Too few training lines ({len(train)}) — check GT rsync")
 PYEOF
+
+# shellcheck disable=SC1091
+source "$SRC/scripts/bridges_kraken_activate.sh"
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 
 [[ -f "$BASE" ]] || { echo "Missing base model: $BASE"; exit 1; }
 [[ -s "$GT/anglicana_train_manifest.txt" ]] || { echo "Anglicana manifest empty"; exit 1; }

@@ -1,0 +1,101 @@
+# Human GT manuscripts on Bridges (gt-mss/). Ingested into r6/r7 training manifests.
+# Paths are relative to --gt-mss-root (default: .../transcriber-shell/gt-mss).
+#
+# split_mode:
+#   holdout    — per-corpus 95/5 (default for akdeniz kraken dirs)
+#   train      — all lines → train (high-value curated GT)
+#   val_only   — all lines → val (held-out eval sets)
+#   upstream   — respect train/val/test directory names in path
+
+sources:
+  - path: akdeniz/kraken-done-lines-gt
+    corpus: gt-done-lines
+    split_mode: train
+    languages: [latin]
+    era: "1280-1420"
+    script: anglicana
+    notes: "KB27/CP40 done lines — Dropbox Transcriptions mirror"
+
+  - path: akdeniz/kraken-cp40-gt
+    corpus: gt-cp40
+    split_mode: holdout
+    languages: [latin]
+    era: medieval
+    script: anglicana
+    notes: "Common Pleas plea roll GT"
+
+  - path: akdeniz/kraken-vatlib-gt
+    corpus: gt-vatlib
+    split_mode: holdout
+    languages: [latin]
+    era: medieval
+    script: gothic
+    notes: "Vatican Library digitization GT"
+
+  - path: akdeniz/deed-finetune-gt
+    corpus: gt-deeds
+    split_mode: holdout
+    languages: [latin]
+    era: medieval
+    script: documentary
+
+  - path: dropbox/Transcriptions/Done-lines
+    corpus: gt-dropbox-done-lines
+    split_mode: train
+    languages: [latin]
+    era: "1280-1420"
+    script: anglicana
+
+  - path: dropbox/Transcriptions/Deeds-material
+    corpus: gt-dropbox-deeds
+    split_mode: holdout
+    languages: [latin]
+    era: medieval
+    script: documentary
+
+  - path: dropbox/Transcriptions/Coroners-Rolls
+    corpus: gt-dropbox-coroners
+    split_mode: holdout
+    languages: [latin, english]
+    era: medieval
+    script: anglicana
+
+  - path: dropbox/Transcriptions/Validation-set
+    corpus: gt-dropbox-validation
+    split_mode: val_only
+    languages: [latin]
+    era: medieval
+    script: anglicana
+    notes: "Held-out human GT — never in train"
+
+  - path: dropbox/manuscript-data
+    corpus: gt-dropbox-just1
+    split_mode: holdout
+    languages: [latin]
+    era: medieval
+    script: anglicana
+    notes: "JUST1 King's Bench roll pages"
+
+  - path: dropbox/Cornell/Tours-746
+    corpus: gt-dropbox-tours746
+    split_mode: holdout
+    languages: [latin]
+    era: carolingian
+    script: caroline
+    notes: "Computus MS Tours BM 746"
+
+# Skip duplicate -src mirrors and non-GT trees
+skip_paths:
+  - akdeniz/kraken-vatlib-gt-src
+  - akdeniz/deed-finetune-gt-src
+  - dropbox/Transcriptions/Untranscribed-cases
+
+# When the same page stem appears in multiple GT sources, keep the highest-priority corpus
+dedupe_priority:
+  - gt-dropbox-done-lines
+  - gt-dropbox-just1
+  - gt-dropbox-deeds
+  - gt-done-lines
+  - gt-cp40
+  - gt-vatlib
+  - gt-deeds

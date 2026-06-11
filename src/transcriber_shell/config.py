@@ -589,6 +589,22 @@ class Settings(BaseSettings):
         ),
         description="Page Segmentation Mode. 7 = single line (recommended when we crop per TextLine).",
     )
+    tesseract_finetune_lang: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_TESSERACT_FINETUNE_LANG",
+            "TESSERACT_FINETUNE_LANG",
+        ),
+        description="Lang id of a fine-tuned .traineddata to prepend to tesseract_lang (e.g. lat_pre1800).",
+    )
+    tesseract_finetune_path: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_TESSERACT_FINETUNE_PATH",
+            "TESSERACT_FINETUNE_PATH",
+        ),
+        description="Path to fine-tuned .traineddata; copied into tessdata/ for TESSDATA_PREFIX.",
+    )
 
     htr_parallel: bool = Field(
         default=True,
