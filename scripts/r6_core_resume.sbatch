@@ -15,7 +15,10 @@ SRC=/ocean/projects/hum260002p/sstrickland/transcriber-shell/src
 GT="$SRC/latin-corpus-gt"
 OUT="$SRC/gm-htr-r6-core"
 
-source "$SRC/../kraken-venv/bin/activate"
+module load anaconda3 2>/dev/null || true
+bash "$SRC/scripts/bridges_fix_kraken_numpy.sh"
+# shellcheck disable=SC1091
+source "$SRC/scripts/bridges_kraken_activate.sh"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 CKPT=$(ls -t "$OUT"/checkpoint_*.ckpt 2>/dev/null | head -1 || true)

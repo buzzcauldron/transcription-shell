@@ -18,6 +18,7 @@ BASE="$SRC/gm-htr-r2.mlmodel_best.mlmodel"
 OUT="$SRC/gm-htr-anglicana"
 
 cd "$SRC"
+module load anaconda3 2>/dev/null || true
 
 if [[ ! -s "$GT/metadata.jsonl" ]]; then
   echo "[anglicana] FATAL: metadata.jsonl missing — r6-core prep must finish first" >&2
@@ -55,6 +56,7 @@ if len(train) < 100:
     sys.exit(f"Too few training lines ({len(train)}) — check GT rsync")
 PYEOF
 
+bash "$SRC/scripts/bridges_fix_kraken_numpy.sh"
 # shellcheck disable=SC1091
 source "$SRC/scripts/bridges_kraken_activate.sh"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

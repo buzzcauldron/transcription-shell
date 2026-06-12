@@ -89,22 +89,31 @@ for f in \
   fi
 done
 
-# ── Kraken venv smoke ───────────────────────────────────────────────────────
+# ── Kraken venv smoke (same env as sbatch jobs) ─────────────────────────────
 echo "==KRAKEN_VENV=="
-KENV="$SRC/../kraken-venv"
-if [[ -x "$KENV/bin/ketos" ]]; then
-  if "$KENV/bin/python" -c "import traceback" 2>/dev/null; then
-    ok "kraken-venv python imports traceback"
+if [[ -f "$SRC/scripts/bridges_kraken_activate.sh" ]]; then
+  # shellcheck disable=SC1091
+  if source "$SRC/scripts/bridges_kraken_activate.sh" 2>/dev/null; then
+    if python -c "import traceback, torch, kraken" 2>/dev/null; then
+      ok "kraken activate: torch/kraken import ok"
+    else
+      fail "kraken activate: torch/kraken import failed"
+    fi
+    if python -c "import matplotlib" 2>/dev/null; then
+      ok "matplotlib import ok (GLIBCXX fixed)"
+    else
+      fail "matplotlib import fails — ketos train will crash"
+    fi
+    if ketos --help >/dev/null 2>&1; then
+      ok "ketos CLI ok"
+    else
+      fail "ketos CLI failed"
+    fi
   else
-    fail "kraken-venv python broken (PYTHONPATH?)"
-  fi
-  if "$KENV/bin/python" -c "import matplotlib" 2>/dev/null; then
-    ok "matplotlib import ok"
-  else
-    warn "matplotlib import fails — ketos train may crash (GLIBCXX)"
+    fail "bridges_kraken_activate.sh failed to source"
   fi
 else
-  fail "ketos missing at $KENV/bin/ketos"
+  fail "missing bridges_kraken_activate.sh"
 fi
 
 # ── historical-ocr venv ─────────────────────────────────────────────────────

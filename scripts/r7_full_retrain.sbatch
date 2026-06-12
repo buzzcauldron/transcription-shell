@@ -18,6 +18,7 @@ BASE="$SRC/gm-htr-r6-core_best.mlmodel"
 OUT="$SRC/gm-htr-r7-full"
 
 cd "$SRC"
+module load anaconda3 2>/dev/null || true
 
 # Rebuild full manifests with Bullinger (clean python, before kraken env).
 if [[ -s "$GT/full_train_manifest.txt" ]] && [[ -s "$GT/metadata.jsonl" ]]; then
@@ -27,6 +28,7 @@ else
   bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
 fi
 
+bash "$SRC/scripts/bridges_fix_kraken_numpy.sh"
 # shellcheck disable=SC1091
 source "$SRC/scripts/bridges_kraken_activate.sh"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

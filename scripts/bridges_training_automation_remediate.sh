@@ -21,10 +21,8 @@ run() {
 }
 
 echo "[remediate] running health check first..."
-if bash "$SCRIPT_DIR/bridges_training_automation_check.sh"; then
-  echo "[remediate] nothing to do"
-  exit 0
-fi
+CHECK_OK=0
+bash "$SCRIPT_DIR/bridges_training_automation_check.sh" && CHECK_OK=1 || true
 
 echo "[remediate] cancelling DependencyNeverSatisfied orphans"
 ssh -o BatchMode=yes "$LOGIN" 'squeue -u $USER -h -o "%i %r" | awk "$2==\"(DependencyNeverSatisfied)\"" {print $1}' \
@@ -33,16 +31,18 @@ ssh -o BatchMode=yes "$LOGIN" 'squeue -u $USER -h -o "%i %r" | awk "$2==\"(Depen
     run ssh -o BatchMode=yes "$LOGIN" "scancel $jid" || true
   done
 
-# Sync scripts + fix venvs before resubmit
-run bash "$SCRIPT_DIR/sync_scripts_to_bridges.sh" 2>/dev/null || \
-  rsync -avz -e "ssh -o BatchMode=yes" "$SCRIPT_DIR/" "${BRIDGES_DTN:-bridges2-dtn}:${BRIDGES_SHELL_SRC:-/ocean/projects/hum260002p/sstrickland/transcriber-shell/src}/scripts/"
+# Sync scripts + fix venvs before resubmit (fast path first)
+run bash "$SCRIPT_DIR/sync_scripts_to_bridges.sh"
 
+run ssh -o BatchMode=yes "$LOGIN" "bash /ocean/projects/hum260002p/sstrickland/transcriber-shell/src/scripts/bridges_fix_kraken_numpy.sh" || true
 run ssh -o BatchMode=yes "$LOGIN" "bash /ocean/projects/hum260002p/sstrickland/transcriber-shell/src/scripts/fix_bridges_venv_paths.sh" || true
 
-# historical-ocr venv for tess-pre1800
-HIST_REPO="${HISTORICAL_OCR_ROOT:-$SHELL_REPO/../historical-ocr}"
-if [[ -d "$HIST_REPO" ]]; then
-  run bash "$SCRIPT_DIR/sync_historical_ocr.sh" || true
+# historical-ocr sync only when tess-pre1800 needs it (can be slow)
+if ! ssh -o BatchMode=yes "$LOGIN" "test -f /ocean/projects/hum260002p/sstrickland/transcriber-shell/src/models/lat_pre1800.traineddata"; then
+  HIST_REPO="${HISTORICAL_OCR_ROOT:-$SHELL_REPO/../historical-ocr}"
+  if [[ -d "$HIST_REPO" ]] && ! ssh -o BatchMode=yes "$LOGIN" "test -x /ocean/projects/hum260002p/sstrickland/historical-ocr/.venv/bin/historical-ocr"; then
+    run bash "$SCRIPT_DIR/sync_historical_ocr.sh" || true
+  fi
 fi
 
 # Resubmit HTR chain if r6 not running
@@ -58,4 +58,9 @@ if ! ssh -o BatchMode=yes "$LOGIN" "test -f /ocean/projects/hum260002p/sstrickla
 fi
 
 echo "[remediate] re-checking..."
-bash "$SCRIPT_DIR/bridges_training_automation_check.sh" || true
+if bash "$SCRIPT_DIR/bridges_training_automation_check.sh"; then
+  echo "[remediate] healthy"
+  exit 0
+fi
+echo "[remediate] issues remain — see report above"
+exit 1

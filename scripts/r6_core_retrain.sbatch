@@ -17,6 +17,7 @@ BASE="$SRC/gm-htr-r2.mlmodel_best.mlmodel"
 OUT="$SRC/gm-htr-r6-core"
 
 cd "$SRC"
+module load anaconda3 2>/dev/null || true
 
 # Corpus prep MUST run before kraken_activate (PYTHONPATH breaks stdlib imports).
 if [[ -s "$GT/core_train_manifest.txt" ]] && [[ -s "$GT/metadata.jsonl" ]]; then
@@ -26,6 +27,7 @@ else
   SKIP_BULLINGER_EXTRACT=1 bash "$SRC/scripts/bridges_latin_corpus_prep.sh"
 fi
 
+bash "$SRC/scripts/bridges_fix_kraken_numpy.sh"
 # shellcheck disable=SC1091
 source "$SRC/scripts/bridges_kraken_activate.sh"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

@@ -2,11 +2,15 @@
 # Activate relocated akdeniz kraken venv on Bridges (anaconda 3.12 + site-packages).
 # Usage: source scripts/bridges_kraken_activate.sh
 VENV="${VENV:-/ocean/projects/hum260002p/sstrickland/transcriber-shell/kraken-venv}"
+ANACONDA_ROOT="${ANACONDA_ROOT:-/opt/packages/anaconda3-2024.10-1}"
 
 export PYTHONNOUSERSITE=True
 module load anaconda3 2>/dev/null || true
 
-PY="${BRIDGES_PYTHON:-/opt/packages/anaconda3-2024.10-1/bin/python3}"
+# GPU compute nodes ship an older libstdc++; anaconda matplotlib needs GLIBCXX_3.4.29+.
+export LD_LIBRARY_PATH="${ANACONDA_ROOT}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+PY="${BRIDGES_PYTHON:-${ANACONDA_ROOT}/bin/python3}"
 export BRIDGES_PYTHON="$PY"
 export VIRTUAL_ENV="$VENV"
 export PYTHONPATH="${VENV}/lib/python3.12/site-packages${PYTHONPATH:+:$PYTHONPATH}"

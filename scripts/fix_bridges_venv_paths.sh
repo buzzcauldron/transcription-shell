@@ -16,7 +16,8 @@ for old in "${OLD_PATHS[@]}"; do
   done < <(grep -rl "${old}" "$VENV" 2>/dev/null | tr '\n' '\0' || true)
 done
 
-export PYTHONNOUSERSITE=True
-module load python 2>/dev/null || true
-"$VENV/bin/python" -c "import torch, kraken; print('ok', torch.__version__)"
-"$VENV/bin/ketos" --help | head -2
+SRC="${SRC:-/ocean/projects/hum260002p/sstrickland/transcriber-shell/src}"
+# shellcheck disable=SC1091
+source "$SRC/scripts/bridges_kraken_activate.sh"
+python -c "import torch, kraken, matplotlib; print('ok', torch.__version__, matplotlib.__version__)"
+ketos --help | head -2
