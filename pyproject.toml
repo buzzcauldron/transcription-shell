@@ -22,10 +22,12 @@ dependencies = [
   "pillow>=10.0.0",
   "tkinterdnd2>=0.3.0",
   "scipy>=1.10",
-  "manuscript-fingerprint @ git+https://github.com/buzzcauldron/manuscript-fingerprint.git",
 ]
 
 [project.optional-dependencies]
+fingerprint = [
+  "manuscript-fingerprint @ git+https://github.com/buzzcauldron/manuscript-fingerprint.git",
+]
 xml-xsd = ["lxml>=5.0"]
 gemini = ["google-genai>=1.0.0"]
 api = ["fastapi>=0.115.0", "uvicorn[standard]>=0.32.0", "python-multipart>=0.0.9"]
@@ -41,6 +43,12 @@ gm-htr = [
 ]
 pdf = ["pymupdf>=1.23"]
 tesseract = ["pytesseract>=0.3.10", "Pillow>=10.0"]
+trocr = [
+  "torch>=2.0.0",
+  "torchvision>=0.15.0",
+  "transformers>=4.36.0",
+  "accelerate>=0.25.0",
+]
 figures = ["ultralytics>=8.0.0", "huggingface-hub>=0.20"]
 viz = ["matplotlib>=3.8.0"]
 
