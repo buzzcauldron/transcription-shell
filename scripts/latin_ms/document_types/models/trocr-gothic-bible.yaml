@@ -1,0 +1,10 @@
+name: trocr-gothic-bible
+kind: htr
+path: ${TRANSCRIBER_SHELL_MODELS}/trocr-gothic-bible
+languages: [latin]
+era: medieval
+script: gothic
+round: r8-trocr
+notes: >
+  TrOCR fine-tune on Paris Bible PBP 1.0 + CREMMA/HTRomance gothic literary lines.
+  Enable with TRANSCRIBER_SHELL_TROCR_ENABLED=1 and TRANSCRIBER_SHELL_TROCR_MODEL=<path>.

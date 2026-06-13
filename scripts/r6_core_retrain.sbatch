@@ -41,7 +41,7 @@ echo "[r6-core] base=$BASE"
 echo "[r6-core] train=$(wc -l < "$GT/core_train_manifest.txt") val=$(wc -l < "$GT/core_val_manifest.txt")"
 
 ketos -d cuda:0 --workers 5 --precision bf16-mixed train \
-  -i "$BASE" -f page \
+  -i "$BASE" --resize union -f page \
   -q early --lag 25 --min-epochs 10 -N 150 -B 16 \
   -r 0.00005 --schedule cosine --augment \
   -t "$GT/core_train_manifest.txt" -e "$GT/core_val_manifest.txt" \

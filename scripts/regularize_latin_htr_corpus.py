@@ -45,6 +45,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
+from alto_to_pagexml import convert_paris_bible  # noqa: E402
 from pagexml_line_strip import (  # noqa: E402
     convert_png_gt_pair,
     find_image_for_xml,
@@ -284,9 +285,16 @@ def scan_corpus(
     split_mode = (cfg or {}).get("split_mode", "holdout")
     samples: list[Sample] = []
 
+    scan_root = corpus_dir
+    sub = (cfg or {}).get("scan_subdir")
+    if sub:
+        scan_root = corpus_dir / sub
+        if not scan_root.is_dir():
+            return []
+
     xmls = sorted(
         x
-        for x in corpus_dir.rglob("*.xml")
+        for x in scan_root.rglob("*.xml")
         if not _should_skip_path(x) and x.is_file()
     )
 
@@ -603,7 +611,7 @@ def main() -> None:
     audit_lines: list[str] = [
         "- Replaced round5 global shuffle with **corpus-aware splits** "
         "(upstream train/val/test dirs, or per-corpus holdout).",
-        "- Normalized line strips to **PAGE-XML** with absolute `imageFilename`.",
+        "- Normalized line strips and **Paris Bible ALTO** to PAGE-XML with absolute `imageFilename`.",
         "- Wrote **metadata.jsonl** for computational methods / provenance.",
         f"- Path prefixes rewritten toward `{src_root}`.",
         "- [CoMMA](https://comma.inria.fr/homepage) cited as browse/reference corpus; "
@@ -637,6 +645,15 @@ def main() -> None:
         corpus_dir = corpora_root / corpus
         cfg = registry.get(corpus, {})
         cfg = {**cfg, "source": "htr-corpora"}
+        if cfg.get("format") == "alto" or corpus == "paris-bible":
+            ok, skip, err = convert_paris_bible(
+                corpus_dir,
+                workers=args.workers,
+                overwrite=args.overwrite_xml,
+            )
+            if ok or skip or err:
+                convert_stats[f"{corpus}-alto"] = (ok, skip, err)
+                print(f"[alto] {corpus}: {ok:,} ok, {skip:,} skip, {err} err → page-xml/")
         found = scan_corpus(
             corpus_dir,
             corpus,

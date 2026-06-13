@@ -65,6 +65,9 @@ echo "  full train: $(wc -l < "$GT/full_train_manifest.txt")"
 echo "  full val:   $(wc -l < "$GT/full_val_manifest.txt")"
 echo "  core train: $(wc -l < "$GT/core_train_manifest.txt")"
 echo "  bullinger:  $(wc -l < "$GT/bullinger_train_manifest.txt") train / $(wc -l < "$GT/bullinger_val_manifest.txt") val"
+if [[ -f "$GT/gothic_bible_train_manifest.txt" ]]; then
+  echo "  gothic bible: $(wc -l < "$GT/gothic_bible_train_manifest.txt") train / $(wc -l < "$GT/gothic_bible_val_manifest.txt") val"
+fi
 echo "[prep] audit:       $GT/audit.md"
 echo "[prep] retrain plan: $GT/retrain_plan.json"
 echo "[prep] done."

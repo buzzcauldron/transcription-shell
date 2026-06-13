@@ -68,6 +68,12 @@ def plan_htr_execution(
             return HtrExecutionPlan(kind=HtrPlanKind.NONE)
         return HtrExecutionPlan(kind=HtrPlanKind.BEFORE_LLM_PARALLEL, tasks=tasks)
 
+    if c in ("trocr_htr", "trocr"):
+        tasks = {k: v for k, v in all_tasks.items() if k == "trocr-htr"}
+        if not tasks:
+            return HtrExecutionPlan(kind=HtrPlanKind.NONE)
+        return HtrExecutionPlan(kind=HtrPlanKind.BEFORE_LLM_PARALLEL, tasks=tasks)
+
     if c == "parallel":
         if not all_tasks:
             return HtrExecutionPlan(kind=HtrPlanKind.NONE)
@@ -121,6 +127,12 @@ def plan_htr_execution(
 
     if c == "kraken_htr_only":
         tasks = {k: v for k, v in all_tasks.items() if k == "kraken-htr"}
+        if not tasks:
+            return HtrExecutionPlan(kind=HtrPlanKind.NONE)
+        return HtrExecutionPlan(kind=HtrPlanKind.HTR_ONLY, tasks=tasks)
+
+    if c == "trocr_htr_only":
+        tasks = {k: v for k, v in all_tasks.items() if k == "trocr-htr"}
         if not tasks:
             return HtrExecutionPlan(kind=HtrPlanKind.NONE)
         return HtrExecutionPlan(kind=HtrPlanKind.HTR_ONLY, tasks=tasks)

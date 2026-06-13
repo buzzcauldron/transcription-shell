@@ -606,6 +606,37 @@ class Settings(BaseSettings):
         description="Path to fine-tuned .traineddata; copied into tessdata/ for TESSDATA_PREFIX.",
     )
 
+    trocr_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_TROCR_ENABLED",
+            "TROCR_ENABLED",
+        ),
+        description=(
+            "Enable TrOCR line recognition (transformers). "
+            "Install: pip install 'transcriber-shell[trocr]'."
+        ),
+    )
+    trocr_model: str = Field(
+        default="microsoft/trocr-base-handwritten",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_TROCR_MODEL",
+            "TROCR_MODEL",
+        ),
+        description=(
+            "HuggingFace Hub id or local path for TrOCR weights "
+            "(e.g. microsoft/trocr-base-handwritten or models/trocr-gothic-bible)."
+        ),
+    )
+    trocr_device: str = Field(
+        default="auto",
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_TROCR_DEVICE",
+            "TROCR_DEVICE",
+        ),
+        description="Torch device for TrOCR: auto, cpu, cuda, mps.",
+    )
+
     htr_parallel: bool = Field(
         default=True,
         validation_alias=AliasChoices(
@@ -628,7 +659,8 @@ class Settings(BaseSettings):
             "default (follow htr_parallel), shell (original shell: LLM only, no HTR), off, "
             "kraken_htr, gm_htr, parallel (all HTR with LLM), sequential (all HTR then LLM), "
             "gm_then_kraken, kraken_then_gm, htr_only (all HTR, no LLM), "
-            "gm_htr_only (GM only, no LLM), kraken_htr_only (Kraken only, no LLM). "
+            "gm_htr_only (GM only, no LLM), kraken_htr_only (Kraken only, no LLM), "
+            "trocr_htr (TrOCR only before LLM), trocr_htr_only (TrOCR only, no LLM). "
             "Aliases: zenodo→kraken_htr, glyph_machina|gm→gm_htr, none|llm_only→shell|off."
         ),
     )
@@ -838,6 +870,7 @@ class Settings(BaseSettings):
             "gm": "gm_htr",
             "tesseract": "tesseract_htr",
             "early_modern": "tesseract_htr",
+            "trocr": "trocr_htr",
             "gm_then_zenodo": "gm_then_kraken",
             "best_then_second": "gm_then_kraken",
             "zenodo_then_gm": "kraken_then_gm",
@@ -852,6 +885,7 @@ class Settings(BaseSettings):
                 "kraken_htr",
                 "gm_htr",
                 "tesseract_htr",
+                "trocr_htr",
                 "parallel",
                 "sequential",
                 "gm_then_kraken",
@@ -859,6 +893,7 @@ class Settings(BaseSettings):
                 "htr_only",
                 "gm_htr_only",
                 "kraken_htr_only",
+                "trocr_htr_only",
             }
         )
         if s not in allowed:

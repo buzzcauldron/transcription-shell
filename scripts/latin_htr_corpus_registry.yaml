@@ -72,8 +72,14 @@ corpora:
     era: medieval
     script: gothic
     split_mode: holdout
+    format: alto
+    scan_subdir: page-xml
     url: https://github.com/parisbible/ground_truth
     citation: paris_bible
+    notes: >
+      PBP 1.0 ALTO+Images converted to PAGE-XML by regularize_latin_htr_corpus.py.
+      LAD 2013.051 (Louvre Abu Dhabi) has text GT only — no public page images;
+      use lad_eval_manifest.txt for blind eval when images are acquired.
 
   eutyches:
     languages: [latin, greek]

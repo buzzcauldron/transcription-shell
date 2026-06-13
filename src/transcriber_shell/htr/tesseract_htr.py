@@ -15,51 +15,10 @@ binary with the corresponding *.traineddata files installed.
 
 from __future__ import annotations
 
-import re
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from transcriber_shell.htr.base import HtrResult, float_to_confidence_tier
-
-
-def _xml_namespace(element: ET.Element) -> str:
-    m = re.match(r"\{.*\}", element.tag)
-    return m.group(0)[1:-1] if m else ""
-
-
-def _parse_points(s: str) -> list[tuple[int, int]]:
-    """PageXML points attribute: 'x1,y1 x2,y2 ...' → list of (x,y)."""
-    pts: list[tuple[int, int]] = []
-    for tok in s.split():
-        if "," not in tok:
-            continue
-        x_s, y_s = tok.split(",", 1)
-        try:
-            pts.append((int(float(x_s)), int(float(y_s))))
-        except ValueError:
-            continue
-    return pts
-
-
-def _line_bboxes(lines_xml_path: Path) -> list[tuple[int, int, int, int]]:
-    """Return (x0, y0, x1, y1) for each TextLine in document order."""
-    tree = ET.parse(str(lines_xml_path))
-    root = tree.getroot()
-    ns = {"ns": _xml_namespace(root)}
-    boxes: list[tuple[int, int, int, int]] = []
-    for line in root.findall(".//ns:TextLine", ns):
-        if line.get("custom") == "type {type:margin;}":
-            continue
-        coords = line.find("ns:Coords", ns)
-        if coords is None or not coords.get("points"):
-            continue
-        pts = _parse_points(coords.get("points", ""))
-        if not pts:
-            continue
-        xs = [p[0] for p in pts]
-        ys = [p[1] for p in pts]
-        boxes.append((min(xs), min(ys), max(xs), max(ys)))
-    return boxes
+from transcriber_shell.htr.pagexml_lines import line_bboxes
 
 
 def run_tesseract_htr(
@@ -94,7 +53,7 @@ def run_tesseract_htr(
     if not lines_xml_path.is_file():
         raise FileNotFoundError(f"lines XML not found: {lines_xml_path}")
 
-    boxes = _line_bboxes(lines_xml_path)
+    boxes = line_bboxes(lines_xml_path)
     if not boxes:
         return HtrResult(
             text="",

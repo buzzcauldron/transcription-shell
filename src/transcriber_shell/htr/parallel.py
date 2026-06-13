@@ -101,6 +101,16 @@ def build_htr_tasks(
             _img, _xml, lang=_lang, psm=_psm, preprocess_opts=_pre
         )
 
+    # TrOCR (transformers line OCR; Gothic book / handwritten Latin).
+    if getattr(settings, "trocr_enabled", False) and scripts & {"latin", "gothic", "latin-french"}:
+        from transcriber_shell.htr.trocr_htr import run_trocr_htr
+
+        _img = image_path
+        _xml = lines_xml_path
+        _model = getattr(settings, "trocr_model", "microsoft/trocr-base-handwritten")
+        _dev = getattr(settings, "trocr_device", "auto")
+        tasks["trocr-htr"] = lambda: run_trocr_htr(_img, _xml, model_id=_model, device=_dev)
+
     # Glyph Machina HTR pipeline
     if settings.gm_htr_repo_path and scripts & {"latin-french", "latin", "english-medieval"}:
         repo_path = Path(settings.gm_htr_repo_path).expanduser().resolve()
