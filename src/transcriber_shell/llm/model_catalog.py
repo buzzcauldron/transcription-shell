@@ -52,6 +52,7 @@ OPENAI_PREMIUM_MODELS: tuple[str, ...] = (
 
 # Google Gemini: Flash/Lite = free-tier & fast; Pro = premium.
 GEMINI_BUDGET_MODELS: tuple[str, ...] = (
+    "gemini-3.5-flash",
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
     "gemini-flash-latest",
@@ -60,6 +61,7 @@ GEMINI_BUDGET_MODELS: tuple[str, ...] = (
 )
 
 GEMINI_PREMIUM_MODELS: tuple[str, ...] = (
+    "gemini-3.5-pro",
     "gemini-2.5-pro",
     "gemini-2.0-pro-exp",
     "gemini-1.5-pro",
