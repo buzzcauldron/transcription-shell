@@ -1,0 +1,274 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: LOC-mcc-030
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T15:23:02.982558+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: eng-latn
+    languageSet: []
+    targetEra: nineteenth_century
+    eraRange: 1830-1840
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: true
+      markExpansions: false
+      captureDeletionsAndInsertions: false
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: copperplate cursive; two-page letter — transcribe all visible body
+      text
+    englishHandwritingModality: copperplate
+    epistemicNotes: null
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: Copperplate cursive
+    scriptMatchesConfig: true
+    conditionNotes: null
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-1
+    position: margin_top
+    text: 'CAc 15,3377
+
+      '
+    confidence: high
+    uncertaintyTokenCount: 0
+    notes: Archival marking.
+  - segmentId: 2
+    pageNumber: 1
+    lineRange: 2-2
+    position: top-center
+    text: 'Springfield Aug. 18th 1837
+
+      '
+    confidence: high
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 3
+    pageNumber: 1
+    lineRange: 3-3
+    position: body
+    text: 'Friend Mary,
+
+      '
+    confidence: high
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 4
+    pageNumber: 1
+    lineRange: 4-29
+    position: body
+    text: 'You will, no doubt, think it rather
+
+      strange, that I should write you a letter on the same
+
+      day on which we parted; and I can only account
+
+      for it by supposing, that seeing you lately, makes,
+
+      me think of you more than usual, while at our
+
+      late meeting we had but few expresions of thought.
+
+      You must know that I can not see you, or think
+
+      of you, with entire indifference; and yet it may be,
+
+      that you, are mistaken in regard to what my real
+
+      feelings towards you are. If I knew you were not, I
+
+      should not trouble you with this letter. Perhaps any
+
+      other man would know enough without further infor=
+
+      mation; but I consider it my peculiar right to plead
+
+      ignorance, and your bounden duty to allow the plea.
+
+      I want in all cases, to do right; and most particular=
+
+      ly so, in all cases with women. I want, at this par=
+
+      ticular time, more than any thing else, to do right with
+
+      you, and if I knew it would be doing right, as
+
+      I rather suspect it would, to let you alone, I
+
+      would do it. And                    the purpose of making the
+
+      matter as plain as,                 yes, I now say, that you can
+
+      now drop the suby                   dismiss your thoughts (if you ever,
+
+      had any) from me                    also leave this letter un=
+
+      answered, without                   uttering forth one accusing mur=
+
+      mer from me. And                    will even go further, and say,
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: The writer fills the bottom of the page by writing across the central crease,
+      creating the appearance of two columns which are in fact single, continuous
+      lines of text.
+  - segmentId: 5
+    pageNumber: 1
+    lineRange: 1-28
+    position: body
+    text: "that if it will add any thing to your comfort, or peace of\nmind, to do\
+      \ so, it is my sincere wish that you should\nDo not understand by this, that\
+      \ I wish to cut your acquan\nintance. I mean no such thing. What I do wish is,\
+      \ that\nour further acquaintance shall depend upon yourself. If\nsuch further\
+      \ acquaintance would contribute nothing to your\nhappiness, I am sure it would\
+      \ not to mine. If you\nfeel yourself in any degree bound to me, I am now willing\n\
+      to release you, provided you wish it; while, on the other\nhand, I am willing,\
+      \ and even anxious to bind\nyou faster, if I can be convinced that it will,\
+      \ in any\nconsiderable degree, add to your happiness. This, indeed,\nis the\
+      \ whole question with me. Nothing would make me\nmore miserable than to believe\
+      \ you miserable—nothing more\nhappy, than to know you were so.\nIn what I have\
+      \ now said, I think I can not be\nmisunderstood; and to make myself understood,\
+      \ is the\nonly object of this, letter.\nIf it suits you best to not answer this,\
+      \ — farewell—\na long life and a merry one attend you. But if you\nconclude\
+      \ to write back, speak as plainly as I do. There\ncan be neither harm nor danger,\
+      \ in saying, to me, any\nthing you think, just in the way you think it.\n  \
+      \     My respects to yours\n   J.\n                           Your friend\n\
+      \                                   Lincoln\n[crop]AN. LBS.31              \
+      \                     09.1998 5.00 .00\n"
+    confidence: high
+    uncertaintyTokenCount: 1
+    notes: De novo transcription due to HTR failure. Layout of closing and archivalia
+      at bottom is approximated with whitespace.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 4
+    pass1Reading: 'You will, no doubt, think it rather
+
+      strange, that I should write you a letter on the same
+
+      day on which we parted; and I can only account
+
+      for it by supposing, that seeing you lately, makes,
+
+      me think of you more than usual, while at our
+
+      late meeting we had but few expresions of thought.
+
+      You must know that I can not see you, or think
+
+      of you, with entire indifference; and yet it may be,
+
+      that you, are mistaken in regard to what my real
+
+      feelings towards you are. If I knew you were not, I
+
+      should not trouble you with this letter. Perhaps any
+
+      other man would know enough without further infor=
+
+      mation; but I consider it my peculiar right to plead
+
+      ignorance, and your bounden duty to allow the plea.
+
+      I want in all cases, to do right; and most particular=
+
+      ly so, in all cases with women. I want, at this par=
+
+      ticular time, more than any thing else, to do right with
+
+      you, and if I knew it would be doing right, as
+
+      I rather suspect it would, to let you alone, I
+
+      would do it. And                    the purpose of making the
+
+      matter as plain as,                 es, I now say, that you can
+
+      now drop the suby                   dismiss your thoughts (if you ever,
+
+      had any) from me                    and leave this letter un=
+
+      answered, without                   ing forth one accusing mur=
+
+      mer from me. And                    will even go further, and say,
+
+      '
+    pass2Reading: 'You will, no doubt, think it rather
+
+      strange, that I should write you a letter on the same
+
+      day on which we parted; and I can only account
+
+      for it by supposing, that seeing you lately, makes,
+
+      me think of you more than usual, while at our
+
+      late meeting we had but few expresions of thought.
+
+      You must know that I can not see you, or think
+
+      of you, with entire indifference; and yet it may be,
+
+      that you, are mistaken in regard to what my real
+
+      feelings towards you are. If I knew you were not, I
+
+      should not trouble you with this letter. Perhaps any
+
+      other man would know enough without further infor=
+
+      mation; but I consider it my peculiar right to plead
+
+      ignorance, and your bounden duty to allow the plea.
+
+      I want in all cases, to do right; and most particular=
+
+      ly so, in all cases with women. I want, at this par=
+
+      ticular time, more than any thing else, to do right with
+
+      you, and if I knew it would be doing right, as
+
+      I rather suspect it would, to let you alone, I
+
+      would do it. And                    the purpose of making the
+
+      matter as plain as,                 yes, I now say, that you can
+
+      now drop the suby                   dismiss your thoughts (if you ever,
+
+      had any) from me                    also leave this letter un=
+
+      answered, without                   uttering forth one accusing mur=
+
+      mer from me. And                    will even go further, and say,
+
+      '
+    resolution: pass2 confirms final text; minor corrections to word readings based
+      on closer inspection of glyphs. Specifically, changed 'es' to 'yes', 'and leave'
+      to 'also leave', and 'ing forth' to 'uttering forth'.
+    resolved: true
+  hallucinationAudit:
+    totalWords: 247
+    wordsGroundedInGlyphs: 247
+    wordsFromExpansion: 0
+    expansionsWithVisibleMark: 0
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

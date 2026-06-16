@@ -1,0 +1,13 @@
+{
+  "caseId": "BM-001",
+  "modelKey": "shell-full-r5-gemini",
+  "modelId": "gemini-2.5-pro",
+  "htrModel": "/Users/halxiii/src/latin_documents/gm-htr-r5-best.mlmodel",
+  "llmProvider": "gemini",
+  "pipeline": "transcription-shell: kraken seg \u2192 HTR \u2192 llm_mode=full",
+  "llmMode": "full",
+  "started": "2026-06-10T15:55:48Z",
+  "warnings": [
+    "segment 1 position invalid: got 'top', expected one of ('body', 'header', 'footer', 'margin_left', 'margin_right', 'margin_top', 'margin_bottom', 'interlinear', 'footnote', 'table_row', 'table_header')"
+  ]
+}

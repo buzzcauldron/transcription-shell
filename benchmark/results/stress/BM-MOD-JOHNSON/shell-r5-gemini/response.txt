@@ -1,0 +1,153 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: LOC-mal-3030000
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T15:33:05.327777+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: eng-latn
+    languageSet: []
+    targetEra: nineteenth_century
+    eraRange: 1860-1865
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: true
+      markExpansions: false
+      captureDeletionsAndInsertions: false
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: copperplate
+    epistemicNotes: The handwriting is rapid and the grammar is highly elliptical,
+      likely indicating a hasty, informal note. The transcription favors a literal
+      reading of the glyphs over a grammatically coherent interpretation.
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: 19th century American cursive
+    scriptMatchesConfig: true
+    conditionNotes: A circular red stamp ('LIBRARY OF CONGRESS') partially obscures
+      a few words, but they remain legible.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-15
+    position: body
+    text: 'Senate Chamber
+
+      8 Dec ''64
+
+
+      My dear Sir,
+
+
+      do you see
+
+      for me to ask you
+
+      Please by return I
+
+      the response,
+
+      relative to pardon
+
+      of J. S. Waring
+
+      of Vt? his P. [uncertain: S/J].?
+
+
+      Yrs
+
+      J. S. Morrill
+
+
+      This
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 1
+    notes: The segmentation into a single block follows the YAML template provided
+      in the user prompt, which overrides the LINEATION NOTE suggesting a 6-segment
+      structure, especially since the HTR/lineation process failed.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: 'Senate Chamber
+
+      8 Dec ''64
+
+
+      My dear Sir,
+
+
+      do you see
+
+      for me to ask you
+
+      Please by return I
+
+      the response,
+
+      relative to pardon
+
+      of J. S. Waring
+
+      of Vt? his P. [uncertain: S/J].?
+
+
+      Yrs
+
+      J. S. Morrill
+
+
+      This'
+    pass2Reading: 'Senate Chamber
+
+      8 Dec ''64
+
+
+      My dear Sir,
+
+
+      do you see
+
+      for me to ask you
+
+      Please by return I
+
+      the response,
+
+      relative to pardon
+
+      of J. S. Waring
+
+      of Vt? his P. [uncertain: S/J].?
+
+
+      Yrs
+
+      J. S. Morrill
+
+
+      This'
+    resolution: pass2 confirms from-scratch transcription; no HTR baseline was provided.
+    resolved: true
+  hallucinationAudit:
+    totalWords: 39
+    wordsGroundedInGlyphs: 39
+    wordsFromExpansion: 0
+    expansionsWithVisibleMark: 0
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

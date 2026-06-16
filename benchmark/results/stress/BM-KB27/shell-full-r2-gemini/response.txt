@@ -1,0 +1,111 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: KB27-335-AALT-0235
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T16:02:55.487104+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: lat-latn
+    languageSet: []
+    targetEra: medieval
+    eraRange: 1330-1380
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: false
+      markExpansions: false
+      captureDeletionsAndInsertions: true
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: null
+    epistemicNotes: null
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: false
+    pageCount: 1
+    scriptIdentified: Gothic Anglicana Cursiva
+    scriptMatchesConfig: true
+    conditionNotes: The image contains 14 lines of transcribed text. The prompt's
+      LINEATION NOTE mentions 23 TextLines, which does not match the visible content
+      of the provided image.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-14
+    position: body
+    text: '[marginalia: Lond] ¶ Vnus Breve per Iohannem de Lincoln qui sequitur Et
+      eo quod in vno breve in adiudicium Hobin vel obiectum
+
+      advocacionem ecclesie etcetera. Et aliud breve ad aliud beneficium satisfaciendum
+      quousque quia de domino Rege concessit in Aprico vna licencia
+
+      Regia alienandi in manu Regis Et postea partem Regis predicti Remisit Deliberauit
+      Et quietumclamauit prefato Regi
+
+      Dignitatis Regie medium annuatim de ecclesia de Poreflete videlicet ad domino
+      Regi Donacionem spectantem que
+
+      alienando advocacionem ecclesie illius que quidem advocacio de domino Rege tenet
+      in Aprico vna licencia Regia
+
+      Et Iohannem Kylknepyn ostendit feodum Et quia eadem advocacionem ad se clamat
+      in manu sua Apud finem Regis
+
+      virtute dimissionis et infeoffamentum ac de iure ordinem ad huc non tenet ac
+      quin plegios bullas et litteras domino Regi
+
+      Et regno Regis predicti messuagium infra idem regimen Sancte et medium defense
+      predicte Et Sumpto processum super
+
+      ipsum Guillelmo Et per calliditates machinaciones missam in Regem plusquam ad
+      effectum in Regis consideracionem
+
+      Et iam in multiplicem de iniuria coram et Regiam Dignitatem Regis predicti exheredacionem
+      manifestam et contra
+
+      pacem Regis Et quia non venit Et preceptum fuit vicecomiti quod caperet eum
+      et saluo custodiret
+
+      Ita quod non sit nullatenus etcetera. Ideo preceptum fuit vicecomiti quod non
+      omittat quin capiat eum si inuentus fuit etcetera et
+
+      saluo et de futuro corpus eius coram domino Rege ad diem Iouis proximum post
+      mensem sancti Michaelis vbicumque
+
+      [illegible: ~1 word] saluo et de futuro corpus eius coram domino Rege ad diem
+      prefatum pro non vbicumque etcetera.
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 1
+    notes: null
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: Ieromam Et pro non est nullatenus etcetera. Ideo preceptum est vicecomiti
+      quod non plus de ipso apud Westmonasterium
+    pass2Reading: Ita quod non sit nullatenus etcetera. Ideo preceptum fuit vicecomiti
+      quod non omittat quin capiat eum si inuentus fuit etcetera et
+    resolution: Pass 2 corrected the reading of a complex legal formula based on clearer
+      interpretation of individual glyphs ('Ita quod' instead of 'Ieromam', 'sit'
+      for 'est', 'fuit' for 'est') and recognition of standard phrasing ('non omittat
+      quin capiat eum si inventus fuit').
+    resolved: true
+  hallucinationAudit:
+    totalWords: 197
+    wordsGroundedInGlyphs: 104
+    wordsFromExpansion: 93
+    expansionsWithVisibleMark: 93
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

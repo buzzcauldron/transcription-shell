@@ -1,0 +1,110 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: LOC-mal-3030000
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T15:34:23.408803+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: eng-latn
+    languageSet: []
+    targetEra: nineteenth_century
+    eraRange: 1860-1865
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: true
+      markExpansions: false
+      captureDeletionsAndInsertions: false
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: copperplate
+    epistemicNotes: null
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: English cursive script
+    scriptMatchesConfig: true
+    conditionNotes: A circular red 'LIBRARY OF CONGRESS' stamp partially obscures
+      one word on the first line. The number '30300' is stamped in the bottom left
+      corner.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-15
+    position: body
+    text: 'Senate Cha[illegible: ~3 chars]r
+
+      8 Dec ''64
+
+
+      My dear Sir,
+
+
+      As soon as you
+
+      forward to me the
+
+      papers by return of
+
+      the messenger,
+
+      I shall see the President
+
+      of U. S. respecting
+
+      G. F. N? his office?
+
+      This
+
+
+      30300
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 1
+    notes: null
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: 'Senate Cha[illegible]
+
+      ...
+
+      T. F. N? his office?
+
+      ...
+
+      '
+    pass2Reading: 'Senate Cha[illegible: ~3 chars]r
+
+      ...
+
+      G. F. N? his office?
+
+      ...
+
+      '
+    resolution: 'Pass 2 corrected two readings from the initial pass. In line 1, a
+      faint ''r'' was identified at the end of the word damaged by a stamp, allowing
+      for a more precise token `[illegible: ~3 chars]r`. In line 12, the first initial
+      was corrected from ''T'' to ''G'' based on the presence of a descender.'
+    resolved: true
+  hallucinationAudit:
+    totalWords: 41
+    wordsGroundedInGlyphs: 41
+    wordsFromExpansion: 0
+    expansionsWithVisibleMark: 0
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

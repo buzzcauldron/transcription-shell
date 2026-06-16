@@ -1,0 +1,243 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: LOC-mcc-030
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T15:58:06.408070+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: eng-latn
+    languageSet: []
+    targetEra: nineteenth_century
+    eraRange: 1830-1840
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: true
+      markExpansions: false
+      captureDeletionsAndInsertions: false
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: copperplate
+    epistemicNotes: The bottom-left portion of the letter contains text that appears
+      to be an authorial revision or a set of false starts. This text has been transcribed
+      within a [marginalia:] token to preserve its spatial separation from the main
+      text block.
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: 19th-century American Copperplate cursive
+    scriptMatchesConfig: true
+    conditionNotes: The manuscript is folded vertically and horizontally, but the
+      text is not significantly obscured.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-1
+    position: margin_top
+    text: '[AC 15,337]
+
+      '
+    confidence: high
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 2
+    pageNumber: 1
+    lineRange: 2-3
+    position: top
+    text: 'Springfield Aug. 18th 1837
+
+      Friend Mary.
+
+      '
+    confidence: high
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 3
+    pageNumber: 1
+    lineRange: 4-18
+    position: body
+    text: 'You will, no doubt, think it rather
+
+      strange, that I should write you a letter on the same
+
+      day on which we parted; and I can only account
+
+      for it by supposing, that seeing you lately, makes
+
+      me think of you more than usual, while at our
+
+      late meeting we had but few expressions of thought.
+
+      You must know that I can not see you, or think
+
+      of you, with entire indifference; and yet it may be,
+
+      that you, are mistaken in regard to what my real
+
+      feelings towards you are. If I knew you were not, I
+
+      should not trouble you with this letter. Perhaps any
+
+      other man would know enough without further infor=
+
+      mation; but I consider it my peculiar right to plead
+
+      ignorance, and your bounden duty to allow the plea.
+
+      '
+    confidence: high
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 4
+    pageNumber: 1
+    lineRange: 19-29
+    position: body
+    text: 'I want in all cases to do right; and most particular=
+
+      ly so, in all cases with women. I want, at this par=
+
+      ticular time, more than any thing else, to do right with
+
+      you, and if I knew it would be doing right, as
+
+      I rather suspect it would, to let you alone, I
+
+      would do it. And the purpose of making the
+
+      matter as plain as, ever, I now say, that you can
+
+      [marginalia: now drop the subject
+
+      (had any) from me
+
+      [damaged: smudge]answered, without
+
+      mer from me. And]dismiss your thoughts (if you ever
+
+      had any) from me, and leave this letter un=
+
+      answered, without any forth one accusing mur=
+
+      mer from me. And will even go further, and say,
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 1
+    notes: The text in the bottom left, beginning 'now drop the subject', appears
+      to be a series of false starts or revisions written in the margin. It is transcribed
+      here using the [marginalia:] token. The phrase 'forth one' in the main text
+      is transcribed as the glyphs appear, though the meaning is obscure.
+  - segmentId: 5
+    pageNumber: 1
+    lineRange: 1-30
+    position: body
+    text: 'that if it will add any thing to your comfort, or peace of
+
+      mind, to do so, it is my sincere wish that you should
+
+      Do not understand by this, that I wish to cut your acquan-
+
+      tance. I mean no such thing. What I do wish is, that
+
+      our further acquaintance shall depend upon yourself. If
+
+      such further acquaintance would contribute nothing to your
+
+      happiness, I am sure it would not to mine. If you
+
+      feel yourself in any degree bound to me, I am now willing
+
+      to release you, provided you wish it; while, on the other
+
+      hand, I am willing, and even anxious to bind
+
+      you faster, if I can be convinced that it will, in any
+
+      considerable degree, add to your happiness. This, indeed,
+
+      is the whole question with me. Nothing can make me
+
+      now miserable than to believe you miserable— nothing more
+
+      happy, than to know you were so.
+
+
+      In what I have now said, I think I can not be
+
+      misunderstood; and to make myself understood, is the
+
+      only object of this letter.
+
+
+      If it suits you best to not answer this,— farewell
+
+      a long life and a merry one attend you. But if you
+
+      conclude to write back, speak as plainly as I do. There
+
+      can be neither harm nor danger in saying to me, any
+
+      thing you think, just in the way you think it.
+
+
+      My respects to yours
+
+      J.
+
+      Your friend
+
+      Lincoln.
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: The layout in the closing paragraphs is complex, with text written in available
+      space to conserve paper. The transcription attempts to preserve the line breaks
+      as they appear on the page.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 4
+    pass1Reading: had any) from me very, and leave this letter un=
+    pass2Reading: had any) from me, and leave this letter un=
+    resolution: Pass 2 corrected a misreading. What appeared to be the word 'very'
+      was determined to be the tail of a 'y' from the line above combined with a comma
+      after 'me'.
+    resolved: true
+  - mismatchId: 2
+    segmentId: 4
+    pass1Reading: answered, without any further accusing mur=
+    pass2Reading: answered, without any forth one accusing mur=
+    resolution: Pass 2 corrected a contextual inference ('further') to a diplomatic
+      transcription of the visible glyphs ('forth one'). Although semantically unusual,
+      'forth one' is a more faithful reading of the ink.
+    resolved: true
+  - mismatchId: 3
+    segmentId: 4
+    pass1Reading: The bottom section was initially transcribed as a single block of
+      text with unusual spacing.
+    pass2Reading: The bottom section was transcribed with the left-hand text block
+      captured inside a [marginalia:] token.
+    resolution: Pass 2 determined that the text on the far left of the bottom section
+      is spatially distinct from the main text block and is best represented as marginalia
+      to avoid adding non-source formatting (e.g., excessive spaces) or reordering
+      text.
+    resolved: true
+  hallucinationAudit:
+    totalWords: 308
+    wordsGroundedInGlyphs: 308
+    wordsFromExpansion: 0
+    expansionsWithVisibleMark: 0
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

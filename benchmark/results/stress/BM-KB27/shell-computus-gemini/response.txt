@@ -1,0 +1,168 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: KB27-335-AALT-0235
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T15:20:02.872809+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: lat-latn
+    languageSet: []
+    targetEra: medieval
+    eraRange: 1330-1380
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: false
+      markExpansions: false
+      captureDeletionsAndInsertions: true
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: null
+    epistemicNotes: The handwriting is a dense and heavily abbreviated 14th-century
+      anglicana cursiva. Some readings are conjectural due to ambiguous letter forms
+      and the formulaic but complex nature of the legal Latin.
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: Gothic anglicana cursiva
+    scriptMatchesConfig: true
+    conditionNotes: The manuscript is in good condition, but the hand is difficult.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-12
+    position: body
+    text: '[marginalia: Lond] ¶ Mandatum Regis per Johannem de Lincoln qui sequitur
+      pro eo quam pro domino Rege in agendis suis versus Robertum Hobelour obiectus
+      est
+
+      a predicta quam de dominio et eciam legatum et confirmacionem predictam Regio
+      nunc habet omnia et dat et concessit et perdonauit et
+
+      dignitatem Regis pretextu cuiusque se in feodo de possessionibus dictis Regis
+      donacionem spectantibus jure
+
+      alienandarum advocationum predictarum illius que quidem advocacio de domino
+      Rege tenentur in Capite sine licentia Regis
+
+      ad ipsum Johannem et successores suos et ad eandem adhuc ea tenet et per plures
+      Bullas et etate sua Regi
+
+      et Johanni Pagio et predicti Willielmi et idem Regnum econtra et mediate Regis
+      frater A dimisso et assensu eiusdem
+
+      et fratrum et aliorum machinatores missa eciam presens plegia ad affectum in
+      Regio coram comparentibus
+
+      et interdum multipliciter de iniuria coram et Regia dignitati Regis pretextu
+      cuiusdam manifestavit et contra
+
+      pacem Regis. Et quia non vice versa de placitis fuit nichil plus quod capere
+      omnia et de huiusmodi
+
+      juratores pro non est nunciatus etcetera. Ideo preceptum est vicecomiti quod
+      non plus deponitur omni manucaptores etcetera
+
+      ad Ballivos et per fidem corpus eius coram eodem domino Rege et de possessionibus
+      suis non intromittant etcetera.
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 0
+    notes: The transcription is a best effort on a very difficult hand. The sense
+      of the text is not always clear, suggesting potential misreadings of the complex
+      legal formulae and personal names.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: '[marginalia: Lond] ¶ Mandatum Regis per Johannem de Lincoln qui
+      sequitur pro eo quam pro domino Rege in agendis suis versus Robertum Hobelour
+      obiectus est
+
+      a predicta quam de dominio et eciam legatum et confirmacionem predictam Regio
+      nunc habet omnia et dat et concessit et perdonauit et
+
+      dignitatem Regis pretextu cuiusque se in feodo de possessionibus dictis Regis
+      donacionem spectantibus jure
+
+      alienandarum advocationum predictarum illius que quidem advocacio de domino
+      Rege tenentur in Capite sine licentia Regis
+
+      ad ipsum Johannem et successores suos et ad eandem adhuc ea tenet et per plures
+      Bullas et etate sua Regi
+
+      et Johanni Pagio et predicti Willielmi et idem Regnum econtra et mediate Regis
+      frater A dimisso et assensu eiusdem
+
+      et fratrum et aliorum machinatores missa eciam presens plegia ad affectum in
+      Regio coram comparentibus
+
+      et interdum multipliciter de iniuria coram et Regia dignitati Regis pretextu
+      cuiusdam manifestavit et contra
+
+      pacem Regis. Et quia non vice versa de placitis fuit nichil plus quod capere
+      omnia et de huiusmodi
+
+      juratores pro non est nunciatus etcetera. Ideo preceptum est vicecomiti quod
+      non plus deponitur omni manucaptores etcetera
+
+      ad Ballivos et per fidem corpus eius coram eodem domino Rege et de possessionibus
+      suis non intromittant etcetera.
+
+      '
+    pass2Reading: '[marginalia: Lond] ¶ Mandatum Regis per Johannem de Lincoln qui
+      sequitur pro eo quam pro domino Rege in agendis suis versus Robertum Hobelour
+      obiectus est
+
+      a predicta quam de dominio et eciam legatum et confirmacionem predictam Regio
+      nunc habet omnia et dat et concessit et perdonauit et
+
+      dignitatem Regis pretextu cuiusque se in feodo de possessionibus dictis Regis
+      donacionem spectantibus jure
+
+      alienandarum advocationum predictarum illius que quidem advocacio de domino
+      Rege tenentur in Capite sine licentia Regis
+
+      ad ipsum Johannem et successores suos et ad eandem adhuc ea tenet et per plures
+      Bullas et etate sua Regi
+
+      et Johanni Pagio et predicti Willielmi et idem Regnum econtra et mediate Regis
+      frater A dimisso et assensu eiusdem
+
+      et fratrum et aliorum machinatores missa eciam presens plegia ad affectum in
+      Regio coram comparentibus
+
+      et interdum multipliciter de iniuria coram et Regia dignitati Regis pretextu
+      cuiusdam manifestavit et contra
+
+      pacem Regis. Et quia non vice versa de placitis fuit nichil plus quod capere
+      omnia et de huiusmodi
+
+      juratores pro non est nunciatus etcetera. Ideo preceptum est vicecomiti quod
+      non plus deponitur omni manucaptores etcetera
+
+      ad Ballivos et per fidem corpus eius coram eodem domino Rege et de possessionibus
+      suis non intromittant etcetera.
+
+      '
+    resolution: pass2 confirms final text; no edit
+    resolved: true
+  hallucinationAudit:
+    totalWords: 247
+    wordsGroundedInGlyphs: 247
+    wordsFromExpansion: 68
+    expansionsWithVisibleMark: 68
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

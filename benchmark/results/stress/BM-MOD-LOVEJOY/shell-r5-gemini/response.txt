@@ -1,0 +1,120 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: LOC-mal-3010000
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T15:29:04.253186+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: eng-latn
+    languageSet: []
+    targetEra: nineteenth_century
+    eraRange: 1860-1865
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: true
+      markExpansions: false
+      captureDeletionsAndInsertions: false
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: copperplate
+    epistemicNotes: The prompt included a LINEATION NOTE stating the transcriber must
+      match a 24-line PageXML detection. However, the HTR/PageXML process was reported
+      as failed. Lacking the detector output, and because a 24-segment structure would
+      be an arbitrary reconstruction, the document has been transcribed into four
+      logical segments corresponding to its visible layout blocks.
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: English cursive (Copperplate)
+    scriptMatchesConfig: true
+    conditionNotes: A red circular 'LIBRARY OF CONGRESS' stamp partially obscures
+      the dateline, but the text remains legible.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-2
+    position: margin_top
+    text: 'Washington D.C.
+
+      February 2nd 1864
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 2
+    pageNumber: 1
+    lineRange: 3-13
+    position: body
+    text: "Friend Nicolay:\n        I understand the President\nhas removed the Post\
+      \ Master at Joliet,\nIll. Will you ask him if he can\nconsistently suspend the\
+      \ matter for a\nfew days till I can see him?\n        I hope to be on my pegs\
+      \ again\nshortly.\n                                      Yours Truly\n     \
+      \                                 Owen Lovejoy\n                           \
+      \           for Ill.\n"
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 3
+    pageNumber: 1
+    lineRange: 14-16
+    position: margin_bottom
+    text: 'Col. Nicolay
+
+      Executive Mansion
+
+      Washington D.C.,
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 4
+    pageNumber: 1
+    lineRange: 17-17
+    position: margin_bottom
+    text: '30100
+
+      '
+    confidence: high
+    uncertaintyTokenCount: 0
+    notes: This is a stamped archival number, not handwritten.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 2
+    pass1Reading: "Friend Nicolay:\n        I understand the President\nhas removed\
+      \ the Post Master at Joliet,\nIll. Will you ask him if he can\nconsistently\
+      \ suspend the matter for a\nfew days till I can see him?\n        I hope to\
+      \ be on my legs again\nshortly.\n                                      Yours\
+      \ Truly\n                                      Owen Lovejoy\n              \
+      \                        for Ill.\n"
+    pass2Reading: "Friend Nicolay:\n        I understand the President\nhas removed\
+      \ the Post Master at Joliet,\nIll. Will you ask him if he can\nconsistently\
+      \ suspend the matter for a\nfew days till I can see him?\n        I hope to\
+      \ be on my pegs again\nshortly.\n                                      Yours\
+      \ Truly\n                                      Owen Lovejoy\n              \
+      \                        for Ill.\n"
+    resolution: Closer examination of the word initially read as 'legs' shows the
+      first letter is a clear 'p' with a closed bowl and descending stem, not an 'l'.
+      The word is 'pegs'.
+    resolved: true
+  hallucinationAudit:
+    totalWords: 61
+    wordsGroundedInGlyphs: 61
+    wordsFromExpansion: 0
+    expansionsWithVisibleMark: 0
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

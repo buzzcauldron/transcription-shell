@@ -1,0 +1,11 @@
+{
+  "caseId": "BM-KB27",
+  "modelKey": "shell-gm-gemini",
+  "modelId": "gemini-2.5-pro",
+  "htrModel": "/Users/halxiii/src/glyph_machina_public/best_HTR.net",
+  "llmProvider": "gemini",
+  "pipeline": "transcription-shell: kraken seg \u2192 glyph-machina HTR \u2192 llm_mode=correct",
+  "llmMode": "correct",
+  "started": "2026-06-10T19:38:06Z",
+  "warnings": []
+}

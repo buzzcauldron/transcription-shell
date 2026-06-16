@@ -1,0 +1,147 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: Walters-W25-folio
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T15:09:17.309804+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: lat-latn
+    languageSet: []
+    targetEra: medieval
+    eraRange: 1175-1225
+    diplomaticProfile: strict
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: false
+      markExpansions: false
+      captureDeletionsAndInsertions: false
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: null
+    epistemicNotes: null
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: Gothic Textualis
+    scriptMatchesConfig: true
+    conditionNotes: The manuscript is in good condition. Some minor stains are present
+      but do not significantly obscure the text.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-20
+    position: body
+    text: '& peperit iniquitatem· Lacum
+
+      aperuit & effodit eum· & incidit
+
+      in foueam quam fecit· Conuertetur
+
+      dolor eius in caput eius· & in uerticem
+
+      & ipſius iniquitas eius deſcendet· Co[line-end-hyphen]
+
+      fitebor domino ſecundum iuſticiam eius·
+
+      & pſallam nomini domini altiſſimi·
+
+      Fve cui cor & renes ſcrutantur deus·
+
+      ſupra ſenes te inuenitur mundo
+
+      corde· impolluta omni ſorde·
+
+      Domine dominus noster· quia psalmus domino .viii.
+
+      admirabile est nomen
+
+      tuum in uniuersa terra· Quoniam
+
+      eleuata est magnificentia tua ſu[line-end-hyphen]
+
+      per celos· Ex ore infantium &
+
+      lactentium perfeciſti laudem propter
+
+      inimicos tuos· ut deſtruas in[line-end-hyphen]
+
+      imicum & ultorem· Quoniam uidebo
+
+      celos tuos opera digitorum tuorum·
+
+      lunam & ſtellas que tu fundaſti·
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: The transcription of lines 8-10 is based on a difficult, compressed hand
+      that appears to be a later addition; abbreviation and syntax are non-standard.
+      The red rubric for Psalm 8, located to the left of the decorated initial, has
+      been transcribed at the end of line 11.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: HTR drafts failed; transcription performed directly from image.
+    pass2Reading: '& peperit iniquitatem· Lacum
+
+      aperuit & effodit eum· & incidit
+
+      in foueam quam fecit· Conuertetur
+
+      dolor eius in caput eius· & in uerticem
+
+      & ipſius iniquitas eius deſcendet· Co[line-end-hyphen]
+
+      fitebor domino ſecundum iuſticiam eius·
+
+      & pſallam nomini domini altiſſimi·
+
+      Fve cui cor & renes ſcrutantur deus·
+
+      ſupra ſenes te inuenitur mundo
+
+      corde· impolluta omni ſorde·
+
+      Domine dominus noster· quia psalmus domino .viii.
+
+      admirabile est nomen
+
+      tuum in uniuersa terra· Quoniam
+
+      eleuata est magnificentia tua ſu[line-end-hyphen]
+
+      per celos· Ex ore infantium &
+
+      lactentium perfeciſti laudem propter
+
+      inimicos tuos· ut deſtruas in[line-end-hyphen]
+
+      imicum & ultorem· Quoniam uidebo
+
+      celos tuos opera digitorum tuorum·
+
+      lunam & ſtellas que tu fundaſti·
+
+      '
+    resolution: No HTR draft was provided. Pass 1 reading is a placeholder. Pass 2
+      represents the full transcription from the source image.
+    resolved: true
+  hallucinationAudit:
+    totalWords: 122
+    wordsGroundedInGlyphs: 85
+    wordsFromExpansion: 37
+    expansionsWithVisibleMark: 37
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

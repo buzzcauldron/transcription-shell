@@ -1,0 +1,191 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: KB27-335-AALT-0235
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T15:16:46.803209+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: lat-latn
+    languageSet: []
+    targetEra: medieval
+    eraRange: 1330-1380
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: false
+      markExpansions: false
+      captureDeletionsAndInsertions: true
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: null
+    epistemicNotes: The transcription of this heavily abbreviated legal document required
+      significant paleographic expansion. Some passages, particularly in lines 9-11,
+      are syntactically challenging, and the readings represent the most plausible
+      interpretation of the visible letter forms within the context of 14th-century
+      plea roll formulas.
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: false
+    pageCount: 1
+    scriptIdentified: Gothic anglicana cursiva
+    scriptMatchesConfig: true
+    conditionNotes: null
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-13
+    position: body
+    text: '[marginalia: Lond] Iurata Regis pro Johanne de Lincoln qui sequitur pro
+      eo quam pro domino Rege versus Johannem Hobbe clericum obiecit
+
+      advocacionem ecclesie de Althorp beneficii ecclesiastici que de ipso domino
+      Rege tenentur in capite sine licencia
+
+      Regia alienandi in manu Regis sibi et parrochie sue de Balsham predicto Eciam
+      coram domino Rege
+
+      Significavit Regi nuper eo quod dictus de Porecestre vicarius et de donacione
+      domini Regis spectante iure
+
+      alienando advocacionem ecclesie illius que quidem advocacio de domino Rege tenetur
+      in Capite sine licencia Regis
+
+      pro Thomam de Ketenenn obtinuit et quod eadem advocacionem ad se diuulgauit
+      in manibus suis Apud Ebor coram Rege
+
+      venit et similiter et magister ac idem in Curia ad huc se tenet et quin plurimas
+      bullas et litteras domini Regis
+
+      et regno Regis prejudicialiter missas in dicto regno inuentas et vnde dictus
+      defensor predictus A subposito processu super
+
+      ipsum Guillielmus et Prior et fecerunt machinaciones nequiter in dicti Regis
+      prejudicium et Regni sui contemptum
+
+      et alia enormia multipliciter ei intulit contra pacem dignitatem Regis predicti
+      etcetera et explere debeant manifesta et contra pacem Regis
+
+      pacem Regis Et quia non videtur Curie placuit nec decet plus quod capiatur in
+      manum Regis etcetera Et Vicecomes
+
+      Iurata pro non sit onerata etcetera Ideo preceptum est Vicecomiti Et Apud Westmonasterium
+      etcetera Et
+
+      apud Eboracum etcetera et pro futuro tempore coram eodem domino Rege et de sua
+      gratia speciali pro tunc vbicumque etcetera
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: The text appears to be a record of a plea concerning an advowson, with
+      accusations of actions taken to the contempt of the King and against his peace.
+      The syntax is dense and highly formulaic.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: '[marginalia: Lond] Vnius Regis pro Johanne de Lincoln qui sequitur
+      pro eo quam pro domino Rege versus Johannem Hobbe clericum obiecit
+
+      advocacionem ecclesie de Althorp beneficii ecclesiastici quousque que ad sa
+      domino Rege tenet in Capite sine licencia
+
+      Regiam alienandi in manu Regis sibi et parrochie sue de Balsham predicto Eciam
+      coram domino Rege
+
+      Significavit Regis predicto amissa eo quod dictus de Porcestre Vicecomes et
+      dominus Regis donacionem spectantem jure
+
+      alienando advocacionem ecclesie illius que quidem advocacio de domino Rege tenet
+      in Capite sine licencia Regis
+
+      pro Thomam de Ketenenn obtinuit et quod eadem advocacionem ad se diuisi in manibus
+      suis Apud Ebor Regem
+
+      venit et similiter et magister ac idem in Curia ad huc eo tenet et quin plurimas
+      bullas et litteras domini Regis
+
+      et regno Regis prejudicialiter missas idem regem eantur et vnde dicto defensores
+      predicti A subposito processu super
+
+      ipsum Guillielmus et Prior et allexerunt machinaciones missas idem regem placita
+      et affectum in Regno suo contemptum
+
+      et aliam multipliciter de iniuriis contra et pacem dignitatem Regis predicti
+      etcetera explere debeant manifesta et contra pacem Regis
+
+      pacem Regis Et quia non videtur Curie placitum fuit nec decet plus quod capiatur
+      anni etcetera De Vicecomitis
+
+      juratis pro non est nunciatus etcetera Ideo predicti est nec decet plus Et Apud
+      Westmonasterium etcetera Et
+
+      apud Ebor etcetera et pro futuro tempus quo eodem domino Rege et de sua gratia
+      speciali pro tunc vbicumque etcetera
+
+      '
+    pass2Reading: '[marginalia: Lond] Iurata Regis pro Johanne de Lincoln qui sequitur
+      pro eo quam pro domino Rege versus Johannem Hobbe clericum obiecit
+
+      advocacionem ecclesie de Althorp beneficii ecclesiastici que de ipso domino
+      Rege tenentur in capite sine licencia
+
+      Regia alienandi in manu Regis sibi et parrochie sue de Balsham predicto Eciam
+      coram domino Rege
+
+      Significavit Regi nuper eo quod dictus de Porecestre vicarius et de donacione
+      domini Regis spectante iure
+
+      alienando advocacionem ecclesie illius que quidem advocacio de domino Rege tenetur
+      in Capite sine licencia Regis
+
+      pro Thomam de Ketenenn obtinuit et quod eadem advocacionem ad se diuulgauit
+      in manibus suis Apud Ebor coram Rege
+
+      venit et similiter et magister ac idem in Curia ad huc se tenet et quin plurimas
+      bullas et litteras domini Regis
+
+      et regno Regis prejudicialiter missas in dicto regno inuentas et vnde dictus
+      defensor predictus A subposito processu super
+
+      ipsum Guillielmus et Prior et fecerunt machinaciones nequiter in dicti Regis
+      prejudicium et Regni sui contemptum
+
+      et alia enormia multipliciter ei intulit contra pacem dignitatem Regis predicti
+      etcetera et explere debeant manifesta et contra pacem Regis
+
+      pacem Regis Et quia non videtur Curie placuit nec decet plus quod capiatur in
+      manum Regis etcetera Et Vicecomes
+
+      Iurata pro non sit onerata etcetera Ideo preceptum est Vicecomiti Et Apud Westmonasterium
+      etcetera Et
+
+      apud Eboracum etcetera et pro futuro tempore coram eodem domino Rege et de sua
+      gratia speciali pro tunc vbicumque etcetera
+
+      '
+    resolution: Since no HTR draft was provided, Pass 1 represents an initial, more
+      literal reading from the image. Pass 2 reflects corrections and refined expansions
+      based on a deeper paleographic analysis and knowledge of legal formulas. Key
+      changes include correcting the incipit from 'Vnius' to 'Iurata', resolving complex
+      abbreviated phrases (e.g., line 9), correcting scribal errors or ambiguous readings
+      (e.g., 'placitum' to 'placuit' in line 11), and improving the grammatical sense
+      of several passages (e.g., line 4, line 8).
+    resolved: true
+  hallucinationAudit:
+    totalWords: 218
+    wordsGroundedInGlyphs: 218
+    wordsFromExpansion: 185
+    expansionsWithVisibleMark: 185
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

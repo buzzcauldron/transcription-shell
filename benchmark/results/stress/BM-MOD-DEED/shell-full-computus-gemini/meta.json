@@ -1,0 +1,11 @@
+{
+  "caseId": "BM-MOD-DEED",
+  "modelKey": "shell-full-computus-gemini",
+  "modelId": "gemini-2.5-pro",
+  "htrModel": "/Users/halxiii/src/latin_documents/gm-htr-computus_best.mlmodel",
+  "llmProvider": "gemini",
+  "pipeline": "transcription-shell: kraken seg \u2192 HTR \u2192 llm_mode=full",
+  "llmMode": "full",
+  "started": "2026-06-10T15:59:50Z",
+  "warnings": []
+}

@@ -1,0 +1,202 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: LOC-mal-4095900
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T15:37:49.826704+00:00'
+    targetLanguage: eng-latn
+    languageSet: []
+    targetEra: nineteenth_century
+    eraRange: 1860-1865
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: true
+      markExpansions: false
+      captureDeletionsAndInsertions: false
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: 1865 Interior Department letter forwarding Winnebago Indian deeds
+      for Lincoln's approval; transcribe all visible text
+    englishHandwritingModality: copperplate
+    epistemicNotes: The LINEATION NOTE in the user prompt stated that a PageXML detector
+      found 37 TextLine elements and that the segment count must match. As the PageXML
+      data was not provided, this instruction could not be followed. The document
+      has been transcribed into a single logical segment corresponding to the visible
+      text.
+    schemaRevision: null
+    protocolVersion: 1.1.0
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: English Copperplate script and printed Gothic type
+    scriptMatchesConfig: true
+    conditionNotes: The document is in good condition. A red circular stamp ('THE
+      LIBRARY OF CONGRESS') partially obscures some text on the right side. There
+      is a small ink blotch to the left of the word 'of' on line 15.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-21
+    position: body
+    text: 'Department of the Interior,
+
+      Washington, Feby 27, 1865
+
+      Jn[superscript: o]. G. Nicolay Esqs
+
+      Dear Sir,
+
+      Herewith
+
+      please find two Indian,
+
+      Deeds, for the President''s
+
+      approval. -
+
+      The Secretary directs me
+
+      to inquire if the two deeds,
+
+      sent up on the 17th ultimo
+
+      have been approved by the
+
+      President? If so, that they
+
+      be returned. They are deeds,
+
+      of Virginia Grignon, and
+
+      of Geo. Culver guardian for
+
+      minor heirs of Antoine Grignon;
+
+      Winnebago Indians -
+
+      Respectfully yours
+
+      A.S. H. White.
+
+
+      40959
+
+      '
+    confidence: high
+    uncertaintyTokenCount: 0
+    notes: A circular red stamp reading 'THE LIBRARY OF CONGRESS' with a central eagle
+      emblem is stamped over the right side of lines 3, 4, and 5, partially obscuring
+      'Esqs', 'Sir,', and 'Herewith'.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: 'Department of the Interior,
+
+      Washington, Feby 27, 1865
+
+      Jno. G. Nicolay Esqs
+
+      Dear Sir,
+
+      Herewith
+
+      please find two Indian,
+
+      Deeds, for the President''s
+
+      approval. -
+
+      The Secretary directs me
+
+      to inquire if the two deeds,
+
+      sent up on the 17th ultimo
+
+      have been approved by the
+
+      President? If so, that they
+
+      be returned. They are deeds,
+
+      of Virginia Grignon, and
+
+      of Geo. Culver guardian for
+
+      minor heirs of Antoine Grignon;
+
+      Winnebago Indians -
+
+      Respectfully yours,
+
+      A.S.H. White.
+
+
+      40959
+
+      '
+    pass2Reading: 'Department of the Interior,
+
+      Washington, Feby 27, 1865
+
+      Jn[superscript: o]. G. Nicolay Esqs
+
+      Dear Sir,
+
+      Herewith
+
+      please find two Indian,
+
+      Deeds, for the President''s
+
+      approval. -
+
+      The Secretary directs me
+
+      to inquire if the two deeds,
+
+      sent up on the 17th ultimo
+
+      have been approved by the
+
+      President? If so, that they
+
+      be returned. They are deeds,
+
+      of Virginia Grignon, and
+
+      of Geo. Culver guardian for
+
+      minor heirs of Antoine Grignon;
+
+      Winnebago Indians -
+
+      Respectfully yours
+
+      A.S. H. White.
+
+
+      40959
+
+      '
+    resolution: 'pass2 confirms final text; refined abbreviation markup (`Jno.` to
+      `Jn[superscript: o].`), corrected punctuation in closing (`yours,` to `yours`),
+      and adjusted spacing in signature (`A.S.H.` to `A.S. H.`).'
+    resolved: true
+  hallucinationAudit:
+    totalWords: 85
+    wordsGroundedInGlyphs: 85
+    wordsFromExpansion: 0
+    expansionsWithVisibleMark: 0
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

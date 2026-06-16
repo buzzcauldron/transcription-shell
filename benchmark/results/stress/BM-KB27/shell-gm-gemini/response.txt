@@ -1,0 +1,122 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: KB27-335-AALT-0235
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T19:40:24.221469+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: lat-latn
+    languageSet: []
+    targetEra: medieval
+    eraRange: 1330-1380
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: false
+      markExpansions: false
+      captureDeletionsAndInsertions: true
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: null
+    epistemicNotes: The provided lineation note (23 lines) does not match the visible
+      text in the image (12 lines). Transcription follows the 12 lines visible in
+      the image.
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: false
+    pageCount: 1
+    scriptIdentified: Gothic anglicana cursiva
+    scriptMatchesConfig: true
+    conditionNotes: The manuscript is in good condition, but the hand is a cursive
+      legal script with heavy abbreviation, making some passages difficult to decipher.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-12
+    position: body
+    text: 'Lond Versus Bege per Iohannem de Lincoln[ia] qui sequitur pro eo quod cum
+      ipse in curia domini Regis coram Iusticiariis suis obiecisset
+
+      aduocaciones ecclesiarum & aliorum beneficiorum ecclesiasticorum quorumcumque
+      que ad dictum Regem vt ad coronam & personam suam
+
+      dignitatem Regis mediante auxilio seu factione de perquisito alienando aduocacio
+      illa que quondam aduocacio de domino Rege tenet in
+
+      capite sine licencia Regis. Et eciam Nicholaum Oterburn[ensis] Prepositum qui
+      eandem aduocacionem ad se duxit in manu sua capi sine Rege
+
+      in Regiam maiestatem ac eciam in ordinem ad hunc ea racione vt cum plurimos
+      bullas & alias litteras domini Regis
+
+      fecit. Et a diuerso processu super iudicium suum cuiuslibet & per predictas
+      machinaciones infra eodem placitum ad affeccionem in Regis curia contemptum
+
+      et curie sue multipliciter vt infra continetur et per Iohannem dignitatem Regis
+      predictam exheredacionem manifestam & contra
+
+      pacem Regis etcetera. Et vnde non videtur ei quod ipse capere fuit vnde plus
+      quod capere ad hoc respondere non debet.
+
+      iudicium pro non est prosecutus etcetera. Ideo predictus capitalis et vnde non
+      videtur plus ei quod ipse ad hoc
+
+      respondere debet. Et predictus Iohannes dicit quod vbi etcetera.
+
+      apud Salop[iam] et ipse per Iusticiarios captus anno eodem domini Regis et idem
+      prefatum Iohannem prisona vbicumque etcetera.
+
+      Et hoc paratus est verificare pro domino Rege vnde petit iudicium etcetera.
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: The name transcribed as 'Bege' in line 1 is somewhat unclear and could
+      possibly be 'Boge'.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: 'Lond Versus Rogerum per Iohannem de Lincoln[ia] qui sequitur pro
+      eo. quam pro domino Rege v[er]s[us] Iohannem Hoby de Abyndon[ia] Clericum obiect[it]
+
+      in curia predicta quod cum idem legem & consuetudinem Regni Regio nunc h[ab]et
+      o[mn]ia terras & ten[ementa] & possessiones de
+
+      Regiam alienata in manu Regis capi & ponerentur donec eidem Regi de perquisito
+      alienando aduocacio illa que quondam aduocacio de domino Rege tenet in capite
+      sine licencia Regis
+
+      '
+    pass2Reading: 'Lond Versus Bege per Iohannem de Lincoln[ia] qui sequitur pro eo
+      quod cum ipse in curia domini Regis coram Iusticiariis suis obiecisset
+
+      aduocaciones ecclesiarum & aliorum beneficiorum ecclesiasticorum quorumcumque
+      que ad dictum Regem vt ad coronam & personam suam
+
+      dignitatem Regis mediante auxilio seu factione de perquisito alienando aduocacio
+      illa que quondam aduocacio de domino Rege tenet in
+
+      '
+    resolution: Pass 2 provides a more coherent reading based on a careful re-examination
+      of the difficult opening lines. The initial attempt (Pass 1) misread several
+      key phrases and names (e.g., 'Rogerum' for 'Bege') and failed to parse the legal
+      formula correctly.
+    resolved: true
+  hallucinationAudit:
+    totalWords: 201
+    wordsGroundedInGlyphs: 98
+    wordsFromExpansion: 103
+    expansionsWithVisibleMark: 103
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

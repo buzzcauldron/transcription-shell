@@ -1,0 +1,89 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: LOC-mal-4095900
+    modelId: gemini-2.5-pro
+    timestamp: '2026-06-10T16:01:06.608324+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: eng-latn
+    languageSet: []
+    targetEra: nineteenth_century
+    eraRange: 1860-1865
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: true
+      markExpansions: false
+      captureDeletionsAndInsertions: false
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: copperplate
+    epistemicNotes: The automated line detector reported 37 lines, which is inconsistent
+      with the visual evidence of the document. The transcription is structured into
+      a single segment to accurately reflect the document's logical and visual layout.
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: 19th-century American cursive (Copperplate)
+    scriptMatchesConfig: true
+    conditionNotes: A red circular stamp of the Library of Congress, featuring an
+      eagle, is partially superimposed on the text but does not significantly obscure
+      legibility.
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-22
+    position: body
+    text: "Department of the Interior,\n                      Washington, Feby 27,\
+      \ 1865\nJno. G. Nicolay Esqs\nDear Sir,\n           Herewith\nplease find two\
+      \ Indian,\nDeeds, for the President's\napproval -\nThe Secretary directs me\n\
+      to inquire if the two deeds,\nsent up on the 17th ultimo\nhave been approved\
+      \ by the\nPresident? If so, that they\nbe returned. They are deeds,\nof Virginia\
+      \ Grignon, and\nof Geo. Culver guardian for\nminor heirs of Antoine Grignon;\n\
+      Winnebago Indian-\n           Respectfully yours,\n                 N. S. H.\
+      \ White.\n\n40959\n"
+    confidence: high
+    uncertaintyTokenCount: 0
+    notes: The first line is printed letterhead. The word 'Herewith' is partially
+      obscured by a red Library of Congress stamp. The signature is highly stylized.
+      The number in the bottom left appears to be a modern archival stamp.
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: "Department of the Interior,\n                      Washington,\
+      \ Feby 27, 1865\nJno. G. Nicolay Esqs\nDear Sir,\n           Herewith\nplease\
+      \ find two Indian,\nDeeds, for the President's\napproval -\nThe Secretary directs\
+      \ me\nto inquire if the two deeds,\nsent up on the 17th ultimo\nhave been approved\
+      \ by the\nPresident? If so, that they\nbe returned. They are deeds,\nof Virginia\
+      \ Grignon, and\nof Geo. Culver guardian for\nminor heirs of Antoine Grignon;\n\
+      Winnebago Indian-\n           Respectfully yours,\n                 N. S. H.\
+      \ White.\n\n40959\n"
+    pass2Reading: "Department of the Interior,\n                      Washington,\
+      \ Feby 27, 1865\nJno. G. Nicolay Esqs\nDear Sir,\n           Herewith\nplease\
+      \ find two Indian,\nDeeds, for the President's\napproval -\nThe Secretary directs\
+      \ me\nto inquire if the two deeds,\nsent up on the 17th ultimo\nhave been approved\
+      \ by the\nPresident? If so, that they\nbe returned. They are deeds,\nof Virginia\
+      \ Grignon, and\nof Geo. Culver guardian for\nminor heirs of Antoine Grignon;\n\
+      Winnebago Indian-\n           Respectfully yours,\n                 N. S. H.\
+      \ White.\n\n40959\n"
+    resolution: pass2 confirms final text; no edit
+    resolved: true
+  hallucinationAudit:
+    totalWords: 78
+    wordsGroundedInGlyphs: 78
+    wordsFromExpansion: 0
+    expansionsWithVisibleMark: 0
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

@@ -1,0 +1,256 @@
+{
+  "generated": "2026-06-10T19:42:11Z",
+  "source": "transcriber-shell pipeline",
+  "rows": [
+    {
+      "case": "BM-001",
+      "model": "shell-computus-gemini (gemini-2.5-pro)",
+      "schema_ok": false,
+      "addition_count": "\u2014",
+      "omission_count": "\u2014",
+      "disposition": "FAIL",
+      "score": "\u2014",
+      "notes": "ERROR: while parsing a block mapping\n  in \"<unicode string>\", line 40, column 7:\n        - segmentId: 1\n          ^\nexpected <block end>, but found '<scalar>'\n  in \"<unicode string>\", line 46, column 9:\n            Springfield Aug. 18th 1837\n            ^"
+    },
+    {
+      "case": "BM-001",
+      "model": "shell-full-r5-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 94.08,
+      "addition_count": 29,
+      "omission_count": 29,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "Warnings: suspected overconfidence (soft escalation \u00a77.3\u2013\u00a77.4): multiline body text, conditionNotes suggest damage/abbreviation/difficulty, but zero [uncertain] / [illegible] / [glyph-uncertain] tokens \u2014 flag for human review"
+    },
+    {
+      "case": "BM-001",
+      "model": "shell-r2-gemini (gemini-2.5-pro)",
+      "schema_ok": false,
+      "addition_count": "\u2014",
+      "omission_count": "\u2014",
+      "disposition": "FAIL",
+      "score": "\u2014",
+      "notes": "ERROR: while parsing a block mapping\n  in \"<unicode string>\", line 38, column 7:\n        - segmentId: 1\n          ^\nexpected <block end>, but found '<scalar>'\n  in \"<unicode string>\", line 44, column 9:\n            Springfield Aug. 18[superscript: ... \n            ^"
+    },
+    {
+      "case": "BM-001",
+      "model": "shell-r5-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 94.49,
+      "addition_count": 31,
+      "omission_count": 27,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-MED-001",
+      "model": "shell-computus-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 72.0,
+      "addition_count": 31,
+      "omission_count": 28,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-MED-001",
+      "model": "shell-gm-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 85.0,
+      "addition_count": 18,
+      "omission_count": 15,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-MED-001",
+      "model": "shell-r2-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 69.0,
+      "addition_count": 37,
+      "omission_count": 31,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "Warnings: suspected overconfidence (soft escalation \u00a77.3\u2013\u00a77.4): multiline body text, conditionNotes suggest damage/abbreviation/difficulty, but zero [uncertain] / [illegible] / [glyph-uncertain] tokens \u2014 flag for human review"
+    },
+    {
+      "case": "BM-MED-001",
+      "model": "shell-r5-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 88.0,
+      "addition_count": 14,
+      "omission_count": 12,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-KB27",
+      "model": "shell-computus-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 22.49,
+      "addition_count": 140,
+      "omission_count": 193,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "Warnings: suspected overconfidence (soft escalation \u00a77.3\u2013\u00a77.4): multiline body text, conditionNotes suggest damage/abbreviation/difficulty, but zero [uncertain] / [illegible] / [glyph-uncertain] tokens \u2014 flag for human review"
+    },
+    {
+      "case": "BM-KB27",
+      "model": "shell-full-r2-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 23.29,
+      "addition_count": 185,
+      "omission_count": 191,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-KB27",
+      "model": "shell-gm-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 9.24,
+      "addition_count": 194,
+      "omission_count": 226,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "Warnings: suspected overconfidence (soft escalation \u00a77.3\u2013\u00a77.4): multiline body text, conditionNotes suggest damage/abbreviation/difficulty, but zero [uncertain] / [illegible] / [glyph-uncertain] tokens \u2014 flag for human review"
+    },
+    {
+      "case": "BM-KB27",
+      "model": "shell-r2-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 26.91,
+      "addition_count": 158,
+      "omission_count": 182,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-KB27",
+      "model": "shell-r5-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 20.48,
+      "addition_count": 180,
+      "omission_count": 198,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-MOD-LOVEJOY",
+      "model": "shell-computus-gemini (gemini-2.5-pro)",
+      "schema_ok": false,
+      "accuracy_percent": 82.43,
+      "addition_count": 4,
+      "omission_count": 13,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "missing required field: confidence; missing required field: uncertaintyTokenCount; segment 0 confidence invalid: got None, expected one of ('high', 'medium', 'low') Warnings: suspected overconfidence (soft escalation \u00a77.3\u2013\u00a77.4): multiline body text, conditionNotes suggest damage/abbreviation/difficulty, but zero [uncertain] / [illegible] / [glyph-uncertain] tokens \u2014 flag for human review"
+    },
+    {
+      "case": "BM-MOD-LOVEJOY",
+      "model": "shell-r2-gemini (gemini-2.5-pro)",
+      "schema_ok": false,
+      "addition_count": "\u2014",
+      "omission_count": "\u2014",
+      "disposition": "FAIL",
+      "score": "\u2014",
+      "notes": "ERROR: while parsing a block mapping\n  in \"<unicode string>\", line 38, column 7:\n        - segmentId: 1\n          ^\nexpected <block end>, but found '<block mapping start>'\n  in \"<unicode string>\", line 46, column 9:\n            Friend Nicolay:\n            ^"
+    },
+    {
+      "case": "BM-MOD-LOVEJOY",
+      "model": "shell-r5-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 81.08,
+      "addition_count": 3,
+      "omission_count": 14,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "Warnings: suspected overconfidence (soft escalation \u00a77.3\u2013\u00a77.4): multiline body text, conditionNotes suggest damage/abbreviation/difficulty, but zero [uncertain] / [illegible] / [glyph-uncertain] tokens \u2014 flag for human review"
+    },
+    {
+      "case": "BM-MOD-JOHNSON",
+      "model": "shell-computus-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 26.87,
+      "addition_count": 22,
+      "omission_count": 49,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-MOD-JOHNSON",
+      "model": "shell-r2-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 26.87,
+      "addition_count": 21,
+      "omission_count": 49,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-MOD-JOHNSON",
+      "model": "shell-r5-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 31.34,
+      "addition_count": 19,
+      "omission_count": 46,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    },
+    {
+      "case": "BM-MOD-DEED",
+      "model": "shell-computus-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 97.44,
+      "addition_count": 5,
+      "omission_count": 2,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "Warnings: suspected overconfidence (soft escalation \u00a77.3\u2013\u00a77.4): multiline body text, conditionNotes suggest damage/abbreviation/difficulty, but zero [uncertain] / [illegible] / [glyph-uncertain] tokens \u2014 flag for human review"
+    },
+    {
+      "case": "BM-MOD-DEED",
+      "model": "shell-full-computus-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 96.15,
+      "addition_count": 5,
+      "omission_count": 3,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "Warnings: suspected overconfidence (soft escalation \u00a77.3\u2013\u00a77.4): multiline body text, conditionNotes suggest damage/abbreviation/difficulty, but zero [uncertain] / [illegible] / [glyph-uncertain] tokens \u2014 flag for human review"
+    },
+    {
+      "case": "BM-MOD-DEED",
+      "model": "shell-r2-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 93.59,
+      "addition_count": 8,
+      "omission_count": 5,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "Warnings: suspected overconfidence (soft escalation \u00a77.3\u2013\u00a77.4): multiline body text, conditionNotes suggest damage/abbreviation/difficulty, but zero [uncertain] / [illegible] / [glyph-uncertain] tokens \u2014 flag for human review"
+    },
+    {
+      "case": "BM-MOD-DEED",
+      "model": "shell-r5-gemini (gemini-2.5-pro)",
+      "schema_ok": true,
+      "accuracy_percent": 92.31,
+      "addition_count": 7,
+      "omission_count": 6,
+      "disposition": "FAIL",
+      "score": 0.0,
+      "notes": "\u2014"
+    }
+  ]
+}
