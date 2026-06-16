@@ -182,7 +182,7 @@ def run_shell_case(
 def main() -> int:
     ap = argparse.ArgumentParser(description="Shell pipeline stress runs + replay score")
     ap.add_argument("--manifest", type=Path, default=PROTO / "benchmark" / "manifest.yaml")
-    ap.add_argument("--output-dir", type=Path, default=PROTO / "benchmark" / "test-results" / "stress")
+    ap.add_argument("--output-dir", type=Path, default=REPO / "benchmark" / "results" / "stress")
     ap.add_argument("--cases", nargs="*", default=None)
     ap.add_argument("--include-optional", action="store_true")
     ap.add_argument("--htr", nargs="*", choices=["gm"] + list(HTR_MODELS), default=None, help="HTR models to run (default: per evaluator)")
@@ -261,7 +261,10 @@ def main() -> int:
                 print(f"[skip] {case_id} htr={hk}: missing {HTR_MODELS[hk]}")
                 continue
             mode_tag = args.llm_mode if args.llm_mode != "correct" else ""
-            run_label = f"shell-{mode_tag}-{hk}-{args.llm_provider}" if mode_tag else f"shell-{hk}-{args.llm_provider}"
+            # Include a short model slug so different LLM models don't overwrite each other.
+            model_slug = args.llm_model.split("/")[-1].replace(".", "-").replace("_", "-") if args.llm_model else args.llm_provider
+            label_parts = ["shell"] + ([mode_tag] if mode_tag else []) + [hk, model_slug]
+            run_label = "-".join(label_parts)
             out_dir = args.output_dir / case_id / run_label
             out_dir.mkdir(parents=True, exist_ok=True)
             resp_path = out_dir / "response.txt"

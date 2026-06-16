@@ -1,0 +1,14 @@
+{
+  "caseId": "BM-OCR-001",
+  "modelKey": "shell-r2-gemini-3-5-flash",
+  "modelId": "gemini-3.5-flash",
+  "htrModel": "/home/sethj/src/latin_documents/gm-htr-r2.mlmodel_best.mlmodel",
+  "llmProvider": "gemini",
+  "pipeline": "transcription-shell: kraken seg \u2192 kraken HTR (r2) \u2192 llm_mode=correct",
+  "llmMode": "correct",
+  "started": "2026-06-16T17:24:32Z",
+  "warnings": [
+    "error: --require-text-line set but no TextLine elements found",
+    "Lines XML did not pass validation (well-formed XML, TextLine rules, or optional checks). See detailed messages above; try unchecking 'Require \u22651 TextLine' if your file has no TextLine yet, or use --skip-lines-xml-validation / TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION to bypass checks."
+  ]
+}

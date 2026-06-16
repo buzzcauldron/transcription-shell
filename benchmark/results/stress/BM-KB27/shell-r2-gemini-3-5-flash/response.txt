@@ -1,0 +1,105 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: KB27-335-AALT-0235
+    modelId: gemini-3.5-flash
+    timestamp: '2026-06-16T17:26:10.651755+00:00'
+    targetLanguage: lat-latn
+    languageSet: []
+    targetEra: medieval
+    eraRange: 1330-1380
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: false
+      markExpansions: false
+      captureDeletionsAndInsertions: true
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: null
+    englishHandwritingModality: null
+    epistemicNotes: The transcription represents expanded Latin legal abbreviations
+      typical of 14th-century court hand (Anglicana). Certain administrative or formulaic
+      words near line endings or fold lines have minor residual uncertainty.
+    schemaRevision: null
+    protocolVersion: 1.1.0
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: Gothic anglicana cursiva
+    scriptMatchesConfig: true
+    conditionNotes: null
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: 1-15
+    position: body
+    text: 'Lond || Dominus Rex per Johannem de Lincolnia qui sequitur pro eo quod
+      cum [uncertain: in parliamento] obierit
+
+      a retro quasi ad dominium et contra legem et consuetudinem regni Regis nunc
+      Anglie omnia feoda et terras et tenementa de
+
+      advocationes ecclesiarum et aliorum beneficiorum ecclesiasticorum quorumcumque
+      que de domino Rege tenentur in capite sine licentia
+
+      Regis alienata in manu Regis capi et ponere Regem in plenariam seisinam deberet
+      . per quod
+
+      significasset Regi nuper amico de se sectam de Porchifere videlicet et de Regia
+      donatione quaecumque fore
+
+      alienata advocatione ecclesie illius . que quidem advocatio de domino Rege tenetur
+      in capite sine licentia Regia
+
+      et Johannem Rycheman clericum pro et quas sectam advocationem et de causa in
+      manu sua capi fecit Rex .
+
+      nuper idem est ingressus et sic in eisdem adhuc se tenet . et quia plures bullas
+      et literas domino Regi
+
+      et regno Regio prejudiciales infra idem regnum detulit et indies deferre facit
+      . et super
+
+      eisdem bullis et literis per callidas machinationes infra idem regnum prosequitur
+      cum effectu in Regis contemptum
+
+      corone et Regie dignitatis Regis preiudicium manifestum et contra
+
+      pacem Regis . Et ipse non venit . Et preceptum fuit vicecomiti quod caperet
+      eum si etc . et salvo
+
+      ita quod non est inventus etc . Ideo preceptum est vicecomiti sicut pluries
+      quod caperet eum si etc . et salvo
+
+      ita quod habeat corpus eius coram domino Rege a die Pasche in quindecim dies
+      ubicumque etc .
+
+      ad salvo etc per quod habeat corpus eius coram domino Rege a die Pasche in quindecim
+      dies ubicumque etc .
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 1
+    notes: null
+  mismatchReport: []
+  hallucinationAudit:
+    totalWords: 240
+    wordsGroundedInGlyphs: 240
+    wordsFromExpansion: 130
+    expansionsWithVisibleMark: 130
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true
+  pass2Summary:
+    passCount: 2
+    segmentsAltered: 0

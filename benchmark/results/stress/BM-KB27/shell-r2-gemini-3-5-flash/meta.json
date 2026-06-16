@@ -1,0 +1,11 @@
+{
+  "caseId": "BM-KB27",
+  "modelKey": "shell-r2-gemini-3-5-flash",
+  "modelId": "gemini-3.5-flash",
+  "htrModel": "/home/sethj/src/latin_documents/gm-htr-r2.mlmodel_best.mlmodel",
+  "llmProvider": "gemini",
+  "pipeline": "transcription-shell: kraken seg \u2192 kraken HTR (r2) \u2192 llm_mode=correct",
+  "llmMode": "correct",
+  "started": "2026-06-16T17:24:32Z",
+  "warnings": []
+}

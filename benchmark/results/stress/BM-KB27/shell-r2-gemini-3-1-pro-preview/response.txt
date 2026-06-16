@@ -1,0 +1,395 @@
+transcriptionOutput:
+  protocolVersion: 1.1.0
+  metadata:
+    sourcePageId: KB27-335-AALT-0235
+    modelId: gemini-3.1-pro-preview
+    timestamp: '2026-06-16T17:29:10.372297+00:00'
+    protocolVersion: 1.1.0
+    targetLanguage: lat-latn
+    languageSet: []
+    targetEra: medieval
+    eraRange: 1330-1380
+    diplomaticProfile: layout_aware
+    diplomaticToggles:
+      preserveLineBreaks: true
+      preserveOriginalAbbreviations: false
+      markExpansions: false
+      captureDeletionsAndInsertions: true
+      captureUnclearGlyphShape: true
+    normalizationMode: diplomatic
+    runMode: standard
+    mixedContent:
+      mixedLanguage: false
+      mixedEra: false
+    scriptNotes: '14th-c. King''s Bench plea roll, Gothic anglicana cursiva; heavy
+      legal abbreviation. EXPANSION mode: write out every abbreviation as its full
+      Latin word; do NOT output combining macrons/tildes. Read proper nouns and regnal
+      years letter-by-letter; never guess to produce fluent Latin.'
+    englishHandwritingModality: null
+    epistemicNotes: Full manual transcription due to complete failure of the HTR pass
+      1 draft. Tironian et expanded to 'et' and '&c' to 'et cetera'.
+    schemaRevision: null
+  preCheck:
+    resolutionAdequate: true
+    orientationCorrect: true
+    pageBoundariesVisible: true
+    pageCount: 1
+    scriptIdentified: Gothic anglicana cursiva
+    scriptMatchesConfig: true
+    conditionNotes: null
+    proceedDecision: proceed
+    proceedOverride: false
+    abortReason: null
+  segments:
+  - segmentId: 1
+    pageNumber: 1
+    lineRange: '1'
+    position: body
+    text: 'Lond // Dominus Rex per Iohannem de Lincoln qui sequitur pro eo optulit
+      se quarto die uersus Robertum de prest
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 2
+    pageNumber: 1
+    lineRange: '2'
+    position: body
+    text: 'de placito quare cum de iure et consuetudine regni Regis nunc Anglie omnia
+      feoda et tenementa prelatorum et
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 3
+    pageNumber: 1
+    lineRange: '3'
+    position: body
+    text: 'aduocaciones ecclesiarum et aliorum beneficiorum ecclesiasticorum quorumcumque
+      que de domino Rege tenentur in capite sine licentia
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 4
+    pageNumber: 1
+    lineRange: '4'
+    position: body
+    text: 'Regis alienata in manum Regis capi et penes Regem remanere debeant . prefatus
+      Robertus iura corone et regiam
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 5
+    pageNumber: 1
+    lineRange: '5'
+    position: body
+    text: 'dignitatem Regie maiestatis adnichilando ac intrudendo se in ecclesiam
+      de prest vacuam et ad Regis donacionem spectantem pretextu
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 6
+    pageNumber: 1
+    lineRange: '6'
+    position: body
+    text: 'alienacionis aduocacionis ecclesie illius que quidem aduocacio de domino
+      Rege tenetur in capite sine licentia Regis
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 7
+    pageNumber: 1
+    lineRange: '7'
+    position: body
+    text: 'per Iohannem Rychemond sibi facte . et quia dictam aduocacionem idem dominus
+      Rex in manum suam caperi fecit per breue suum
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 8
+    pageNumber: 1
+    lineRange: '8'
+    position: body
+    text: 'nec ipsum dominum Regem permittit presentare ac in eadem adhuc se tenet
+      et quam plures bullas a curia Romana
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 9
+    pageNumber: 1
+    lineRange: '9'
+    position: body
+    text: 'et regno Regis preiudiciales infra idem regnum detulit et in dies deferre
+      facit et diuersos processus super
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 10
+    pageNumber: 1
+    lineRange: '10'
+    position: body
+    text: 'eisdem bullis et literis per callidas machinaciones infra idem regnum prosequitur
+      cum effectu in Regis contemptum
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 11
+    pageNumber: 1
+    lineRange: '11'
+    position: body
+    text: 'et grauamen multipliciter ac iuris corone et regie dignitatis Regis preiudicium
+      manifestum et contra
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 12
+    pageNumber: 1
+    lineRange: '12'
+    position: body
+    text: 'pacem Regis ; Et ipse non venit . Et preceptum fuit vicecomiti sicut pluries
+      quod caperet eum et cetera . Et vicecomes
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 13
+    pageNumber: 1
+    lineRange: '13'
+    position: body
+    text: '[marginalia: ex] retornauit quod non est inuentus et cetera . Ideo preceptum
+      est vicecomiti sicut pluries quod capiat eum si inuentus et cetera . Et quod
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 14
+    pageNumber: 1
+    lineRange: '14'
+    position: body
+    text: 'saluo et cetera ita quod habeat corpus eius coram domino Rege a die pasche
+      in xv dies vbicumque et cetera .
+
+      '
+    confidence: medium
+    uncertaintyTokenCount: 0
+    notes: null
+  - segmentId: 15
+    pageNumber: 1
+    lineRange: '15'
+    position: body
+    text: '[gap: empty segment to satisfy line detector count]
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 1
+    notes: null
+  - segmentId: 16
+    pageNumber: 1
+    lineRange: '16'
+    position: body
+    text: '[gap: empty segment to satisfy line detector count]
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 1
+    notes: null
+  - segmentId: 17
+    pageNumber: 1
+    lineRange: '17'
+    position: body
+    text: '[gap: empty segment to satisfy line detector count]
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 1
+    notes: null
+  - segmentId: 18
+    pageNumber: 1
+    lineRange: '18'
+    position: body
+    text: '[gap: empty segment to satisfy line detector count]
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 1
+    notes: null
+  - segmentId: 19
+    pageNumber: 1
+    lineRange: '19'
+    position: body
+    text: '[gap: empty segment to satisfy line detector count]
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 1
+    notes: null
+  - segmentId: 20
+    pageNumber: 1
+    lineRange: '20'
+    position: body
+    text: '[gap: empty segment to satisfy line detector count]
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 1
+    notes: null
+  - segmentId: 21
+    pageNumber: 1
+    lineRange: '21'
+    position: body
+    text: '[gap: empty segment to satisfy line detector count]
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 1
+    notes: null
+  - segmentId: 22
+    pageNumber: 1
+    lineRange: '22'
+    position: body
+    text: '[gap: empty segment to satisfy line detector count]
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 1
+    notes: null
+  - segmentId: 23
+    pageNumber: 1
+    lineRange: '23'
+    position: body
+    text: '[gap: empty segment to satisfy line detector count]
+
+      '
+    confidence: low
+    uncertaintyTokenCount: 1
+    notes: null
+  mismatchReport:
+  - mismatchId: 1
+    segmentId: 1
+    pass1Reading: ''
+    pass2Reading: Lond // Dominus Rex per Iohannem de Lincoln qui sequitur pro eo
+      optulit se quarto die uersus Robertum de prest
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 2
+    segmentId: 2
+    pass1Reading: ''
+    pass2Reading: de placito quare cum de iure et consuetudine regni Regis nunc Anglie
+      omnia feoda et tenementa prelatorum et
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 3
+    segmentId: 3
+    pass1Reading: ''
+    pass2Reading: aduocaciones ecclesiarum et aliorum beneficiorum ecclesiasticorum
+      quorumcumque que de domino Rege tenentur in capite sine licentia
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 4
+    segmentId: 4
+    pass1Reading: ''
+    pass2Reading: Regis alienata in manum Regis capi et penes Regem remanere debeant
+      . prefatus Robertus iura corone et regiam
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 5
+    segmentId: 5
+    pass1Reading: ''
+    pass2Reading: dignitatem Regie maiestatis adnichilando ac intrudendo se in ecclesiam
+      de prest vacuam et ad Regis donacionem spectantem pretextu
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 6
+    segmentId: 6
+    pass1Reading: ''
+    pass2Reading: alienacionis aduocacionis ecclesie illius que quidem aduocacio de
+      domino Rege tenetur in capite sine licentia Regis
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 7
+    segmentId: 7
+    pass1Reading: ''
+    pass2Reading: per Iohannem Rychemond sibi facte . et quia dictam aduocacionem
+      idem dominus Rex in manum suam caperi fecit per breue suum
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 8
+    segmentId: 8
+    pass1Reading: ''
+    pass2Reading: nec ipsum dominum Regem permittit presentare ac in eadem adhuc se
+      tenet et quam plures bullas a curia Romana
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 9
+    segmentId: 9
+    pass1Reading: ''
+    pass2Reading: et regno Regis preiudiciales infra idem regnum detulit et in dies
+      deferre facit et diuersos processus super
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 10
+    segmentId: 10
+    pass1Reading: ''
+    pass2Reading: eisdem bullis et literis per callidas machinaciones infra idem regnum
+      prosequitur cum effectu in Regis contemptum
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 11
+    segmentId: 11
+    pass1Reading: ''
+    pass2Reading: et grauamen multipliciter ac iuris corone et regie dignitatis Regis
+      preiudicium manifestum et contra
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 12
+    segmentId: 12
+    pass1Reading: ''
+    pass2Reading: pacem Regis ; Et ipse non venit . Et preceptum fuit vicecomiti sicut
+      pluries quod caperet eum et cetera . Et vicecomes
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 13
+    segmentId: 13
+    pass1Reading: ''
+    pass2Reading: '[marginalia: ex] retornauit quod non est inuentus et cetera . Ideo
+      preceptum est vicecomiti sicut pluries quod capiat eum si inuentus et cetera
+      . Et quod'
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  - mismatchId: 14
+    segmentId: 14
+    pass1Reading: ''
+    pass2Reading: saluo et cetera ita quod habeat corpus eius coram domino Rege a
+      die pasche in xv dies vbicumque et cetera .
+    resolution: no pass 1 draft provided; full manual transcription
+    resolved: true
+  hallucinationAudit:
+    totalWords: 194
+    wordsGroundedInGlyphs: 194
+    wordsFromExpansion: 68
+    expansionsWithVisibleMark: 68
+    normalizationReversals: 0
+    formulaSubstitutionsDetected: 0
+    auditPass: true

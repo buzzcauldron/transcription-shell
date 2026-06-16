@@ -1,0 +1,1 @@
+ERROR: error: --require-text-line set but no TextLine elements found; Lines XML did not pass validation (well-formed XML, TextLine rules, or optional checks). See detailed messages above; try unchecking 'Require ≥1 TextLine' if your file has no TextLine yet, or use --skip-lines-xml-validation / TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION to bypass checks.
