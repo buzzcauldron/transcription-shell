@@ -121,8 +121,8 @@ log "submitting r7-full (afterok:$R6)..."
 R7=$(sbatch --parsable --dependency=afterok:"$R6" "$SCRIPTS/r7_full_retrain.sbatch")
 log "  r7-full   job $R7"
 
-log "submitting anglicana (afterok:$R6, KB27/CP40/JUST1)..."
-ANG=$(sbatch --parsable --dependency=afterok:"$R6" "$SCRIPTS/r_anglicana_legal.sbatch")
+log "submitting anglicana (afterok:$R7, KB27/CP40/JUST1)..."
+ANG=$(sbatch --parsable --dependency=afterok:"$R7" "$SCRIPTS/r_anglicana_legal.sbatch")
 log "  anglicana job $ANG"
 
 echo ""

@@ -41,6 +41,12 @@ def transcribe_gemini(
             "in .env or paste under Provider keys in the GUI."
         )
     client = genai.Client(api_key=s.google_api_key)
+    from transcriber_shell.protocol_paths import ensure_prompt_builder_on_path
+
+    ensure_prompt_builder_on_path(s)
+    from provider_adapters import augment_system_for_provider  # noqa: E402
+
+    system = augment_system_for_provider(system, "gemini")
     from transcriber_shell.llm.image_prep import prepare_image
     raw, mime = prepare_image(image_path)
 

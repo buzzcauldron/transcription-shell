@@ -51,6 +51,13 @@ def transcribe_openai(
     if http_client is not None:
         client_kw["http_client"] = http_client
     client = OpenAI(**client_kw)
+    from transcriber_shell.protocol_paths import ensure_prompt_builder_on_path
+
+    ensure_prompt_builder_on_path(s)
+    from provider_adapters import augment_system_for_provider, openai_system_role  # noqa: E402
+
+    system = augment_system_for_provider(system, "openai")
+    system_role = openai_system_role("openai")
     from transcriber_shell.llm.image_prep import prepare_image
     raw, media = prepare_image(image_path)
     b64 = base64.standard_b64encode(raw).decode("ascii")
@@ -65,12 +72,15 @@ def transcribe_openai(
                 model=model_id,
                 max_tokens=32_000,
                 messages=[
-                    {"role": "system", "content": system},
+                    {"role": system_role, "content": system},
                     {
                         "role": "user",
                         "content": [
                             {"type": "text", "text": user_text},
-                            {"type": "image_url", "image_url": {"url": url}},
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": url, "detail": "high"},
+                            },
                         ],
                     },
                 ],

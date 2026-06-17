@@ -197,6 +197,13 @@ def transcribe_anthropic(
     client = anthropic.Anthropic(**client_kw)
     user_message = _anthropic_user_message(image_path=image_path, user_text=user_text)
 
+    from transcriber_shell.protocol_paths import ensure_prompt_builder_on_path
+
+    ensure_prompt_builder_on_path(s)
+    from provider_adapters import augment_system_for_provider  # noqa: E402
+
+    system = augment_system_for_provider(system, "anthropic")
+
     model_id = model or s.resolved_model("anthropic")
     max_attempts = 1 + max(0, s.anthropic_max_retries)
 
