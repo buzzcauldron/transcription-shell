@@ -11,14 +11,17 @@
 #   2  cannot reach Bridges (SSH)
 set -euo pipefail
 
-LOGIN="${BRIDGES_LOGIN:-bridges2}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/bridges_ssh.sh"
+
 USER="${BRIDGES_USER:-sstrickland}"
 SRC="${BRIDGES_SHELL_SRC:-/ocean/projects/hum260002p/sstrickland/transcriber-shell/src}"
 JSON=0
 [[ "${1:-}" == "--json" ]] && JSON=1
 
 ssh_cmd() {
-  ssh -o BatchMode=yes -o ConnectTimeout=15 "$LOGIN" "$@"
+  bridges_ssh "$@"
 }
 
 report() {
@@ -29,7 +32,8 @@ report() {
 }
 
 if ! ssh_cmd "echo ok" >/dev/null 2>&1; then
-  report "FAIL: cannot SSH to $LOGIN (BatchMode)"
+  report "FAIL: cannot SSH to $BRIDGES_LOGIN (BatchMode)"
+  report "HINT: set BRIDGES_SSH_KEY or BRIDGES_SSH_KEY_FILE in automation secrets"
   exit 2
 fi
 
@@ -73,6 +77,21 @@ for jname in htr-r6-core htr-r7-full htr-anglicana tess-pre1800 ibooks-ia; do
     warn "$jname not in queue (check sacct)"
   fi
 done
+
+# r6 done but downstream missing and not queued → needs resubmit
+if [[ -s "$SRC/gm-htr-r6-core_best.mlmodel" ]]; then
+  for pair in "htr-r7-full:gm-htr-r7-full_best.mlmodel" "htr-anglicana:gm-htr-anglicana_best.mlmodel"; do
+    jname="${pair%%:*}"
+    mfile="${pair#*:}"
+    [[ -s "$SRC/$mfile" ]] && continue
+    squeue -u "$USER" -h -o "%j" 2>/dev/null | grep -qx "$jname" && continue
+    dstate=$(sacct -u "$USER" --name="$jname" --starttime=$(date -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -v-7d +%Y-%m-%d) \
+      --format=JobName,State -P -n 2>/dev/null | awk -F'|' -v n="$jname" '$1==n { s=$2 } END { print s }')
+    if [[ "$dstate" == "FAILED" || "$dstate" == "TIMEOUT" || -z "$dstate" ]]; then
+      fail "r6 complete but $jname not queued (model missing)"
+    fi
+  done
+fi
 
 # ── Artifacts ───────────────────────────────────────────────────────────────
 echo "==ARTIFACTS=="
