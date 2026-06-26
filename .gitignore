@@ -24,3 +24,7 @@ test-results/
 
 # Strigil downloads from scripts/computus/acquire_library.sh
 references/computus-library/images/
+*.pyc
+.cursor/
+.tdad/
+*.local-bak

@@ -34,3 +34,5 @@ class PipelineResult:
     htr_results: dict[str, Any] = field(default_factory=dict)
     # Per-stage wall-clock timings: [(label, elapsed_s), ...] in execution order.
     timings: list[tuple[str, float]] = field(default_factory=list)
+    expanded_tei_path: Path | None = None
+    expanded_txt_path: Path | None = None

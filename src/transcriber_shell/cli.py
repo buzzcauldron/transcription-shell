@@ -172,6 +172,7 @@ def _apply_doc_type(
     doc_type: str | None,
     settings: Settings,
     prompt_arg: str | None,
+    explicit_provider: str | None = None,
 ) -> tuple[Settings, str | None]:
     """Load doc-type spec and apply it to settings + prompt path."""
     if not doc_type:
@@ -180,7 +181,7 @@ def _apply_doc_type(
     from transcriber_shell.doc_type_apply import apply_doc_type
 
     try:
-        return apply_doc_type(doc_type, settings, prompt_arg)
+        return apply_doc_type(doc_type, settings, prompt_arg, explicit_provider=explicit_provider)
     except KeyError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1)
@@ -355,9 +356,22 @@ def _pipeline_settings(args: argparse.Namespace) -> Settings:
         updates["htr_combination"] = args.htr_combination
     elif getattr(args, "htr_sequential", False):
         updates["htr_parallel"] = False
+    if getattr(args, "expand", False):
+        updates["expand_diplomatic_enabled"] = True
     if updates:
         return s.model_copy(update=updates)
     return s
+
+
+def _add_expand_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--expand",
+        action="store_true",
+        help=(
+            "After diplomatic transcription, run expand-diplomatic (TEI + expanded.txt "
+            "derivatives). Requires expand-diplomatic install and GEMINI_API_KEY for gemini backend."
+        ),
+    )
 
 
 def _add_pipeline_network_args(p: argparse.ArgumentParser) -> None:
@@ -411,7 +425,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                   f"proceeding without doc-type", file=sys.stderr)
 
     settings, prompt_path = _apply_doc_type(
-        doc_type, settings, getattr(args, "prompt", None)
+        doc_type, settings, getattr(args, "prompt", None),
+        explicit_provider=getattr(args, "provider", None),
     )
     settings = _apply_htr_model_override(getattr(args, "htr_model", None), settings)
     if not prompt_path:
@@ -460,6 +475,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(f"lines_xml={res.lines_xml_path}")
     if res.transcription_yaml_path:
         print(f"transcription_yaml={res.transcription_yaml_path}")
+    if res.expanded_tei_path:
+        print(f"expanded_tei={res.expanded_tei_path}")
+    if res.expanded_txt_path:
+        print(f"expanded_txt={res.expanded_txt_path}")
     print(f"text_line_count={res.text_line_count}")
     if res.errors:
         for e in res.errors:
@@ -605,7 +624,8 @@ def cmd_batch(args: argparse.Namespace) -> int:
         if not group_images:
             continue
         settings, prompt_path = _apply_doc_type(
-            group_doc_type, base_settings, getattr(args, "prompt", None)
+            group_doc_type, base_settings, getattr(args, "prompt", None),
+            explicit_provider=getattr(args, "provider", None),
         )
         settings = _apply_htr_model_override(getattr(args, "htr_model", None), settings)
         if not prompt_path:
@@ -1460,6 +1480,7 @@ def main() -> None:
         help="After transcription succeeds, run DocLayNet figure detection, save crops, and weave [fig:id] markers into the YAML.",
     )
     _add_pipeline_network_args(run)
+    _add_expand_args(run)
     run.set_defaults(func=cmd_run)
 
     batch = sub.add_parser(
@@ -1642,6 +1663,7 @@ def main() -> None:
         help="After each transcription succeeds, run DocLayNet figure detection, save crops, and weave [fig:id] markers into the YAML.",
     )
     _add_pipeline_network_args(batch)
+    _add_expand_args(batch)
     batch.set_defaults(func=cmd_batch)
 
     gui = sub.add_parser(

@@ -36,6 +36,12 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 
 [[ -f "$BASE" ]] || BASE="$SRC/gm-htr-r6-core.mlmodel_best.mlmodel"
+if [[ ! -f "$BASE" ]] && [[ -d "$SRC/gm-htr-r6-core" ]]; then
+  echo "[r7-full] exporting r6 best from latest checkpoint"
+  bash "$SRC/scripts/bridges_export_kraken_checkpoint.sh" \
+    "$SRC/gm-htr-r6-core" "$SRC/gm-htr-r6-core_best.mlmodel" || true
+  BASE="$SRC/gm-htr-r6-core_best.mlmodel"
+fi
 [[ -f "$BASE" ]] || { echo "Missing r6-core best model at $SRC/gm-htr-r6-core_best.mlmodel"; exit 1; }
 
 echo "[r7-full] base=$BASE"

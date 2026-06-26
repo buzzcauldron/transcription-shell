@@ -28,6 +28,9 @@ dependencies = [
 fingerprint = [
   "manuscript-fingerprint @ git+https://github.com/buzzcauldron/manuscript-fingerprint.git",
 ]
+historical-ocr = [
+  "historical-ocr @ file:vendor/historical-ocr",
+]
 xml-xsd = ["lxml>=5.0"]
 gemini = ["google-genai>=1.0.0"]
 api = ["fastapi>=0.115.0", "uvicorn[standard]>=0.32.0", "python-multipart>=0.0.9"]
@@ -48,6 +51,11 @@ trocr = [
   "torchvision>=0.15.0",
   "transformers>=4.36.0",
   "accelerate>=0.25.0",
+]
+comma = [
+  "transformers>=4.36.0",
+  "torch>=2.0.0",
+  "sentencepiece>=0.1.99",
 ]
 figures = ["ultralytics>=8.0.0", "huggingface-hub>=0.20"]
 viz = ["matplotlib>=3.8.0"]

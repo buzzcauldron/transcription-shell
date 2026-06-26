@@ -1,0 +1,28 @@
+{
+  "job_id": "posner_p4_ocr",
+  "export_basename": "page_0004",
+  "created_at": "2026-06-25T20:02:26.091309+00:00",
+  "software": "historical-ocr 0.1.0",
+  "page_count": 1,
+  "resolved_material": "print",
+  "material_mode": "print",
+  "print_doc_type": "humanist_roman",
+  "print_ocr_combination": "tesseract_then_clean",
+  "normalization_mode": "diplomatic",
+  "publication_year": 1490,
+  "print_language": "la",
+  "sources": [
+    {
+      "kind": "file",
+      "value": "/Users/halxiii/Downloads/cmu_posner/Posner_529.3_R33K_job/01_pages/page_0004.jpg",
+      "fetched_at": null
+    }
+  ],
+  "deliverables": {
+    "document_txt": "export/page_0004.txt",
+    "document_xml": "export/page_0004.xml",
+    "text_review_json": "export/page_0004.review.json",
+    "text_review_heatmap": "export/page_0004.review.png"
+  },
+  "routing_hints": []
+}

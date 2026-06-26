@@ -39,7 +39,12 @@ python3 "$SRC/scripts/comma_recognition_pass.py" \
   --language-filter latin \
   --max-manuscripts "$MAX_MS" \
   --max-pages-per-ms "$MAX_PAGES" \
-  --device cuda:0
+  --device cuda:0 \
+  --expand \
+  --save-line-records \
+  --expand-backend "${EXPAND_DIPLOMATIC_BACKEND:-gemini}" \
+  --expand-model "${EXPAND_DIPLOMATIC_MODEL:-gemini-2.5-flash}"
 
 echo "[comma] results: $PILOT/rerecognition.jsonl"
+echo "[comma] line records: $PILOT/lines.jsonl (with our_text_expanded when --expand)"
 echo "[comma] TRAINING FIREWALL: never copy $COMMA_ROOT into htr-corpora/"

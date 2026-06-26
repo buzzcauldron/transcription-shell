@@ -31,6 +31,10 @@ def run_kraken_htr(
     model_path: Path,
     *,
     device: str = "cpu",
+    lm_path: Path | None = None,
+    lm_alpha: float = 0.5,
+    lm_beta: float = 1.5,
+    beam_width: int = 100,
 ) -> HtrResult:
     """Recognise text lines with kraken rpred and return concatenated text."""
     try:
@@ -67,11 +71,26 @@ def run_kraken_htr(
     pred_it = rpred.rpred(htr_model, im, page, pad=16)
 
     lines: list[str] = []
+    line_logits: list = []
     confidences: list[float] = []
     for record in pred_it:
         lines.append(record.prediction)
+        # Collect per-timestep logits when available for CTC-LM rescoring.
+        if hasattr(record, "logits"):
+            line_logits.append(record.logits)
+        else:
+            line_logits.append(None)
         if hasattr(record, "cuts") and record.cuts:
             confidences.append(float(sum(record.confidences) / len(record.confidences)))
+
+    if lm_path is not None and any(lg is not None for lg in line_logits):
+        from transcriber_shell.htr.ctc_lm import rescore_lines
+        vocab: list[str] = list(getattr(htr_model, "codec", {}).get("c2l", {}).keys()) or []
+        if vocab:
+            lines = rescore_lines(
+                line_logits, lines, vocab, lm_path,
+                alpha=lm_alpha, beta=lm_beta, beam_width=beam_width,
+            )
 
     mean_conf_f = float(sum(confidences) / len(confidences)) if confidences else None
     tier = float_to_confidence_tier(mean_conf_f) if mean_conf_f is not None else None

@@ -1,0 +1,22 @@
+{
+  "companion_txt": "export/page_0004.txt",
+  "page_id": "page_0004",
+  "reviewed": 0,
+  "dropped": 0,
+  "kept": 0,
+  "strange_letters": 0,
+  "drops": [],
+  "font_flags": [],
+  "layout": {
+    "lines": 12,
+    "mean_confidence": 70.17,
+    "low_conf_lines": 5,
+    "conf_threshold": 65.0
+  },
+  "ink_layout": {
+    "columns": 1,
+    "sections": 6,
+    "page_width": 3000,
+    "page_height": 3980
+  }
+}

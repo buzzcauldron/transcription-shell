@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>page_0004</title>
+      </titleStmt>
+      <publicationStmt>
+        <distributor>historical-ocr</distributor>
+        <date when="2026-06-25" />
+      </publicationStmt>
+      <sourceDesc>
+        <bibl type="file">/Users/halxiii/Downloads/cmu_posner/Posner_529.3_R33K_job/01_pages/page_0004.jpg</bibl>
+      </sourceDesc>
+    </fileDesc>
+    <encodingDesc>
+      <editorialDecl>
+        <normalization method="diplomatic">
+          <p>Processed with historical-ocr 0.1.0; material=print; print_doc_type=humanist_roman; print_language=auto; year=—.</p>
+        </normalization>
+      </editorialDecl>
+    </encodingDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div type="page" xml:id="page_0004">
+        <pb n="page_0004" />
+        <p>
+          <lb n="1" xml:id="lb_page_0004_1" rend="line" coord="957,326,535,21" />won ud TÀ UP<lb n="2" xml:id="lb_page_0004_2" rend="line" coord="1038,808,91,82" />c<lb n="3" xml:id="lb_page_0004_3" rend="line" coord="166,861,1211,283" />N D docet<lb n="4" xml:id="lb_page_0004_4" rend="line" coord="296,962,1367,355" />Hb d aqua poli<lb n="5" xml:id="lb_page_0004_5" rend="line" coord="540,1101,973,253" />fub PO \ons®<lb n="6" xml:id="lb_page_0004_6" rend="line" coord="1680,1108,128,99" />exit<lb n="7" xml:id="lb_page_0004_7" rend="line" coord="268,1249,1380,346" />DN ut oie<lb n="8" xml:id="lb_page_0004_8" rend="line" coord="769,1373,680,194" />ai quit et<lb n="9" xml:id="lb_page_0004_9" rend="line" coord="782,1440,805,224" />opus vogio 0€ p<lb n="10" xml:id="lb_page_0004_10" rend="line" coord="387,1659,73,175" />P.<lb n="11" xml:id="lb_page_0004_11" rend="line" coord="556,1662,763,214" />A (Aat? oM<lb n="12" xml:id="lb_page_0004_12" rend="line" coord="382,1696,1225,278" />^ qua 02</p>
+      </div>
+    </body>
+    <facsimile>
+      <surface xml:id="surf_page_0004" ulx="0" uly="0" lrx="3000" lry="3980">
+        <zone rendition="textline" ulx="957" uly="326" lrx="1492" lry="347" corresp="#lb_page_0004_1" />
+        <zone rendition="textline" ulx="1038" uly="808" lrx="1129" lry="890" corresp="#lb_page_0004_2" />
+        <zone rendition="textline" ulx="166" uly="861" lrx="1377" lry="1144" corresp="#lb_page_0004_3" />
+        <zone rendition="textline" ulx="296" uly="962" lrx="1663" lry="1317" corresp="#lb_page_0004_4" />
+        <zone rendition="textline" ulx="540" uly="1101" lrx="1513" lry="1354" corresp="#lb_page_0004_5" />
+        <zone rendition="textline" ulx="1680" uly="1108" lrx="1808" lry="1207" corresp="#lb_page_0004_6" />
+        <zone rendition="textline" ulx="268" uly="1249" lrx="1648" lry="1595" corresp="#lb_page_0004_7" />
+        <zone rendition="textline" ulx="769" uly="1373" lrx="1449" lry="1567" corresp="#lb_page_0004_8" />
+        <zone rendition="textline" ulx="782" uly="1440" lrx="1587" lry="1664" corresp="#lb_page_0004_9" />
+        <zone rendition="textline" ulx="387" uly="1659" lrx="460" lry="1834" corresp="#lb_page_0004_10" />
+        <zone rendition="textline" ulx="556" uly="1662" lrx="1319" lry="1876" corresp="#lb_page_0004_11" />
+        <zone rendition="textline" ulx="382" uly="1696" lrx="1607" lry="1974" corresp="#lb_page_0004_12" />
+      </surface>
+    </facsimile>
+  </text>
+</TEI>

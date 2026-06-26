@@ -347,7 +347,10 @@ def main() -> None:
     # Per-line rare-char analysis
     rare_char_map: dict[int, set[str]] = {}
     for idx, row in enumerate(lines):
-        rare = _rare_chars(row.get("our_text") or "", gt_counts)
+        rare = _rare_chars(
+            row.get("our_text_expanded") or row.get("our_text") or "",
+            gt_counts,
+        )
         if rare:
             rare_char_map[idx] = rare
 
@@ -374,9 +377,14 @@ def main() -> None:
                 row.get("line_idx", 0),
             )
             if alto_line is not None:
-                cer_val = _cer(row.get("our_text") or "", alto_line["text"])
+                our_line = row.get("our_text_expanded") or row.get("our_text") or ""
+                cer_val = _cer(our_line, alto_line["text"])
                 r["catmus_text"] = alto_line["text"]
                 r["cer_vs_catmus"] = round(cer_val, 4)
+                if row.get("our_text_expanded"):
+                    r["cer_vs_catmus_diplomatic"] = round(
+                        _cer(row.get("our_text") or "", alto_line["text"]), 4
+                    )
                 r["score_mode"] = "consensus"
 
                 if has_rare or cer_val < args.cer_accept:

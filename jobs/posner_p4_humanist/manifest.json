@@ -1,0 +1,56 @@
+{
+  "job_id": "posner_p4_humanist",
+  "created_at": "2026-06-25T20:03:27.423718+00:00",
+  "export_basename": "page_0004",
+  "sources": [
+    {
+      "kind": "file",
+      "value": "/Users/halxiii/Downloads/cmu_posner/Posner_529.3_R33K_job/01_pages/page_0004.jpg",
+      "fetched_at": null
+    }
+  ],
+  "material_mode": "print",
+  "resolved_material": "print",
+  "fingerprint": null,
+  "print_doc_type": "humanist_roman",
+  "print_ocr_combination": "tesseract_then_clean",
+  "normalization_mode": "diplomatic",
+  "publication_year": null,
+  "print_language": "auto",
+  "pages": [
+    {
+      "page_id": "page_0004",
+      "image_path": "pages/page_0004.jpg",
+      "route": "print",
+      "status": "ok",
+      "transcription_yaml": "artifacts/page_0004/page_0004_transcription.yaml",
+      "transcription_txt": null,
+      "tei_path": "export/tei/page_0004.xml",
+      "ocr_text_path": "artifacts/page_0004/ocr.txt",
+      "clean_text_path": "artifacts/page_0004/clean.txt",
+      "layout_path": "artifacts/page_0004/layout.json",
+      "pagexml_path": "artifacts/page_0004/page.xml",
+      "print_doc_type": "humanist_roman",
+      "fingerprint_score": null,
+      "routing_hints": [],
+      "errors": []
+    }
+  ],
+  "export": {
+    "document_txt": "export/page_0004.txt",
+    "document_xml": "export/page_0004.xml",
+    "text_review_json": "export/page_0004.review.json",
+    "text_review_heatmap": "export/page_0004.review.png",
+    "delivery_json": "export/page_0004.delivery.json",
+    "checksums": "export/page_0004.checksums.sha256",
+    "figures_dir": "export/_internal/figures",
+    "corpus_txt": "export/page_0004.txt",
+    "internal_txt_dir": "export/_internal/txt",
+    "internal_xml_dir": "export/_internal/xml",
+    "internal_tei_dir": "export/_internal/tei",
+    "corpus_jsonl": "export/_internal/page_0004.corpus.jsonl",
+    "txt_dir": "export/_internal/txt",
+    "xml_dir": "export/_internal/xml",
+    "tei_dir": "export/_internal/tei"
+  }
+}

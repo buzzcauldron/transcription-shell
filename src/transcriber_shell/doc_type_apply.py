@@ -38,11 +38,15 @@ def apply_doc_type(
     doc_type: str | None,
     settings: Settings,
     prompt_arg: str | None,
+    *,
+    explicit_provider: str | None = None,
 ) -> tuple[Settings, str | None]:
     """Load doc-type spec and apply it to settings + prompt path.
 
     Returns (updated_settings, resolved_prompt_path_str).
     Explicit CLI / form values win over spec defaults when already set on ``settings``.
+    If ``explicit_provider`` is given and differs from the spec's primary provider,
+    the doc-type model override is skipped so the provider's own default is used.
     """
     if not doc_type:
         return settings, prompt_arg
@@ -52,7 +56,9 @@ def apply_doc_type(
 
     updates: dict = {}
 
-    if not settings.default_model:
+    explicit_p = (explicit_provider or "").lower()
+    provider_matches = not explicit_p or explicit_p == spec.primary_provider.lower()
+    if not settings.default_model and provider_matches:
         updates["default_provider"] = spec.primary_provider
         updates["default_model"] = spec.primary_model
 

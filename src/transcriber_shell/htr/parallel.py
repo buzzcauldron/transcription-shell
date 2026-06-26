@@ -77,7 +77,14 @@ def build_htr_tasks(
 
         from transcriber_shell.htr.kraken_htr import run_kraken_htr
 
-        tasks["kraken-htr"] = lambda: run_kraken_htr(_img, _xml, _mp, device=device)
+        _lm = Path(settings.ctc_lm_path).expanduser().resolve() if getattr(settings, "ctc_lm_path", None) else None
+        _alpha = getattr(settings, "ctc_lm_alpha", 0.5)
+        _beta = getattr(settings, "ctc_lm_beta", 1.5)
+        _bw = getattr(settings, "ctc_lm_beam_width", 100)
+        tasks["kraken-htr"] = lambda: run_kraken_htr(
+            _img, _xml, _mp, device=device,
+            lm_path=_lm, lm_alpha=_alpha, lm_beta=_beta, beam_width=_bw,
+        )
 
     # Tesseract (early modern print: lat+frk+eng by default).
     # Scripts are not strictly gated — Tesseract has traineddata for many languages — but we

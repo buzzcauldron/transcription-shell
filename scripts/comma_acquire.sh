@@ -6,7 +6,10 @@
 #   # Lightweight metadata + text only (fast, ~500 MB):
 #   bash scripts/comma_acquire.sh
 #
-#   # Also download ALTO XML files for consensus-mode filtering (large, ~50 GB):
+#   # Per-line deep JSONL (line text + metadata, ~few GB):
+#   bash scripts/comma_acquire.sh --with-deep-jsonl
+#
+#   # ALTO XML for consensus-mode comma_filter (bulk ALTO not on public HF yet):
 #   bash scripts/comma_acquire.sh --with-alto
 #
 #   # Override locations:
@@ -27,13 +30,16 @@ RAW="$COMMA_ROOT/raw"
 
 # CoMMA HuggingFace repo IDs — verify at https://huggingface.co/comma-project
 JSONL_REPO="${JSONL_REPO:-comma-project/comma-jsonl}"
-# ALTO repo: the full CoMMA dataset with per-line ALTO XML + page images.
-# The exact repo ID may vary; check https://huggingface.co/comma-project if this fails.
-ALTO_REPO="${ALTO_REPO:-comma-project/comma}"
+DEEP_JSONL_REPO="${DEEP_JSONL_REPO:-comma-project/deep-jsonl}"
+# Bulk ALTO is not published on HF (comma-other-formats is metadata-only).
+# Override ALTO_REPO if Inria releases a public dataset; otherwise use IIIF pilot mode.
+ALTO_REPO="${ALTO_REPO:-}"
 
 WITH_ALTO=0
+WITH_DEEP=0
 for arg in "$@"; do
   [[ "$arg" == "--with-alto" ]] && WITH_ALTO=1
+  [[ "$arg" == "--with-deep-jsonl" ]] && WITH_DEEP=1
 done
 
 mkdir -p "$RAW"
@@ -66,8 +72,40 @@ fi
 echo "[comma-acquire] comma-jsonl done."
 echo ""
 
-# ── 2. ALTO XML (per-line geometry + CATMuS text, optional) ─────────────────
+# ── 2. deep-jsonl (per-line CATMuS text + metadata, optional) ───────────────
+if [[ "$WITH_DEEP" -eq 1 ]]; then
+  echo "[comma-acquire] downloading deep-jsonl (${DEEP_JSONL_REPO})..."
+  if command -v huggingface-cli >/dev/null 2>&1; then
+    huggingface-cli download "$DEEP_JSONL_REPO" \
+      --repo-type dataset \
+      --local-dir "$RAW/deep-jsonl" \
+      --local-dir-use-symlinks False
+  else
+    python3 - <<PY
+from huggingface_hub import snapshot_download
+from pathlib import Path
+dest = Path("$RAW/deep-jsonl")
+dest.mkdir(parents=True, exist_ok=True)
+snapshot_download(
+    repo_id="$DEEP_JSONL_REPO",
+    repo_type="dataset",
+    local_dir=str(dest),
+    local_dir_use_symlinks=False,
+)
+print(f"Downloaded to {dest}")
+PY
+  fi
+  echo "[comma-acquire] deep-jsonl done (use for line-level CER vs CATMuS in comma_filter)."
+  echo ""
+fi
+
+# ── 3. ALTO XML (per-line geometry + CATMuS text, optional) ─────────────────
 if [[ "$WITH_ALTO" -eq 1 ]]; then
+  if [[ -z "$ALTO_REPO" ]]; then
+    echo "ERROR: --with-alto requires ALTO_REPO (bulk ALTO not on https://huggingface.co/comma-project yet)."
+    echo "  Use IIIF pilot mode (default) or pass ALTO_REPO=... when a dataset is published."
+    exit 1
+  fi
   echo "[comma-acquire] downloading ALTO XML files (${ALTO_REPO})..."
   echo "[comma-acquire] NOTE: this is large (~50 GB). Ensure /ocean quota is sufficient."
   echo "[comma-acquire]       Run comma_go_check.sh first to verify free space."

@@ -674,11 +674,29 @@ def run_pipeline(
     if not val_ok:
         errors.extend(val_errs)
 
+    expanded_tei: Path | None = None
+    expanded_txt: Path | None = None
+    if val_ok and out_yaml is not None:
+        from transcriber_shell.expand.bridge import maybe_run_expand_stage
+
+        t_exp = time.perf_counter()
+        expanded_tei, expanded_txt, expand_warns = maybe_run_expand_stage(
+            out_yaml,
+            job.prompt_cfg,
+            s,
+            log_fn=_log,
+        )
+        warnings.extend(expand_warns)
+        if expanded_tei is not None:
+            timings.append(("expand", time.perf_counter() - t_exp))
+
     return PipelineResult(
         job.job_id, lines_out, out_yaml, text_line_count,
         errors=errors, warnings=warnings, llm_usage=llm_usage,
         htr_results=_finalize_htr_results(htr_results_early, htr_future, htr_executor, warnings),
         timings=timings,
+        expanded_tei_path=expanded_tei,
+        expanded_txt_path=expanded_txt,
     )
 
 

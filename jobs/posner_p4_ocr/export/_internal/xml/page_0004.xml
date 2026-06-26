@@ -1,0 +1,95 @@
+<?xml version='1.0' encoding='utf-8'?>
+<page:PcGts xmlns:page="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15">
+  <page:Metadata>
+    <page:Creator>historical-ocr</page:Creator>
+    <page:Created>page_0004</page:Created>
+  </page:Metadata>
+  <page:Page imageFilename="page_0004.jpg" imageWidth="3000" imageHeight="3980">
+    <page:TextRegion id="r_page_0004" custom="readingOrder {index:0;}">
+      <page:TextLine id="l_page_0004_1" custom="readingOrder {index:0;}">
+        <page:Coords points="957,326 1492,326 1492,347 957,347" />
+        <page:Baseline points="957,347 1492,347" />
+        <page:TextEquiv conf="59.00">
+          <page:Unicode>won ud TÀ UP</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_2" custom="readingOrder {index:1;}">
+        <page:Coords points="1038,808 1129,808 1129,890 1038,890" />
+        <page:Baseline points="1038,890 1129,890" />
+        <page:TextEquiv conf="87.00">
+          <page:Unicode>c</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_3" custom="readingOrder {index:2;}">
+        <page:Coords points="166,861 1377,861 1377,1144 166,1144" />
+        <page:Baseline points="166,1144 1377,1144" />
+        <page:TextEquiv conf="77.33">
+          <page:Unicode>N D docet</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_4" custom="readingOrder {index:3;}">
+        <page:Coords points="296,962 1663,962 1663,1317 296,1317" />
+        <page:Baseline points="296,1317 1663,1317" />
+        <page:TextEquiv conf="60.25">
+          <page:Unicode>Hb d aqua poli</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_5" custom="readingOrder {index:4;}">
+        <page:Coords points="540,1101 1513,1101 1513,1354 540,1354" />
+        <page:Baseline points="540,1354 1513,1354" />
+        <page:TextEquiv conf="73.00">
+          <page:Unicode>fub PO \ons®</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_6" custom="readingOrder {index:5;}">
+        <page:Coords points="1680,1108 1808,1108 1808,1207 1680,1207" />
+        <page:Baseline points="1680,1207 1808,1207" />
+        <page:TextEquiv conf="86.00">
+          <page:Unicode>exit</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_7" custom="readingOrder {index:6;}">
+        <page:Coords points="268,1249 1648,1249 1648,1595 268,1595" />
+        <page:Baseline points="268,1595 1648,1595" />
+        <page:TextEquiv conf="62.33">
+          <page:Unicode>DN ut oie</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_8" custom="readingOrder {index:7;}">
+        <page:Coords points="769,1373 1449,1373 1449,1567 769,1567" />
+        <page:Baseline points="769,1567 1449,1567" />
+        <page:TextEquiv conf="73.00">
+          <page:Unicode>ai quit et</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_9" custom="readingOrder {index:8;}">
+        <page:Coords points="782,1440 1587,1440 1587,1664 782,1664" />
+        <page:Baseline points="782,1664 1587,1664" />
+        <page:TextEquiv conf="53.50">
+          <page:Unicode>opus vogio 0€ p</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_10" custom="readingOrder {index:9;}">
+        <page:Coords points="387,1659 460,1659 460,1834 387,1834" />
+        <page:Baseline points="387,1834 460,1834" />
+        <page:TextEquiv conf="61.00">
+          <page:Unicode>P.</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_11" custom="readingOrder {index:10;}">
+        <page:Coords points="556,1662 1319,1662 1319,1876 556,1876" />
+        <page:Baseline points="556,1876 1319,1876" />
+        <page:TextEquiv conf="66.67">
+          <page:Unicode>A (Aat? oM</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+      <page:TextLine id="l_page_0004_12" custom="readingOrder {index:11;}">
+        <page:Coords points="382,1696 1607,1696 1607,1974 382,1974" />
+        <page:Baseline points="382,1974 1607,1974" />
+        <page:TextEquiv conf="83.00">
+          <page:Unicode>^ qua 02</page:Unicode>
+        </page:TextEquiv>
+      </page:TextLine>
+    </page:TextRegion>
+  </page:Page>
+</page:PcGts>

@@ -9,6 +9,10 @@ Modes:
   1. IIIF pilot (default): sample comma-jsonl → fetch page images → segment → rpred
   2. ALTO refresh (--alto-dir): keep CoMMA line geometry, swap recognition only
 
+With --expand: each page's HTR lines are written to PAGE XML, run through
+expand-diplomatic, and stored as our_text_expanded in lines.jsonl for
+expansion-to-expansion CER vs CATMuS.
+
 Usage:
     # After comma_acquire.sh and gm-htr-r7-full_best.mlmodel exist:
     python scripts/comma_recognition_pass.py \\
@@ -16,7 +20,8 @@ Usage:
         --model /ocean/.../src/gm-htr-r7-full_best.mlmodel \\
         --seg-model /ocean/.../src/kraken-merged-seg_best.mlmodel \\
         --out-dir /ocean/.../comma-rerecognition/pilot \\
-        --language-filter latin --max-manuscripts 50 --max-pages-per-ms 3
+        --language-filter latin --max-manuscripts 50 --max-pages-per-ms 3 \\
+        --expand --save-line-records
 
 TRAINING FIREWALL: never add --out-dir or comma-jsonl paths to ketos train -t/-e.
 """
@@ -184,8 +189,9 @@ def _transcribe_page(
     page_idx: int = 0,
     out_dir: Path | None = None,
     xml_rel_path: str = "",
-) -> tuple[str, list[dict]]:
-    """Return (full_page_text, line_records).
+    expand_settings=None,
+) -> tuple[str, list[dict], str | None]:
+    """Return (full_page_text, line_records, expanded_page_text_or_none).
 
     line_records is populated only when save_line_records=True.
     """
@@ -200,16 +206,52 @@ def _transcribe_page(
     seg = blla.segment(im, model=seg_m, text_direction="horizontal-lr", device=device) if seg_m else blla.segment(im)
     htr_m = models.load_any(str(htr_model), device=device)
 
-    # Serialize to temp PAGE for rpred container
+    # Serialize PAGE for rpred; keep a copy when saving line records or expanding
     xml_str = serialization.serialize(seg, image_size=im.size, template="pagexml")
     tmp_xml = image_path.with_suffix(".lines.xml")
     tmp_xml.write_text(xml_str, encoding="utf-8")
     page = XMLPage(str(tmp_xml)).to_container()
     recs = list(rpred.rpred(htr_m, im, page, pad=16))
-    tmp_xml.unlink(missing_ok=True)
 
     lines = [rec.prediction for rec in recs]
     line_records: list[dict] = []
+    expanded_page_text: str | None = None
+    expanded_lines: list[str] = list(lines)
+
+    pagexml_out: Path | None = None
+    pagexml_expanded_out: Path | None = None
+    if save_line_records and out_dir is not None:
+        safe_id = re.sub(r"[^\w.-]+", "_", str(ms_id))[:80]
+        pagexml_out = out_dir / "pages" / safe_id / f"page_{page_idx:03d}.lines.xml"
+        pagexml_out.parent.mkdir(parents=True, exist_ok=True)
+        pagexml_out.write_text(xml_str, encoding="utf-8")
+        if not xml_rel_path:
+            xml_rel_path = str(pagexml_out.relative_to(out_dir))
+
+    if expand_settings is not None and lines:
+        try:
+            from transcriber_shell.expand.bridge import expand_pagexml_lines
+
+            expanded_xml, expanded_lines = expand_pagexml_lines(
+                image_path.name,
+                im.width,
+                im.height,
+                lines,
+                expand_settings,
+            )
+            expanded_page_text = "\n".join(expanded_lines)
+            if pagexml_out is not None:
+                pagexml_expanded_out = pagexml_out.with_name(
+                    pagexml_out.name.replace(".lines.xml", ".lines_expanded.xml")
+                )
+                pagexml_expanded_out.write_text(expanded_xml, encoding="utf-8")
+        except Exception as exc:
+            print(f"  [warn] expand failed {ms_id} p{page_idx}: {exc}", file=sys.stderr)
+
+    if not save_line_records:
+        tmp_xml.unlink(missing_ok=True)
+    elif pagexml_out is None:
+        tmp_xml.unlink(missing_ok=True)
 
     if save_line_records and out_dir is not None:
         crops_base = out_dir / "line_crops"
@@ -256,13 +298,23 @@ def _transcribe_page(
                     "line_idx": line_idx,
                     "confidence": round(conf, 6),
                     "our_text": rec.prediction,
+                    "our_text_expanded": (
+                        expanded_lines[line_idx]
+                        if expand_settings is not None and line_idx < len(expanded_lines)
+                        else None
+                    ),
                     "bbox": bbox_record,
                     "crop_path": crop_rel,
                     "xml_path": xml_rel_path,
+                    "xml_expanded_path": (
+                        str(pagexml_expanded_out.relative_to(out_dir))
+                        if pagexml_expanded_out is not None
+                        else None
+                    ),
                 }
             )
 
-    return "\n".join(lines), line_records
+    return "\n".join(lines), line_records, expanded_page_text
 
 
 def run_iiif_pilot(args: argparse.Namespace) -> None:
@@ -287,9 +339,31 @@ def run_iiif_pilot(args: argparse.Namespace) -> None:
     htr_model = args.model.expanduser().resolve()
     seg_model = args.seg_model.expanduser().resolve() if args.seg_model else None
 
-    save_lines = args.save_line_records
+    save_lines = args.save_line_records or args.expand
     processed = 0
     total_line_records = 0
+
+    expand_settings = None
+    if args.expand:
+        repo = Path(__file__).resolve().parents[1]
+        src = repo / "src"
+        if str(src) not in sys.path:
+            sys.path.insert(0, str(src))
+        from transcriber_shell.config import Settings
+
+        expand_settings = Settings(
+            expand_diplomatic_enabled=True,
+            expand_diplomatic_backend=args.expand_backend,
+            expand_diplomatic_model=args.expand_model,
+            expand_diplomatic_modality=args.expand_modality,
+            expand_diplomatic_passes=args.expand_passes,
+            expand_diplomatic_dry_run=args.expand_dry_run,
+            expand_diplomatic_whole_document=True,
+        )
+        if args.expand_root:
+            expand_settings = expand_settings.model_copy(
+                update={"expand_diplomatic_root": args.expand_root.expanduser().resolve()}
+            )
 
     lines_fh = lines_path.open("w", encoding="utf-8") if save_lines else None
     try:
@@ -304,6 +378,7 @@ def run_iiif_pilot(args: argparse.Namespace) -> None:
                     continue
 
                 our_parts: list[str] = []
+                our_expanded_parts: list[str] = []
                 for i, url in enumerate(page_urls):
                     safe = re.sub(r"[^\w.-]+", "_", str(ms_id))[:80]
                     img_path = pages_dir / safe / f"page_{i:03d}.jpg"
@@ -316,7 +391,7 @@ def run_iiif_pilot(args: argparse.Namespace) -> None:
                     )
 
                     try:
-                        text, line_records = _transcribe_page(
+                        text, line_records, expanded_text = _transcribe_page(
                             img_path,
                             htr_model,
                             seg_model,
@@ -326,8 +401,11 @@ def run_iiif_pilot(args: argparse.Namespace) -> None:
                             page_idx=i,
                             out_dir=out_dir,
                             xml_rel_path=xml_rel,
+                            expand_settings=expand_settings,
                         )
                         our_parts.append(text)
+                        if expanded_text:
+                            our_expanded_parts.append(expanded_text)
                         if save_lines and lines_fh is not None:
                             for lr in line_records:
                                 lines_fh.write(json.dumps(lr, ensure_ascii=False) + "\n")
@@ -339,7 +417,13 @@ def run_iiif_pilot(args: argparse.Namespace) -> None:
                 if not our_text:
                     continue
 
+                our_text_expanded = "\n".join(our_expanded_parts).strip() if our_expanded_parts else None
                 cer = _cer(comma_text, our_text) if comma_text else None
+                cer_exp = (
+                    _cer(comma_text, our_text_expanded)
+                    if comma_text and our_text_expanded
+                    else None
+                )
                 record = {
                     "biblissima_id": ms_id,
                     "iiif_manifest": manifest,
@@ -349,11 +433,16 @@ def run_iiif_pilot(args: argparse.Namespace) -> None:
                     "comma_text_chars": len(comma_text),
                     "our_text_chars": len(our_text),
                     "cer_vs_comma": cer,
+                    "cer_vs_comma_expanded": cer_exp,
                     "comma_text_excerpt": comma_text[:500],
                     "our_text_excerpt": our_text[:500],
+                    "our_text_expanded_excerpt": (
+                        our_text_expanded[:500] if our_text_expanded else None
+                    ),
                     "training_use": "FORBIDDEN",
                     "model": str(htr_model),
                     "mode": "iiif_pilot",
+                    "expand": bool(expand_settings),
                 }
                 out_fh.write(json.dumps(record, ensure_ascii=False) + "\n")
                 processed += 1
@@ -373,6 +462,12 @@ def run_iiif_pilot(args: argparse.Namespace) -> None:
     }
     if save_lines:
         stats["line_records_written"] = total_line_records
+    if expand_settings is not None:
+        stats["expand"] = {
+            "backend": args.expand_backend,
+            "model": args.expand_model,
+            "modality": args.expand_modality,
+        }
     stats_path.write_text(json.dumps(stats, indent=2) + "\n", encoding="utf-8")
     print(f"[comma] wrote {results_path} ({processed} records)")
     if save_lines:
@@ -394,9 +489,24 @@ def main() -> None:
         action="store_true",
         default=False,
         help=(
-            "Also emit per-line confidence records to lines.jsonl and save "
-            "line crop images under <out-dir>/line_crops/."
+            "Emit per-line records to lines.jsonl and save line crops + PAGE XML. "
+            "Implied when --expand is set."
         ),
+    )
+    p.add_argument(
+        "--expand",
+        action="store_true",
+        help="Run expand-diplomatic on each page's HTR lines (requires expand-diplomatic install).",
+    )
+    p.add_argument("--expand-root", type=Path, default=None, help="Path to expand-diplomatic checkout")
+    p.add_argument("--expand-backend", default="gemini", choices=("gemini", "local", "rules"))
+    p.add_argument("--expand-model", default="gemini-2.5-flash")
+    p.add_argument("--expand-modality", default="full")
+    p.add_argument("--expand-passes", type=int, default=1)
+    p.add_argument(
+        "--expand-dry-run",
+        action="store_true",
+        help="Skip LLM in expand-diplomatic (pipeline test)",
     )
     p.add_argument(
         "--alto-dir",

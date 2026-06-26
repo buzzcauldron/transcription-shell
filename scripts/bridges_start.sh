@@ -81,8 +81,10 @@ case "${1:-}" in
 esac
 
 # Abort if r6-core is already queued/running (most likely a restart attempt).
-if existing=$(running_job "htr-r6-core"); [[ -n "$existing" ]]; then
+  if existing=$(running_job "htr-r6-core"); [[ -n "$existing" ]]; then
   log "r6-core already active (job $existing) — nothing to submit"
+elif existing=$(running_job "htr-r6-core-r"); [[ -n "$existing" ]]; then
+  log "r6-core-r resume already active (job $existing) — nothing to submit"
   log "Use --status to check progress or --cancel to restart from scratch"
   show_status
   exit 0

@@ -606,6 +606,34 @@ class Settings(BaseSettings):
         description="Path to fine-tuned .traineddata; copied into tessdata/ for TESSDATA_PREFIX.",
     )
 
+    ctc_lm_path: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_CTC_LM_PATH",
+            "CTC_LM_PATH",
+        ),
+        description=(
+            "Path to a KenLM binary (.bin) or ARPA model for CTC beam-search rescoring. "
+            "Build with scripts/build_latin_ngram_lm.sh. "
+            "Improves Kraken HTR word accuracy ~2-3 pp when kenlm is installed."
+        ),
+    )
+    ctc_lm_alpha: float = Field(
+        default=0.5,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_CTC_LM_ALPHA", "CTC_LM_ALPHA"),
+        description="KenLM language model weight for CTC beam search (default 0.5).",
+    )
+    ctc_lm_beta: float = Field(
+        default=1.5,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_CTC_LM_BETA", "CTC_LM_BETA"),
+        description="Word insertion bonus for CTC beam search (default 1.5).",
+    )
+    ctc_lm_beam_width: int = Field(
+        default=100,
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_CTC_LM_BEAM_WIDTH", "CTC_LM_BEAM_WIDTH"),
+        description="Beam width for CTC beam-search decoding (default 100).",
+    )
+
     trocr_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices(
@@ -676,6 +704,76 @@ class Settings(BaseSettings):
             "correct (short prompt: treat HTR draft as primary, fix recognition errors); "
             "off (skip LLM entirely — equivalent to setting htr_combination to a *_only variant). "
             "Honored only when an HTR backend produced drafts; falls back to full otherwise."
+        ),
+    )
+
+    expand_diplomatic_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_EXPAND_DIPLOMATIC",
+            "EXPAND_DIPLOMATIC_ENABLED",
+        ),
+        description=(
+            "After diplomatic LLM transcription, run expand-diplomatic (TEI derivative). "
+            "Requires expand-diplomatic checkout or pip install; set EXPAND_DIPLOMATIC_ROOT."
+        ),
+    )
+    expand_diplomatic_root: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "EXPAND_DIPLOMATIC_ROOT",
+            "MAGIC_ELISE_ROOT",
+        ),
+    )
+    expand_diplomatic_backend: str = Field(
+        default="gemini",
+        validation_alias=AliasChoices(
+            "EXPAND_DIPLOMATIC_BACKEND",
+            "TRANSCRIBER_SHELL_EXPAND_BACKEND",
+        ),
+    )
+    expand_diplomatic_model: str = Field(
+        default="gemini-2.5-flash",
+        validation_alias=AliasChoices(
+            "EXPAND_DIPLOMATIC_MODEL",
+            "TRANSCRIBER_SHELL_EXPAND_MODEL",
+        ),
+    )
+    expand_diplomatic_modality: str = Field(
+        default="full",
+        validation_alias=AliasChoices(
+            "EXPAND_DIPLOMATIC_MODALITY",
+            "TRANSCRIBER_SHELL_EXPAND_MODALITY",
+        ),
+    )
+    expand_diplomatic_passes: int = Field(
+        default=1,
+        ge=1,
+        le=5,
+        validation_alias=AliasChoices(
+            "EXPAND_DIPLOMATIC_PASSES",
+            "TRANSCRIBER_SHELL_EXPAND_PASSES",
+        ),
+    )
+    expand_diplomatic_whole_document: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "EXPAND_DIPLOMATIC_WHOLE_DOC",
+            "TRANSCRIBER_SHELL_EXPAND_WHOLE_DOC",
+        ),
+    )
+    expand_diplomatic_dry_run: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "EXPAND_DIPLOMATIC_DRY_RUN",
+            "TRANSCRIBER_SHELL_EXPAND_DRY_RUN",
+        ),
+    )
+    expand_diplomatic_examples: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "EXPAND_DIPLOMATIC_EXAMPLES",
+            "TRANSCRIBER_SHELL_EXPAND_EXAMPLES",
         ),
     )
 

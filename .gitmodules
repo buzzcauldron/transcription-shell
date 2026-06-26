@@ -1,3 +1,6 @@
 [submodule "vendor/transcription-protocol"]
 	path = vendor/transcription-protocol
 	url = https://github.com/buzzcauldron/transcription-protocol.git
+[submodule "vendor/historical-ocr"]
+	path = vendor/historical-ocr
+	url = https://github.com/buzzcauldron/historical-ocr.git

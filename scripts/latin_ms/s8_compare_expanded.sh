@@ -39,7 +39,7 @@ JOB_DIR="${LATIN_MS_WORKSPACE}/jobs/${JOB_ID}"
 EXPANDED_DIR="${JOB_DIR}/04_expanded/out"
 SCORES_DIR="${JOB_DIR}/06_scores"
 DIPLOMATIC_GT="${REPO_ROOT}/ground_truth/diplomatic/${STEM}_diplomatic.txt"
-MAGIC_ELISE="${MAGIC_ELISE_ROOT:-${HOME}/Projects/magic-elise-tool}"
+MAGIC_ELISE="${EXPAND_DIPLOMATIC_ROOT:-${MAGIC_ELISE_ROOT:-${HOME}/Projects/expand-diplomatic}}"
 
 mkdir -p "$SCORES_DIR"
 
