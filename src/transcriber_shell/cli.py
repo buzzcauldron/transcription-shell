@@ -15,6 +15,7 @@ from transcriber_shell.pipeline.batch import (
     has_successful_transcription,
     run_batch,
     write_batch_report,
+    write_combined_document,
 )
 from transcriber_shell.pipeline.run import (
     load_prompt_cfg,
@@ -657,6 +658,7 @@ def cmd_batch(args: argparse.Namespace) -> int:
             require_text_line=_require_text_line_from_cli(args, settings),
             skip_lines_xml_validation=_skip_lines_xml_validation_from_cli(args, settings),
             skip_successful=args.skip_successful,
+            document_job_id=getattr(args, "doc_job_id", None) or None,
             settings=settings,
             log_fn=_cli_log,
         )
@@ -691,6 +693,21 @@ def cmd_batch(args: argparse.Namespace) -> int:
                         settings=settings,
                     )
     rows = all_rows
+    doc_job_id = getattr(args, "doc_job_id", None) or None
+    if doc_job_id:
+        # Use the settings from the last group (or base if only one group)
+        _combined_settings = base_settings
+        out_dir = _combined_settings.artifacts_dir / doc_job_id
+        tx_out, tr_out = write_combined_document(
+            rows,
+            out_dir,
+            include_translation=getattr(args, "translate", False),
+            log_fn=lambda m: print(m, file=sys.stderr, flush=True),
+        )
+        if tx_out:
+            print(f"combined_transcription={tx_out}")
+        if tr_out:
+            print(f"combined_translation={tr_out}")
     if args.batch_report:
         write_batch_report(Path(args.batch_report), rows)
         print(f"batch_report={args.batch_report}")
@@ -1627,6 +1644,18 @@ def main() -> None:
         help=(
             "Lineation and lines XML validation only; do not call the LLM "
             "(env: TRANSCRIBER_SHELL_XML_ONLY)"
+        ),
+    )
+    batch.add_argument(
+        "--doc-job-id",
+        dest="doc_job_id",
+        default=None,
+        metavar="ID",
+        help=(
+            "Shared job ID for the whole document batch. All per-page outputs "
+            "(YAML, lines XML) land in artifacts/<ID>/ — one folder instead of "
+            "one folder per page. After the batch, full_transcription.txt (and "
+            "full_translation.txt with --translate) are written to that folder."
         ),
     )
     batch.add_argument(

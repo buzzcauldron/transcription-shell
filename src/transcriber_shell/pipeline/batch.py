@@ -254,6 +254,19 @@ def run_batch(
         _log(
             f"[{i}/{n}] {'ok' if not res.errors else 'fail'}  text_lines={res.text_line_count}"
         )
+        lxml_str = str(res.lines_xml_path) if res.lines_xml_path else None
+        # When multiple pages share one job_id folder, rename the generic "lines.xml"
+        # to "<image_stem>_lines.xml" so each page's lineation file coexists and the
+        # canonical "lines.xml" slot stays free for the next page's lineation check.
+        if document_job_id and lxml_str:
+            lxml = Path(lxml_str)
+            if lxml.name == "lines.xml":
+                named = lxml.parent / f"{image.stem}_lines.xml"
+                try:
+                    lxml.rename(named)
+                    lxml_str = str(named)
+                except OSError:
+                    pass
         return {
             "job_id": res.job_id,
             "image": str(image),
@@ -261,7 +274,7 @@ def run_batch(
             "errors": res.errors,
             "warnings": res.warnings,
             "text_line_count": res.text_line_count,
-            "lines_xml": str(res.lines_xml_path) if res.lines_xml_path else None,
+            "lines_xml": lxml_str,
             "transcription_yaml": str(res.transcription_yaml_path)
             if res.transcription_yaml_path
             else None,
