@@ -7,6 +7,7 @@
 #SBATCH -t 48:00:00
 #SBATCH -A hum260002p
 #SBATCH -o /ocean/projects/hum260002p/sstrickland/transcriber-shell/src/%x-%j.out
+#SBATCH --signal=B:USR1@300
 # Resume r6-core from the latest Lightning checkpoint (48h GPU-shared chunks).
 # Self-chains on timeout until early-stop; then submits r7-full.
 # Manual chain: sbatch --dependency=afterany:<prior-jobid> scripts/r6_core_resume.sbatch
@@ -67,6 +68,18 @@ on_exit() {
   exit "$ec"
 }
 trap on_exit EXIT
+# USR1 fires 300s before wall: pre-chain while ketos is still running.
+trap 'echo "[r6-core-resume] USR1: ~5min to wall; pre-chaining"; chain_self_now' USR1
+
+chain_self_now() {
+  [[ "$CHAINED" -eq 1 ]] && return 0
+  if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+    local next
+    next=$(sbatch --parsable --dependency=afterany:"$SLURM_JOB_ID" -A hum260002p "$SRC/scripts/r6_core_resume.sbatch")
+    echo "[r6-core-resume] pre-chained next chunk job $next (USR1 handler)"
+    CHAINED=1
+  fi
+}
 
 module load anaconda3 2>/dev/null || true
 bash "$SRC/scripts/bridges_fix_kraken_numpy.sh"
