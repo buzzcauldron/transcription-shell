@@ -61,6 +61,19 @@ def run_translate(
     )
 
     p = provider.lower()
+
+    # DeepL (and "kagi" as an alias — Kagi Translate is DeepL-backed) skips the
+    # LLM path entirely: it calls the DeepL REST API directly with just the text.
+    if p in ("deepl", "kagi"):
+        from transcriber_shell.llm.adapters.deepl import translate_deepl
+
+        text_out, usage = translate_deepl(
+            text=diplomatic_text,
+            target_language=target_language,
+            settings=s,
+        )
+        return TranslateResult(text=text_out.strip(), usage=usage)
+
     if p == "anthropic":
         from transcriber_shell.llm.adapters.anthropic import transcribe_anthropic as fn
     elif p == "openai":
@@ -71,7 +84,7 @@ def run_translate(
         from transcriber_shell.llm.adapters.ollama import transcribe_ollama as fn
     else:
         raise ValueError(
-            f"Unknown provider {provider!r}. Use anthropic, openai, gemini, or ollama."
+            f"Unknown provider {provider!r}. Use anthropic, openai, gemini, ollama, or deepl."
         )
 
     r = fn(

@@ -40,6 +40,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("GOOGLE_API_KEY", "TRANSCRIBER_SHELL_GOOGLE_API_KEY"),
     )
+    deepl_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DEEPL_API_KEY", "TRANSCRIBER_SHELL_DEEPL_API_KEY"),
+    )
 
     anthropic_model: str = Field(
         default="claude-sonnet-4-20250514",
