@@ -129,6 +129,10 @@ _POSITION_ALIASES: dict[str, str] = {
     "article": "body",
     "editorial": "body",
     "column": "body",
+    # Bare table/insertion labels LLMs emit for tabular content and caret additions.
+    "table": "table_row",
+    "insertion": "interlinear",
+    "caret_insertion": "interlinear",
 }
 # ISO 15924 script codes → ISO 639-2 language codes for known equivalents.
 # The protocol expects language codes; some models emit script codes by mistake.
@@ -173,6 +177,7 @@ _ERA_ALIASES: dict[str, str] = {
     "late_medieval_early_modern": "medieval",  # ambiguous; pick the earlier bucket
     "late_medieval/early_modern": "medieval",
     "renaissance": "early_modern",
+    "early-modern": "early_modern",
     "early_modern_english": "early_modern",
     "19th_century": "nineteenth_century",
     "20th_century": "twentieth_century",
@@ -305,7 +310,7 @@ def normalize_transcription_yaml_data(data: dict[str, Any]) -> None:
         # targetEra: canonicalize (lowercase, underscore separators, alias map).
         te = meta.get("targetEra")
         if isinstance(te, str):
-            te_norm = te.strip().lower().replace(" ", "_").replace("/", "_")
+            te_norm = te.strip().lower().replace(" ", "_").replace("/", "_").replace("-", "_")
             while "__" in te_norm:
                 te_norm = te_norm.replace("__", "_")
             te_norm = _ERA_ALIASES.get(te_norm, te_norm)
@@ -359,6 +364,18 @@ def normalize_transcription_yaml_data(data: dict[str, Any]) -> None:
         if tl_s and not tl_s.startswith("eng") and tl_s != "mixed":
             meta["englishHandwritingModality"] = None
     is_normalized = meta.get("normalizationMode") == "normalized"
+    # If the model produced an empty segments list but left proceedDecision as
+    # "proceed", fix it to "abort" so the validator doesn't flag a contradiction.
+    # This happens when the model correctly identifies a blank page but forgets to
+    # flip the flag.
+    pre = root.get("preCheck")
+    if isinstance(pre, dict) and pre.get("proceedDecision") == "proceed":
+        segs_check = root.get("segments")
+        if isinstance(segs_check, list) and len(segs_check) == 0:
+            pre["proceedDecision"] = "abort"
+            if not pre.get("abortReason"):
+                notes = pre.get("conditionNotes") or meta.get("epistemicNotes") or ""
+                pre["abortReason"] = str(notes)[:200] if notes else "No visible text content."
     segs = root.get("segments")
     if not isinstance(segs, list):
         return

@@ -25,6 +25,21 @@ warnings.filterwarnings(
 from transcriber_shell.htr.base import HtrResult, float_to_confidence_tier
 
 
+def _resolve_device(device: str) -> str:
+    """Map 'auto' to the best available torch device string."""
+    if device != "auto":
+        return device
+    try:
+        import torch
+        if torch.backends.mps.is_available():
+            return "mps"
+        if torch.cuda.is_available():
+            return "cuda"
+    except Exception:
+        pass
+    return "cpu"
+
+
 def run_kraken_htr(
     image_path: Path,
     lines_xml_path: Path,
@@ -61,7 +76,7 @@ def run_kraken_htr(
 
     page = XMLPage(str(lines_xml_path)).to_container()
 
-    htr_model = kraken_models.load_any(str(model_path), device=device)
+    htr_model = kraken_models.load_any(str(model_path), device=_resolve_device(device))
 
     bounds = page.lines if hasattr(page, "lines") else []
     if not bounds:
