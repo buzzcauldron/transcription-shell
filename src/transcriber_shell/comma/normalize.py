@@ -20,19 +20,21 @@ def _prepare_input(text: str) -> str:
 
 
 @lru_cache(maxsize=2)
-def _load_pipeline(model_id: str):
+def _load_model(model_id: str):
     try:
-        from transformers import pipeline
+        from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+        import torch
     except ImportError as e:
         raise RuntimeError(
             "CoMMA normalization requires transformers. "
             "Install with: pip install 'transcriber-shell[comma]'"
         ) from e
-    return pipeline(
-        task="text2text-generation",
-        model=model_id,
-        tokenizer=model_id,
-    )
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
+    model.eval()
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    model = model.to(device)
+    return tokenizer, model, device
 
 
 def normalize_medieval_text(
@@ -42,19 +44,25 @@ def normalize_medieval_text(
     max_new_tokens: int = 256,
 ) -> str:
     """Normalize one line of Latin or Old French HTR output."""
+    import torch
     raw = (text or "").strip()
     if not raw:
         return ""
-    pipe = _load_pipeline(model_id)
-    out = pipe(
+    tokenizer, model, device = _load_model(model_id)
+    inputs = tokenizer(
         _prepare_input(raw),
-        max_new_tokens=max_new_tokens,
-        do_sample=False,
-    )
-    if not out:
-        return raw
-    generated = out[0].get("generated_text", "")
-    return generated.strip() if isinstance(generated, str) else raw
+        return_tensors="pt",
+        truncation=True,
+        max_length=512,
+    ).to(device)
+    with torch.no_grad():
+        output_ids = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            do_sample=False,
+        )
+    generated = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    return generated.strip() if generated else raw
 
 
 def normalize_lines(

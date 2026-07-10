@@ -1,0 +1,23 @@
+name: gm-htr-r6-core_best
+kind: htr
+path: "${HOME}/src/latin_documents/gm-htr-r6-core_best.mlmodel"
+size_mb: 24
+
+languages: [lat-Latn]
+eras: [medieval, early_modern]
+scripts: [caroline_minuscule, protogothic, pregothic, insular_minuscule, anglicana_cursiva, gothic_cursiva]
+era_range: "500-1500"
+
+training:
+  base_model: gm-htr-r2_best
+  round: 6
+  date: 2026-06-20
+  corpora: [carolingian-latin-2025, carolingian-latin-vienna, catmus-medieval, cremma-medieval-lat, paris-bible, eutyches, konigsfelden-charters]
+  hyperparams:
+    learning_rate: 0.00001
+    batch_size: 16
+    schedule: cosine
+  notes: "Bridges r6-core retrain; core medieval Latin corpus without Bullinger."
+
+metrics:
+  notes: "Intermediate checkpoint exported before r7-full fine-tune."

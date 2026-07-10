@@ -78,6 +78,9 @@ include = [
   "fixtures",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/transcriber_shell"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

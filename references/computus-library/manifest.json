@@ -1156,12 +1156,13 @@
       "display": "New York, Morgan Library, MS M.925",
       "archive": "The Morgan Library & Museum",
       "shelfmark": "M.925",
-      "archive_ms_page": "https://www.themorgan.org/manuscript/160011",
+      "archive_ms_page": "https://ica.themorgan.org/manuscript/manifest/160011",
       "strigil_acquire": true,
       "bib_keys": [
         "ComputusCollectionMS"
       ],
-      "doc_type": "computus_medieval_latin"
+      "doc_type": "computus_medieval_latin",
+      "notes": "Direct IIIF manifest URL resolved for full-manuscript acquisition."
     },
     {
       "id": "bl_harley_3667",
@@ -1207,7 +1208,7 @@
       "display": "Wellcome Collection, Computistical miscellany",
       "archive": "Wellcome Collection",
       "shelfmark": "x3knvt2r",
-      "archive_ms_page": "https://wellcomecollection.org/works/x3knvt2r",
+      "archive_ms_page": "https://iiif.wellcomecollection.org/presentation/b19145068",
       "strigil_acquire": true,
       "bib_keys": [
         "ComputisticalMiscellany"
@@ -1218,18 +1219,24 @@
         "Computus chirometralis maior (ff. 8r–16r)",
         "Peter of Dacia, Tabulae cum explicationibus (ff. 17v–18r)",
         "Computus judaicus (ff. 19v–22v)"
-      ]
+      ],
+      "notes": "Direct IIIF manifest URL resolved for full-manuscript acquisition."
     },
     {
       "id": "nypl_computus_text_3",
       "source": "local",
       "display": "NYPL Digital Collections, Computus Text 3",
       "archive": "New York Public Library",
-      "archive_ms_page": "https://digitalcollections.nypl.org/",
+      "archive_ms_page": "https://digitalcollections.nypl.org/items/1fbe4680-28ab-013b-27fe-0242ac110002?canvasIndex=3",
       "bib_keys": [
         "ComputusText3"
       ],
-      "notes": "Resolve exact item URL in NYPL before strigil acquire."
+      "notes": "Exact NYPL Digital Collections item URL resolved from references/computus.bib.",
+      "strigil_acquire": true,
+      "doc_type": "computus_medieval_latin",
+      "texts": [
+        "Computus, Text 3"
+      ]
     }
   ]
 }

@@ -9,10 +9,12 @@ mkdir -p "$DEST"
 MODELS=(
   gm-htr-r2.mlmodel_best.mlmodel
   gm-htr-r5-best.mlmodel
+  gm-htr-computus_best.mlmodel
   gm-htr-anglicana_best.mlmodel
   gm-htr-psalter_best.mlmodel
   gm-htr-r6-core_best.mlmodel
   gm-htr-r7-full_best.mlmodel
+  gm-htr-r8-gothic-bible_best.mlmodel
 )
 
 for m in "${MODELS[@]}"; do

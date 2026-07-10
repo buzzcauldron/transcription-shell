@@ -14,10 +14,19 @@ with ":fx" (free tier keys always do).
 
 from __future__ import annotations
 
+import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
 import json
+
+
+def _ssl_context() -> ssl.SSLContext:
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
 
 from transcriber_shell.config import Settings
 
@@ -101,7 +110,7 @@ def translate_deepl(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30, context=_ssl_context()) as resp:
             body = json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode(errors="replace")
