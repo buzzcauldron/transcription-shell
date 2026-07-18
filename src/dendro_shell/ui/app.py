@@ -339,6 +339,111 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
             ]
         }
 
+    @app.post("/api/path/incline-pair")
+    def incline_pair(payload: dict | None = None):
+        """Duplicate primary path as path1 and link for incline correction."""
+        p = _project()
+        if p is None or not p.paths:
+            return JSONResponse({"error": "no path"}, status_code=400)
+        primary = p.paths[0]
+        offset = float((payload or {}).get("offset_y", 12))
+        partner_pts = [
+            Point(x=pt.x, y=pt.y + offset) for pt in primary.points
+        ]
+        partner = MeasurePath(
+            id="path1",
+            points=partner_pts,
+            rings=[r.model_copy() for r in primary.rings],
+        )
+        primary = primary.model_copy(update={"incline_partner_id": "path1"})
+        paths = [primary, partner]
+        # keep any other paths beyond the first two
+        if len(p.paths) > 2:
+            paths.extend(p.paths[2:])
+        p = p.model_copy(update={"paths": paths})
+        _set_project(p)
+        return {"project": p.to_dict()}
+
+    @app.get("/api/viz/skeleton")
+    def viz_skeleton():
+        from dendro_shell.viz import image_to_jpeg_bytes, render_skeleton_plot
+
+        p = _project()
+        if p is None:
+            return JSONResponse({"error": "no project"}, status_code=400)
+        img = render_skeleton_plot(build_width_series(p))
+        return Response(image_to_jpeg_bytes(img), media_type="image/jpeg")
+
+    @app.get("/api/viz/growth")
+    def viz_growth():
+        from dendro_shell.viz import image_to_jpeg_bytes, render_growth_panel
+
+        p = _project()
+        if p is None:
+            return JSONResponse({"error": "no project"}, status_code=400)
+        img = render_growth_panel(build_width_series(p))
+        return Response(image_to_jpeg_bytes(img), media_type="image/jpeg")
+
+    @app.get("/api/viz/tiles")
+    def viz_tiles():
+        from dendro_shell.viz import (
+            extract_ring_tiles,
+            image_to_jpeg_bytes,
+            tiles_contact_sheet,
+        )
+
+        p = _project()
+        if p is None or not p.paths:
+            return JSONResponse({"error": "no path"}, status_code=400)
+        tiles = extract_ring_tiles(_load_image(), p.paths[0])
+        sheet = tiles_contact_sheet(tiles)
+        return Response(image_to_jpeg_bytes(sheet, quality=88), media_type="image/jpeg")
+
+    @app.post("/api/viz/compare")
+    def viz_compare(payload: dict | None = None):
+        """Run classical + unet on current path; return compare overlay JPEG."""
+        from dendro_shell.detect.classical import detect_rings_along_path
+        from dendro_shell.viz import image_to_jpeg_bytes, render_compare_overlay
+
+        p = _project()
+        if p is None or not p.paths or len(p.paths[0].points) < 2:
+            return JSONResponse({"error": "need path with ≥2 points"}, status_code=400)
+        payload = payload or {}
+        preset = payload.get("preset", p.preprocess_preset)
+        min_d = float(payload.get("min_distance_px", 12))
+        prom = float(payload.get("prominence", 0.08))
+        img = _load_image()
+        path_pts = p.paths[0].points
+        classical = detect_rings_along_path(
+            img, path_pts, preset=preset, min_distance_px=min_d, prominence=prom
+        )
+        unet_rings = []
+        unet_error = None
+        try:
+            from dendro_shell.detect.unet import detect_rings_unet
+
+            unet = detect_rings_unet(
+                img, path_pts, preset=preset, min_distance_px=min_d, prominence=prom
+            )
+            unet_rings = unet.rings
+        except Exception as e:  # noqa: BLE001 — surface in response
+            unet_error = str(e)
+        overlay = render_compare_overlay(img, classical.rings, unet_rings, p.paths[0])
+        return Response(
+            image_to_jpeg_bytes(overlay),
+            media_type="image/jpeg",
+            headers={"X-UNet-Error": (unet_error or "")[:200]},
+        )
+
+    @app.get("/api/viz/report")
+    def viz_report():
+        from dendro_shell.viz import image_to_jpeg_bytes, render_report_png
+
+        p = _project()
+        if p is None:
+            return JSONResponse({"error": "no project"}, status_code=400)
+        return Response(image_to_jpeg_bytes(render_report_png(p)), media_type="image/jpeg")
+
     @app.get("/")
     def index():
         return FileResponse(STATIC_DIR / "index.html")

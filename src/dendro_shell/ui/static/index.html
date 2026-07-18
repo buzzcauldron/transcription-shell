@@ -55,14 +55,22 @@
         <div class="canvas-wrap">
           <canvas id="canvas"></canvas>
         </div>
-        <div class="timeline" aria-label="Ring widths">
-          <canvas id="spark" height="64"></canvas>
+        <div class="tile-strip" aria-label="Zoom tiles for each ring">
+          <div class="tile-strip-head">
+            <span>Ring zoom strip</span>
+            <button id="btnTiles" class="btn small" type="button">Refresh tiles</button>
+          </div>
+          <div id="tileRail" class="tile-rail"></div>
+        </div>
+        <div class="timeline" aria-label="Ring widths and years">
+          <canvas id="spark" height="96"></canvas>
         </div>
       </section>
 
       <aside class="side">
         <nav class="tabs" role="tablist">
           <button class="tab active" data-tab="measure" type="button">Measure</button>
+          <button class="tab" data-tab="viz" type="button">Viz</button>
           <button class="tab" data-tab="polar" type="button">Polar</button>
           <button class="tab" data-tab="train" type="button">Train</button>
         </nav>
@@ -78,6 +86,7 @@
             <label>µm / px <input id="mpp" type="number" step="any" /></label>
             <button id="btnClearPath" class="btn small" type="button">Clear path</button>
           </div>
+          <button id="btnIncline" class="btn small" type="button">Add incline partner path</button>
           <ul id="ringList" class="ring-list"></ul>
           <div class="crossdate">
             <h3>Crossdate</h3>
@@ -87,6 +96,27 @@
             <button id="btnCrossdate" class="btn small" type="button">Correlate</button>
             <pre id="crossOut" class="mono"></pre>
           </div>
+        </div>
+
+        <div class="panel" id="panel-viz">
+          <h2>Figures</h2>
+          <p class="hint">Skeleton plot, growth bars, and classical vs U-Net compare. Also written on Export.</p>
+          <div class="top-actions">
+            <button id="btnRefreshViz" class="btn small" type="button">Refresh figures</button>
+            <button id="btnCompare" class="btn small" type="button">Compare classical / U-Net</button>
+          </div>
+          <figure class="viz-fig">
+            <figcaption>Growth</figcaption>
+            <img id="growthImg" alt="Ring-width growth panel" />
+          </figure>
+          <figure class="viz-fig">
+            <figcaption>Skeleton</figcaption>
+            <img id="skeletonImg" alt="Skeleton plot" />
+          </figure>
+          <figure class="viz-fig">
+            <figcaption>Compare</figcaption>
+            <img id="compareImg" alt="Classical vs U-Net overlay" />
+          </figure>
         </div>
 
         <div class="panel" id="panel-polar">

@@ -204,24 +204,98 @@
 
   function drawSpark(s) {
     const w = spark.parentElement.clientWidth;
+    const H = 96;
     spark.width = w * devicePixelRatio;
-    spark.height = 64 * devicePixelRatio;
+    spark.height = H * devicePixelRatio;
     sctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    sctx.clearRect(0, 0, w, 64);
+    sctx.clearRect(0, 0, w, H);
     const vals = s.widths_um || [];
+    const years = s.years || [];
+    const flags = s.flags || [];
     if (!vals.length) {
       sctx.fillStyle = "#9aada3";
       sctx.font = "12px IBM Plex Sans";
-      sctx.fillText("Ring-width sparkline appears after detect / edit", 8, 36);
+      sctx.fillText("Ring-width timeline appears after detect / edit", 8, 48);
       return;
     }
     const max = Math.max(...vals, 1);
     const bw = w / vals.length;
+    const base = 72;
     vals.forEach((v, i) => {
-      const h = (v / max) * 48;
-      sctx.fillStyle = (s.skeleton && s.skeleton[i]) ? "#d4a35c" : "#6fbfa3";
-      sctx.fillRect(i * bw + 1, 56 - h, Math.max(1, bw - 2), h);
+      const x = i * bw;
+      const flag = flags[i] || "ok";
+      if (flag === "missing" || v <= 0) {
+        sctx.fillStyle = "rgba(154,173,163,0.45)";
+        sctx.fillRect(x + 1, base - 8, Math.max(1, bw - 2), 8);
+        sctx.strokeStyle = "#9aada3";
+        sctx.beginPath();
+        sctx.moveTo(x + bw / 2 - 3, base - 14);
+        sctx.lineTo(x + bw / 2 + 3, base - 8);
+        sctx.stroke();
+        return;
+      }
+      const h = (v / max) * 52;
+      const pointer = s.skeleton && s.skeleton[i];
+      sctx.fillStyle = pointer ? "#d4a35c" : "#6fbfa3";
+      sctx.fillRect(x + 1, base - h, Math.max(1, bw - 2), h);
+      if (pointer) {
+        sctx.strokeStyle = "#d4a35c";
+        sctx.beginPath();
+        sctx.moveTo(x + bw / 2, base + 2);
+        sctx.lineTo(x + bw / 2, base + 12);
+        sctx.stroke();
+      }
+      const y = years[i];
+      if (y != null && y % 10 === 0) {
+        sctx.fillStyle = "#e8efe9";
+        sctx.font = "9px IBM Plex Sans";
+        sctx.fillText(String(y), x + 1, H - 4);
+      }
     });
+  }
+
+  async function refreshTiles() {
+    const rail = $("tileRail");
+    if (!project?.paths?.[0]?.rings?.length) {
+      rail.innerHTML = "<span class='mono'>Detect rings to populate zoom tiles</span>";
+      return;
+    }
+    try {
+      const res = await fetch(`/api/viz/tiles?_=${Date.now()}`);
+      if (!res.ok) throw new Error("tiles failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      // Also build individual cards from series for interaction feel
+      const s = await api("/api/series");
+      rail.innerHTML = "";
+      const sheet = document.createElement("img");
+      sheet.src = url;
+      sheet.alt = "Ring tile contact sheet";
+      sheet.style.height = "88px";
+      sheet.style.width = "auto";
+      sheet.style.borderRadius = "4px";
+      sheet.style.border = "1px solid rgba(232,239,233,0.12)";
+      rail.appendChild(sheet);
+      // Year chips under strip
+      const chips = document.createElement("div");
+      chips.className = "tile-rail";
+      chips.style.marginTop = "0.35rem";
+      (s.years || []).forEach((y, i) => {
+        const card = document.createElement("div");
+        card.className = "tile-card" + ((s.flags || [])[i] === "missing" ? " missing" : "");
+        card.innerHTML = `<div class="cap">${y ?? "—"} · ${(s.flags || [])[i] || "ok"}</div>`;
+        chips.appendChild(card);
+      });
+      rail.appendChild(chips);
+    } catch (err) {
+      rail.innerHTML = `<span class="mono">${err.message || err}</span>`;
+    }
+  }
+
+  async function refreshVizFigures() {
+    const bust = Date.now();
+    $("growthImg").src = `/api/viz/growth?_=${bust}`;
+    $("skeletonImg").src = `/api/viz/skeleton?_=${bust}`;
   }
 
   async function syncProjectToServer() {
@@ -325,6 +399,8 @@
       await refreshSeries();
       const n = project.paths[0]?.rings?.length || 0;
       setStatus(`Detected ${n} rings`);
+      await refreshTiles();
+      await refreshVizFigures();
     } catch (err) {
       setStatus(String(err.message || err));
     }
@@ -348,6 +424,20 @@
     path.points = [];
     path.rings = [];
     redraw();
+  });
+
+  $("btnIncline").addEventListener("click", async () => {
+    if (!project) return;
+    readMetaIntoProject();
+    await syncProjectToServer();
+    const res = await api("/api/path/incline-pair", {
+      method: "POST",
+      body: JSON.stringify({ offset_y: 12 }),
+    });
+    project = res.project;
+    redraw();
+    await refreshSeries();
+    setStatus("Incline partner path added (mean widths on export)");
   });
 
   $("btnLibrary").addEventListener("click", async () => {
@@ -468,6 +558,36 @@
       return;
     }
     $("polarImg").src = `/api/polar?preset=${encodeURIComponent($("preset").value)}&_=${Date.now()}`;
+  });
+
+  $("btnTiles").addEventListener("click", () => refreshTiles());
+  $("btnRefreshViz").addEventListener("click", () => refreshVizFigures());
+  $("btnCompare").addEventListener("click", async () => {
+    if (!project) return;
+    readMetaIntoProject();
+    await syncProjectToServer();
+    setStatus("Comparing classical vs U-Net…");
+    try {
+      const res = await fetch("/api/viz/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          preset: $("preset").value,
+          min_distance_px: 12,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || res.statusText);
+      }
+      const unetErr = res.headers.get("X-UNet-Error");
+      const blob = await res.blob();
+      $("compareImg").src = URL.createObjectURL(blob);
+      setStatus(unetErr ? `Compare drawn (U-Net: ${unetErr})` : "Compare overlay ready");
+      document.querySelector('.tab[data-tab="viz"]').click();
+    } catch (err) {
+      setStatus(String(err.message || err));
+    }
   });
 
   async function refreshLibrary() {

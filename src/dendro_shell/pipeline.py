@@ -15,9 +15,9 @@ from dendro_shell.geometry import (
     path_length,
     radial_path_from_pith,
 )
-from dendro_shell.preprocess import preprocess_gray
 from dendro_shell.project import MeasurePath, Point, Project
 from dendro_shell.series import assign_years, build_width_series
+from dendro_shell.viz import render_report_png, render_skeleton_plot
 
 
 def default_core_path(width: int, height: int) -> list[Point]:
@@ -95,14 +95,19 @@ def export_all(project: Project, out_dir: Path | str) -> dict[str, str]:
     out_dir.mkdir(parents=True, exist_ok=True)
     project.save(out_dir / "project.json")
     series = build_width_series(project)
-    write_rwl(series, out_dir / f"{project.sample_code or 'series'}.rwl")
-    write_pos(project, out_dir / f"{project.sample_code or 'series'}.pos")
+    stem = project.sample_code or "series"
+    write_rwl(series, out_dir / f"{stem}.rwl")
+    write_pos(project, out_dir / f"{stem}.pos")
     save_overlay(project, out_dir / "overlay.png")
+    render_skeleton_plot(series).save(out_dir / "skeleton.png")
+    render_report_png(project, out_dir / "report.png")
     return {
         "project": str(out_dir / "project.json"),
-        "rwl": str(out_dir / f"{project.sample_code or 'series'}.rwl"),
-        "pos": str(out_dir / f"{project.sample_code or 'series'}.pos"),
+        "rwl": str(out_dir / f"{stem}.rwl"),
+        "pos": str(out_dir / f"{stem}.pos"),
         "overlay": str(out_dir / "overlay.png"),
+        "skeleton": str(out_dir / "skeleton.png"),
+        "report": str(out_dir / "report.png"),
         "n_rings": str(sum(len(p.rings) for p in project.paths)),
         "path_length_px": str(
             path_length(project.paths[0].points) if project.paths else 0

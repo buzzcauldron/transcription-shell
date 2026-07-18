@@ -72,12 +72,21 @@ Corrected projects are ground truth. The Train panel (and `dendro train`) share 
 
 Practical start: 20–50 corrected path samples, `imgsz` 256–512, CPU OK for small runs.
 
+## Visuals
+
+- **Measure canvas** — confidence-sized ticks, year labels, pith marker
+- **Ring zoom strip** — contact sheet of per-ring crops (comma_review style)
+- **Timeline** — widths + decade years + missing markers + skeleton stems
+- **Viz tab** — growth bars, skeleton plot, classical vs U-Net compare overlay
+- **Export also writes** `skeleton.png` and stacked `report.png`
+
 ## Exports
 
 - **Tucson `.rwl`** — ring-width series
 - **CooRecorder-style `.pos`** — path tick coordinates + scale
 - **`project.json`** — full editable state
-- **`overlay.png`** — path + ticks on the image
+- **`overlay.png`** — confidence-styled path + ticks
+- **`skeleton.png` / `report.png`** — chronology figures
 
 ## Tests
 

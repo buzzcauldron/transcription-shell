@@ -165,6 +165,78 @@ select, input[type="text"], input[type="number"] {
 }
 #spark { width: 100%; display: block; }
 
+.tile-strip {
+  border-top: 1px solid var(--line);
+  padding: 0.45rem 0.65rem 0.65rem;
+  background: rgba(0, 0, 0, 0.18);
+}
+.tile-strip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+.tile-rail {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scroll-snap-type: x mandatory;
+}
+.tile-card {
+  flex: 0 0 auto;
+  width: 104px;
+  scroll-snap-align: start;
+  animation: rise 0.35s ease both;
+}
+.tile-card img {
+  display: block;
+  width: 104px;
+  height: 72px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #0e1311;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.tile-card:hover img {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.tile-card.missing img { border-color: var(--muted); opacity: 0.7; }
+.tile-card .cap {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viz-fig {
+  margin: 0.75rem 0 0;
+}
+.viz-fig figcaption {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.3rem;
+}
+.viz-fig img {
+  width: 100%;
+  min-height: 80px;
+  background: #0e1311;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  object-fit: contain;
+  display: block;
+}
+
 .side {
   display: flex;
   flex-direction: column;
