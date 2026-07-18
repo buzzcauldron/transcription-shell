@@ -14,6 +14,8 @@
   let cursor = { x: 0, y: 0 };
   let trainTimer = null;
   let paintStroke = null;
+  let seriesCache = null;
+  let hoverFold = null; // { index, ring, widthPx, widthUm }
 
   async function api(path, opts = {}) {
     const res = await fetch(path, {
@@ -48,9 +50,41 @@
     return { x: cx / scale, y: cy / scale };
   }
 
+  function tangentAtDistance(points, dist) {
+    if (!points || points.length < 2) return { x: 1, y: 0 };
+    let acc = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i], b = points[i + 1];
+      const seg = Math.hypot(b.x - a.x, b.y - a.y) || 1e-6;
+      if (acc + seg >= dist) {
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        return { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+      }
+      acc += seg;
+    }
+    const a = points[points.length - 2], b = points[points.length - 1];
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    return { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+  }
+
+  function orderedFolds(path) {
+    return [...(path.rings || [])]
+      .map((r, index) => ({ r, index }))
+      .filter(({ r }) => r.flag !== "false")
+      .sort((a, b) => a.r.distance_px - b.r.distance_px);
+  }
+
+  function widthBetween(outer, inner) {
+    const px = Math.max(0, outer.distance_px - inner.distance_px);
+    const mpp = project?.scale?.micrometers_per_pixel;
+    const um = mpp != null && mpp > 0 ? px * mpp : px;
+    return { px, um, unit: mpp != null && mpp > 0 ? "µm" : "px" };
+  }
+
   function redraw() {
     if (!img.naturalWidth) return;
-    const maxW = canvas.parentElement.clientWidth - 2;
+    const wrap = $("canvasWrap") || canvas.parentElement;
+    const maxW = wrap.clientWidth - 2;
     scale = Math.min(1, maxW / img.naturalWidth);
     canvas.width = Math.round(img.naturalWidth * scale);
     canvas.height = Math.round(img.naturalHeight * scale);
@@ -59,10 +93,46 @@
     const path = primaryPath();
     if (!path) return;
 
-    // path
+    const folds = orderedFolds(path);
+    wrap.classList.toggle("has-rings", folds.length > 0);
+
+    // Width ribbons: thick path segments between consecutive folds
+    if (folds.length >= 2 && path.points.length >= 2) {
+      const total = (() => {
+        let L = 0;
+        for (let i = 0; i < path.points.length - 1; i++) {
+          L += Math.hypot(path.points[i + 1].x - path.points[i].x, path.points[i + 1].y - path.points[i].y);
+        }
+        return L || 1;
+      })();
+      for (let i = 0; i < folds.length - 1; i++) {
+        const a = folds[i].r.distance_px;
+        const b = folds[i + 1].r.distance_px;
+        if (b - a < 0.5) continue;
+        const steps = Math.max(2, Math.ceil((b - a) / 3));
+        ctx.strokeStyle = i % 2 === 0 ? "rgba(111, 191, 163, 0.42)" : "rgba(111, 191, 163, 0.2)";
+        ctx.lineWidth = Math.min(16, Math.max(5, 8 * scale));
+        ctx.lineCap = "butt";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        for (let s = 0; s <= steps; s++) {
+          const d = a + ((b - a) * s) / steps;
+          const pt = pointAtDistance(path.points, Math.min(d, total));
+          if (!pt) continue;
+          const c = imgToCanvas(pt.x, pt.y);
+          if (s === 0) ctx.moveTo(c.x, c.y);
+          else ctx.lineTo(c.x, c.y);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // Path hairline
     if (path.points.length) {
-      ctx.strokeStyle = "rgba(111, 191, 163, 0.95)";
-      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(232, 239, 233, 0.92)";
+      ctx.lineWidth = Math.max(1.25, 1.5 * Math.min(scale, 1.2));
       ctx.beginPath();
       path.points.forEach((p, i) => {
         const c = imgToCanvas(p.x, p.y);
@@ -70,48 +140,97 @@
         else ctx.lineTo(c.x, c.y);
       });
       ctx.stroke();
-      path.points.forEach((p) => {
+      path.points.forEach((p, i) => {
         const c = imgToCanvas(p.x, p.y);
-        ctx.fillStyle = "#6fbfa3";
+        const end = i === 0 || i === path.points.length - 1;
+        ctx.fillStyle = end ? "#e8efe9" : "rgba(232,239,233,0.7)";
         ctx.beginPath();
-        ctx.arc(c.x, c.y, 3.5, 0, Math.PI * 2);
+        ctx.arc(c.x, c.y, end ? 3.2 : 2.2, 0, Math.PI * 2);
         ctx.fill();
       });
     }
 
-    // pith
+    // Disc fold arcs
+    if (project.pith && folds.length && project.sample_type === "disc") {
+      const pc = imgToCanvas(project.pith.x, project.pith.y);
+      folds.forEach(({ r }, i) => {
+        if (r.flag === "missing") return;
+        const pt = pointAtDistance(path.points, r.distance_px);
+        if (!pt) return;
+        const rad = Math.hypot(pt.x - project.pith.x, pt.y - project.pith.y) * scale;
+        if (rad < 4) return;
+        ctx.strokeStyle = i % 5 === 0 ? "rgba(232,239,233,0.22)" : "rgba(232,239,233,0.1)";
+        ctx.lineWidth = i % 5 === 0 ? 1.1 : 0.7;
+        ctx.beginPath();
+        ctx.arc(pc.x, pc.y, rad, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+
+    // Pith
     if (project.pith) {
       const c = imgToCanvas(project.pith.x, project.pith.y);
-      ctx.strokeStyle = "#d4a35c";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#e8efe9";
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(c.x - 8, c.y);
-      ctx.lineTo(c.x + 8, c.y);
-      ctx.moveTo(c.x, c.y - 8);
-      ctx.lineTo(c.x, c.y + 8);
+      ctx.moveTo(c.x - 7, c.y);
+      ctx.lineTo(c.x + 7, c.y);
+      ctx.moveTo(c.x, c.y - 7);
+      ctx.lineTo(c.x, c.y + 7);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 3, 0, Math.PI * 2);
       ctx.stroke();
     }
 
-    // rings
-    const ordered = [...(path.rings || [])].sort((a, b) => b.distance_px - a.distance_px);
-    ordered.forEach((r, i) => {
+    // Fold ticks — perpendicular marks
+    const n = folds.length;
+    folds.forEach(({ r, index }, i) => {
       const pt = pointAtDistance(path.points, r.distance_px);
       if (!pt) return;
+      const tan = tangentAtDistance(path.points, r.distance_px);
       const c = imgToCanvas(pt.x, pt.y);
-      let color = "#e07a5f";
-      if (r.flag === "missing") color = "#9aada3";
-      if (r.flag === "false") color = "#666";
-      if (r.flag === "uncertain") color = "#d4a35c";
-      ctx.fillStyle = color;
+      const nx = -tan.y, ny = tan.x;
+      const conf = Math.max(0.35, Math.min(1, r.confidence ?? 1));
+      const half = (5.5 + 4 * conf) * Math.max(scale, 0.65);
+      let color = "rgba(224, 82, 68, 0.95)";
+      if (r.flag === "missing") color = "rgba(154, 173, 163, 0.85)";
+      if (r.flag === "uncertain") color = "rgba(212, 163, 92, 0.95)";
+      const active = hoverFold && hoverFold.index === index;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = active ? 2.4 : 1.65;
       ctx.beginPath();
-      ctx.arc(c.x, c.y, 4.5, 0, Math.PI * 2);
+      ctx.moveTo(c.x - nx * half, c.y - ny * half);
+      ctx.lineTo(c.x + nx * half, c.y + ny * half);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, active ? 2.4 : 1.4, 0, Math.PI * 2);
+      ctx.fillStyle = color;
       ctx.fill();
-      if (r.year != null) {
-        ctx.fillStyle = "rgba(232,239,233,0.85)";
-        ctx.font = "11px IBM Plex Sans, sans-serif";
-        ctx.fillText(String(r.year), c.x + 6, c.y - 6);
+
+      const showYear =
+        r.year != null &&
+        (i === 0 || i === n - 1 || r.year % 10 === 0 || active || r.flag === "uncertain");
+      if (showYear) {
+        ctx.font = `600 ${Math.max(10, 11 * Math.min(scale * 1.2, 1.15))}px "IBM Plex Mono", monospace`;
+        ctx.fillStyle = "rgba(247,249,251,0.92)";
+        ctx.fillText(String(r.year), c.x + nx * (half + 4) + 2, c.y + ny * (half + 4) - 2);
       }
     });
+
+    if (hoverFold && hoverFold.width) {
+      const pt = pointAtDistance(path.points, hoverFold.ring.distance_px);
+      if (pt) {
+        const c = imgToCanvas(pt.x, pt.y);
+        const label = `${hoverFold.width.um.toFixed(hoverFold.width.unit === "µm" ? 0 : 1)} ${hoverFold.width.unit}`;
+        ctx.font = '600 11px "IBM Plex Mono", monospace';
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = "rgba(15, 20, 18, 0.82)";
+        ctx.fillRect(c.x + 10, c.y - 22, tw + 10, 18);
+        ctx.fillStyle = "#e8efe9";
+        ctx.fillText(label, c.x + 15, c.y - 9);
+      }
+    }
 
     renderRingList();
   }
@@ -170,13 +289,33 @@
   function renderRingList() {
     const path = primaryPath();
     const ul = $("ringList");
+    if (!ul) return;
     ul.innerHTML = "";
     if (!path) return;
-    const rings = [...path.rings].sort((a, b) => b.distance_px - a.distance_px);
-    rings.forEach((r) => {
+    const folds = orderedFolds(path).reverse(); // outer → pith
+    folds.forEach(({ r, index }, i) => {
+      const next = folds[i + 1];
+      const w = next ? widthBetween(r, next.r) : null;
       const li = document.createElement("li");
-      li.className = `flag-${r.flag}`;
-      li.innerHTML = `<span>${r.year ?? "—"} · ${r.distance_px.toFixed(1)}px · ${r.flag}</span><span>${(r.confidence ?? 1).toFixed(2)}</span>`;
+      li.className = `flag-${r.flag || "ok"}`;
+      if (hoverFold && hoverFold.index === index) li.classList.add("active");
+      const wTxt = w
+        ? `${w.um.toFixed(w.unit === "µm" ? 0 : 1)} ${w.unit}`
+        : "pith";
+      li.innerHTML =
+        `<span class="yr">${r.year ?? "—"}</span>` +
+        `<span class="meta">${r.flag || "ok"}${r.note ? " · " + r.note : ""}</span>` +
+        `<span class="w">${wTxt}</span>`;
+      li.onmouseenter = () => {
+        hoverFold = { index, ring: r, width: w };
+        redraw();
+      };
+      li.onmouseleave = () => {
+        if (hoverFold && hoverFold.index === index) {
+          hoverFold = null;
+          redraw();
+        }
+      };
       ul.appendChild(li);
     });
   }
@@ -200,65 +339,87 @@
 
   async function refreshSeries() {
     const s = await api("/api/series");
+    seriesCache = s;
     drawSpark(s);
+    const summary = $("widthSummary");
+    if (summary) {
+      const vals = (s.widths_um || []).filter((v, i) => (s.flags || [])[i] !== "missing" && v > 0);
+      if (!vals.length) summary.textContent = "—";
+      else {
+        const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+        const unit = project?.scale?.micrometers_per_pixel ? "µm" : "px";
+        summary.textContent = `${vals.length} rings · mean ${mean.toFixed(0)} ${unit}`;
+      }
+    }
   }
 
   function drawSpark(s) {
-    const w = spark.parentElement.clientWidth;
-    const H = 96;
-    spark.width = w * devicePixelRatio;
+    const host = spark.parentElement;
+    const w = host.clientWidth - 24;
+    const H = 110;
+    spark.width = Math.max(320, w) * devicePixelRatio;
     spark.height = H * devicePixelRatio;
+    spark.style.width = Math.max(320, w) + "px";
     sctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    sctx.clearRect(0, 0, w, H);
+    sctx.clearRect(0, 0, spark.width, H);
     const vals = s.widths_um || [];
     const years = s.years || [];
     const flags = s.flags || [];
     if (!vals.length) {
-      sctx.fillStyle = "#9aada3";
-      sctx.font = "12px IBM Plex Sans";
-      sctx.fillText("Ring-width timeline appears after detect / edit", 8, 48);
+      sctx.fillStyle = "#6a7a72";
+      sctx.font = '500 12px "Source Sans 3", sans-serif';
+      sctx.fillText("Widths appear after detect", 4, 52);
       return;
     }
-    const max = Math.max(...vals, 1);
-    const bw = w / vals.length;
-    const base = 72;
+    const max = Math.max(...vals.map((v, i) => ((flags[i] === "missing" || v <= 0) ? 0 : v)), 1);
+    const padL = 2, padR = 2, top = 14, base = 78;
+    const innerW = Math.max(320, w) - padL - padR;
+    const bw = innerW / vals.length;
+
+    // baseline
+    sctx.strokeStyle = "rgba(21,32,25,0.18)";
+    sctx.lineWidth = 1;
+    sctx.beginPath();
+    sctx.moveTo(padL, base + 0.5);
+    sctx.lineTo(padL + innerW, base + 0.5);
+    sctx.stroke();
+
     vals.forEach((v, i) => {
-      const x = i * bw;
+      const x = padL + i * bw;
       const flag = flags[i] || "ok";
+      const pointer = s.skeleton && s.skeleton[i];
       if (flag === "missing" || v <= 0) {
-        sctx.fillStyle = "rgba(154,173,163,0.45)";
-        sctx.fillRect(x + 1, base - 8, Math.max(1, bw - 2), 8);
-        sctx.strokeStyle = "#9aada3";
+        sctx.strokeStyle = "#6a7a72";
         sctx.beginPath();
-        sctx.moveTo(x + bw / 2 - 3, base - 14);
-        sctx.lineTo(x + bw / 2 + 3, base - 8);
+        sctx.moveTo(x + bw * 0.25, base - 6);
+        sctx.lineTo(x + bw * 0.75, base - 2);
         sctx.stroke();
         return;
       }
-      const h = (v / max) * 52;
-      const pointer = s.skeleton && s.skeleton[i];
-      sctx.fillStyle = pointer ? "#d4a35c" : "#6fbfa3";
-      sctx.fillRect(x + 1, base - h, Math.max(1, bw - 2), h);
+      const h = (v / max) * 56;
+      sctx.fillStyle = pointer ? "rgba(180, 35, 24, 0.82)" : "rgba(31, 92, 69, 0.78)";
+      sctx.fillRect(x + 0.8, base - h, Math.max(1.5, bw - 1.6), h);
       if (pointer) {
-        sctx.strokeStyle = "#d4a35c";
+        sctx.strokeStyle = "#b42318";
         sctx.beginPath();
-        sctx.moveTo(x + bw / 2, base + 2);
-        sctx.lineTo(x + bw / 2, base + 12);
+        sctx.moveTo(x + bw / 2, base + 3);
+        sctx.lineTo(x + bw / 2, base + 11);
         sctx.stroke();
       }
       const y = years[i];
-      if (y != null && y % 10 === 0) {
-        sctx.fillStyle = "#e8efe9";
-        sctx.font = "9px IBM Plex Sans";
-        sctx.fillText(String(y), x + 1, H - 4);
+      if (y != null && (y % 10 === 0 || i === 0 || i === vals.length - 1)) {
+        sctx.fillStyle = "#152019";
+        sctx.font = '550 9px "IBM Plex Mono", monospace';
+        sctx.fillText(String(y), x + 1, H - 8);
       }
     });
   }
 
   async function refreshTiles() {
     const rail = $("tileRail");
+    if (!rail) return;
     if (!project?.paths?.[0]?.rings?.length) {
-      rail.innerHTML = "<span class='mono'>Detect rings to populate zoom tiles</span>";
+      rail.innerHTML = '<span class="mono">Detect to populate fold zooms</span>';
       return;
     }
     try {
@@ -266,28 +427,11 @@
       if (!res.ok) throw new Error("tiles failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      // Also build individual cards from series for interaction feel
-      const s = await api("/api/series");
       rail.innerHTML = "";
       const sheet = document.createElement("img");
       sheet.src = url;
-      sheet.alt = "Ring tile contact sheet";
-      sheet.style.height = "88px";
-      sheet.style.width = "auto";
-      sheet.style.borderRadius = "4px";
-      sheet.style.border = "1px solid rgba(232,239,233,0.12)";
+      sheet.alt = "Fold zoom strip";
       rail.appendChild(sheet);
-      // Year chips under strip
-      const chips = document.createElement("div");
-      chips.className = "tile-rail";
-      chips.style.marginTop = "0.35rem";
-      (s.years || []).forEach((y, i) => {
-        const card = document.createElement("div");
-        card.className = "tile-card" + ((s.flags || [])[i] === "missing" ? " missing" : "");
-        card.innerHTML = `<div class="cap">${y ?? "—"} · ${(s.flags || [])[i] || "ok"}</div>`;
-        chips.appendChild(card);
-      });
-      rail.appendChild(chips);
     } catch (err) {
       rail.innerHTML = `<span class="mono">${err.message || err}</span>`;
     }
@@ -322,7 +466,7 @@
     await refreshSeries();
     await refreshTiles();
     const n = project.paths?.[0]?.rings?.length || 0;
-    setStatus(statusMsg || `${project.sample_code || "sample"} · ${n} rings · ${project.sample_type}`);
+    setStatus(statusMsg || `${project.sample_code || "sample"} · ${n} folds · ${project.sample_type || ""}`);
   }
 
   async function populateMethodSelect() {
@@ -578,18 +722,37 @@
     cursor = canvasToImg(e.clientX - rect.left, e.clientY - rect.top);
     if (paintStroke) {
       paintStroke.points.push(cursor);
-      // live preview
-      ctx.fillStyle = paintStroke.mode === "erase" ? "rgba(0,0,0,0.35)" : "rgba(212,163,92,0.55)";
+      ctx.fillStyle = paintStroke.mode === "erase" ? "rgba(0,0,0,0.35)" : "rgba(180,35,24,0.45)";
       const c = imgToCanvas(cursor.x, cursor.y);
       ctx.beginPath();
       ctx.arc(c.x, c.y, (parseInt($("brushRadius").value, 10) || 3) * scale, 0, Math.PI * 2);
       ctx.fill();
       return;
     }
-    if (!dragTick) return;
+    if (dragTick) {
+      const path = primaryPath();
+      dragTick.ring.distance_px = distanceAlongPath(path.points, cursor.x, cursor.y);
+      redraw();
+      return;
+    }
+    // Hover fold → width callout
     const path = primaryPath();
-    dragTick.ring.distance_px = distanceAlongPath(path.points, cursor.x, cursor.y);
-    redraw();
+    if (path && path.rings?.length) {
+      const hit = nearestTick(cursor, 16);
+      if (hit) {
+        const folds = orderedFolds(path);
+        const fi = folds.findIndex((f) => f.index === hit.index);
+        const w = fi >= 0 && fi < folds.length - 1
+          ? widthBetween(folds[fi].r, folds[fi + 1].r)
+          : null;
+        const same = hoverFold && hoverFold.index === hit.index;
+        hoverFold = { index: hit.index, ring: hit.ring, width: w };
+        if (!same) redraw();
+      } else if (hoverFold) {
+        hoverFold = null;
+        redraw();
+      }
+    }
   });
 
   canvas.addEventListener("pointerup", async () => {
