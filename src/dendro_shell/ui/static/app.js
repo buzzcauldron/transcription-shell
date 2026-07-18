@@ -310,24 +310,37 @@
     project = res.project;
   }
 
+  async function showProject(p, statusMsg) {
+    project = p;
+    fillMeta();
+    await loadProjectImage();
+    redraw();
+    await refreshSeries();
+    await refreshTiles();
+    const n = project.paths?.[0]?.rings?.length || 0;
+    setStatus(statusMsg || `${project.sample_code || "sample"} · ${n} rings · ${project.sample_type}`);
+  }
+
   async function bootstrap() {
     const presets = await api("/api/presets");
     const sel = $("preset");
     sel.innerHTML = "";
+    const autoOpt = document.createElement("option");
+    autoOpt.value = "auto";
+    autoOpt.textContent = "auto";
+    sel.appendChild(autoOpt);
     (presets.presets || []).forEach((p) => {
       const o = document.createElement("option");
       o.value = p;
       o.textContent = p;
-      if (p === "sanded_core") o.selected = true;
       sel.appendChild(o);
     });
 
     const proj = await api("/api/project");
     if (proj.project) {
-      project = proj.project;
-      fillMeta();
-      await loadProjectImage();
-      setStatus(`${project.sample_code || "sample"} ready`);
+      await showProject(proj.project);
+    } else {
+      setStatus("Open an image to begin");
     }
     await refreshModels();
     await refreshLibrary();
@@ -361,20 +374,24 @@
   $("fileInput").addEventListener("change", async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
+    setStatus(`Opening ${f.name}…`);
     const fd = new FormData();
     fd.append("file", f);
     const res = await fetch("/api/open", { method: "POST", body: fd });
+    if (!res.ok) {
+      setStatus("Failed to open image");
+      return;
+    }
     const data = await res.json();
-    project = data.project;
-    fillMeta();
-    await loadProjectImage();
-    setStatus(`Opened ${f.name}`);
+    await showProject(data.project, `Opened ${f.name}`);
+    await refreshVizFigures();
   });
 
   $("preset").addEventListener("change", async () => {
     if (!project) return;
     project.preprocess_preset = $("preset").value;
     await loadProjectImage();
+    redraw();
   });
 
   $("btnDetect").addEventListener("click", async () => {
@@ -383,6 +400,7 @@
     await syncProjectToServer();
     setStatus("Detecting…");
     try {
+      const keep = primaryPath().points.length >= 2 && !$("sampleType").value.includes("auto");
       const res = await api("/api/detect", {
         method: "POST",
         body: JSON.stringify({
@@ -390,17 +408,12 @@
           preset: $("preset").value,
           sample_type: $("sampleType").value,
           outer_year: project.outer_year,
-          path: primaryPath().points.length >= 2 ? primaryPath().points : null,
+          keep_path: keep,
+          path: keep ? primaryPath().points : null,
           pith: project.pith,
         }),
       });
-      project = res.project;
-      fillMeta();
-      redraw();
-      await refreshSeries();
-      const n = project.paths[0]?.rings?.length || 0;
-      setStatus(`Detected ${n} rings`);
-      await refreshTiles();
+      await showProject(res.project, null);
       await refreshVizFigures();
     } catch (err) {
       setStatus(String(err.message || err));

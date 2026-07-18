@@ -83,19 +83,28 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
         set_active(payload["name"])
         return {"active": payload["name"]}
 
+    def _open_and_detect(image_path: Path, *, outer_year: int | None = None) -> Project:
+        """Open image and immediately run adaptive detect so UI is usable."""
+        proj = run_detect(
+            image_path,
+            method="classical",
+            preset="auto",
+            sample_type="auto",
+            outer_year=outer_year,
+            sample_code=image_path.stem,
+            auto=True,
+        )
+        _set_project(proj)
+        return proj
+
     @app.get("/api/project")
     def get_project():
         p = _project()
         if p is None and _STATE.get("open_image"):
-            # Lazy open CLI-provided image
+            # Lazy open CLI-provided image and auto-detect
             img_path = Path(_STATE["open_image"]).resolve()
             if img_path.is_file():
-                proj = Project(
-                    image_path=str(img_path),
-                    sample_code=img_path.stem,
-                )
-                _set_project(proj)
-                p = proj
+                p = _open_and_detect(img_path)
                 _STATE["open_image"] = None
         if p is None:
             return {"project": None}
@@ -115,8 +124,7 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
         name = file.filename or "sample.png"
         dest = dest_dir / Path(name).name
         dest.write_bytes(data)
-        proj = Project(image_path=str(dest), sample_code=dest.stem)
-        _set_project(proj)
+        proj = _open_and_detect(dest)
         return {"project": proj.to_dict()}
 
     @app.post("/api/open-path")
@@ -124,8 +132,7 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
         path = Path(payload["path"]).expanduser().resolve()
         if not path.is_file():
             return JSONResponse({"error": f"Not found: {path}"}, status_code=404)
-        proj = Project(image_path=str(path), sample_code=path.stem)
-        _set_project(proj)
+        proj = _open_and_detect(path, outer_year=payload.get("outer_year"))
         return {"project": proj.to_dict()}
 
     @app.get("/api/image")
@@ -170,24 +177,31 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
         if p is None:
             return JSONResponse({"error": "no project"}, status_code=400)
         method = payload.get("method", p.detect_method)
-        preset = payload.get("preset", p.preprocess_preset)
-        min_d = float(payload.get("min_distance_px", 8))
-        prom = float(payload.get("prominence", 0.08))
+        preset = payload.get("preset") or p.preprocess_preset or "auto"
+        # None → adaptive; only use explicit values when provided
+        min_d = payload.get("min_distance_px")
+        prom = payload.get("prominence")
+        min_d = float(min_d) if min_d is not None else None
+        prom = float(prom) if prom is not None else None
+
+        # Rebuild transect unless user drew ≥2 points and asked to keep path
+        keep_path = bool(payload.get("keep_path"))
         path_pts = None
-        if payload.get("path"):
+        if keep_path and payload.get("path") and len(payload["path"]) >= 2:
             path_pts = [Point(**pt) for pt in payload["path"]]
-        elif p.paths and p.paths[0].points:
+        elif keep_path and p.paths and len(p.paths[0].points) >= 2:
             path_pts = p.paths[0].points
 
         pith = p.pith
         if payload.get("pith"):
             pith = Point(**payload["pith"])
 
+        sample_type = payload.get("sample_type") or p.sample_type or "auto"
         project = run_detect(
             p.image_path,
             method=method,
             preset=preset,
-            sample_type=payload.get("sample_type", p.sample_type),
+            sample_type=sample_type,
             pith=pith,
             path_points=path_pts,
             angle_deg=float(payload.get("angle_deg", 0)),
@@ -195,6 +209,7 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
             prominence=prom,
             outer_year=payload.get("outer_year", p.outer_year),
             sample_code=p.sample_code,
+            auto=True,
         )
         # Preserve metadata / scale
         project = project.model_copy(
@@ -203,7 +218,6 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
                 "species": p.species,
                 "tags": p.tags,
                 "notes": p.notes,
-                "sample_type": payload.get("sample_type", p.sample_type),
             }
         )
         _set_project(project)
