@@ -18,7 +18,12 @@ from dendro_shell.preprocess import list_presets, preprocess_pil
 from dendro_shell.project import MeasurePath, Point, Project, RingTick, ScaleInfo
 from dendro_shell.geometry import calibrate_scale, estimate_pith_center, polar_unwrap
 from dendro_shell.pipeline import export_all, run_detect
-from dendro_shell.series import build_width_series, skeleton_plot_values
+from dendro_shell.series import (
+    assign_years,
+    build_width_series,
+    drought_stress_series,
+    skeleton_plot_values,
+)
 from dendro_shell.train.dataset import add_project_to_library, list_library_entries
 from dendro_shell.train.job import TrainConfig, get_train_status, request_stop, run_training
 from dendro_shell.train.registry import get_active_checkpoint, list_models, set_active
@@ -292,16 +297,45 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
     def series():
         p = _project()
         if p is None:
-            return {"years": [], "widths_um": [], "skeleton": []}
+            return {"years": [], "widths_um": [], "skeleton": [], "drought": {}}
         s = build_width_series(p)
+        drought = drought_stress_series(s.widths_um)
         return {
             "years": s.years,
             "widths_um": s.widths_um,
             "widths_px": s.widths_px,
             "flags": s.flags,
-            "skeleton": skeleton_plot_values(s.widths_um),
+            "skeleton": drought["pointer"],
+            "drought": drought,
+            "outer_year": p.outer_year,
             "sample_code": s.sample_code,
         }
+
+    @app.post("/api/years")
+    def set_outer_year(payload: dict):
+        """Re-label fold years from a known outer (bark) year inward."""
+        p = _project()
+        if p is None:
+            return JSONResponse({"error": "no project"}, status_code=400)
+        if "outer_year" not in payload or payload["outer_year"] in (None, ""):
+            return JSONResponse({"error": "outer_year required"}, status_code=400)
+        oy = int(payload["outer_year"])
+        if not p.paths:
+            p = p.model_copy(update={"outer_year": oy})
+            _set_project(p)
+            return {"project": p.to_dict()}
+        path0 = p.paths[0]
+        labeled = assign_years(path0.rings, oy)
+        # Also set pith_year from innermost labeled ring
+        pith_year = None
+        for r in sorted(labeled, key=lambda t: t.distance_px):
+            if r.year is not None and r.flag != "false":
+                pith_year = r.year
+                break
+        new_paths = [path0.model_copy(update={"rings": labeled})] + list(p.paths[1:])
+        p = p.model_copy(update={"outer_year": oy, "pith_year": pith_year, "paths": new_paths})
+        _set_project(p)
+        return {"project": p.to_dict(), "outer_year": oy, "pith_year": pith_year}
 
     @app.post("/api/export")
     def export(payload: dict | None = None):

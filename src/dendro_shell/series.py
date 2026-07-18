@@ -132,3 +132,59 @@ def skeleton_plot_values(widths_um: list[float]) -> list[float]:
         return [0.0] * len(arr)
     thr = float(np.mean(valid))
     return [1.0 if (w > 0 and w < thr) else 0.0 for w in arr]
+
+
+# Relative ring-width z-score → rough moisture / stress class (not a climate reconstruction).
+DroughtClass = str  # "severe" | "dry" | "normal" | "wet" | "missing"
+
+
+def width_zscores(widths_um: list[float]) -> list[float | None]:
+    """Z-score of each width vs series mean/std (zeros/missing → None)."""
+    arr = np.asarray(widths_um, dtype=np.float64)
+    valid = arr[arr > 0]
+    if len(valid) < 3:
+        return [None] * len(arr)
+    mu = float(np.mean(valid))
+    sd = float(np.std(valid, ddof=1)) or 1.0
+    out: list[float | None] = []
+    for w in arr:
+        if w <= 0:
+            out.append(None)
+        else:
+            out.append((float(w) - mu) / sd)
+    return out
+
+
+def drought_class_from_z(z: float | None) -> DroughtClass:
+    """Map width z-score to a coarse drought/wetness label."""
+    if z is None:
+        return "missing"
+    if z <= -1.5:
+        return "severe"
+    if z <= -0.75:
+        return "dry"
+    if z >= 1.0:
+        return "wet"
+    return "normal"
+
+
+def drought_stress_series(widths_um: list[float]) -> dict:
+    """Pointer years + z-scores + class labels for UI / export.
+
+    Narrow rings (low z) are treated as drought/stress candidates; wide rings as wet.
+    This is a relative series diagnostic, not a calibrated PDSI reconstruction.
+    """
+    z = width_zscores(widths_um)
+    classes = [drought_class_from_z(v) for v in z]
+    pointer = skeleton_plot_values(widths_um)
+    n = len(widths_um)
+    counts = {k: classes.count(k) for k in ("severe", "dry", "normal", "wet", "missing")}
+    return {
+        "z": z,
+        "class": classes,
+        "pointer": pointer,
+        "counts": counts,
+        "n": n,
+        "n_stress": counts["severe"] + counts["dry"],
+        "stress_frac": (counts["severe"] + counts["dry"]) / max(1, n - counts["missing"]),
+    }

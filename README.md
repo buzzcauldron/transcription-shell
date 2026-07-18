@@ -43,7 +43,7 @@ Open the UI at [http://127.0.0.1:8765](http://127.0.0.1:8765).
 2. Pick a **preprocess preset** (`sanded_core`, `dark_disc`, `wet_stain`, `narrow_rings`).
 3. Draw a **measurement path** (or use the default mid-line / radial path). For discs: **Estimate pith** or Alt+click.
 4. **Detect** via the stack (`auto` → boolean on discs, classical on cores; or pick classical / boolean / U-Net). Edit ticks: drag, `A` add, `D` delete, `M` missing, `F` false.
-5. Set **outer year** and **µm/px** scale; export `.rwl` / `.pos`.
+5. Set **outer year** (bark year) to label folds bark→pith; set **µm/px** scale; export `.rwl` / `.pos` (+ `drought.json` stress classes).
 6. **Add to training set** → **Train** panel → activate checkpoint → detect with U-Net.
 
 ```text
@@ -106,11 +106,17 @@ UI Method includes **Auto** and **Boolean bridge**. Viz → **Break mask** shows
 - **Figures** — growth, skeleton, stack compare, break mask
 - **Export also writes** `skeleton.png` and stacked `report.png`
 
+## Years & drought / stress
+
+- **Outer year** — known bark year relabels every fold inward (`POST /api/years`). Short series show every year on the canvas; longer series show 5-/10-year ticks.
+- **Drought classes** — relative ring-width z-scores vs the sample mean: `severe` / `dry` / `normal` / `wet` (plus pointer years). Shown on the widths chart and fold list; written to `drought.json` on export. This is a **series diagnostic**, not a calibrated climate reconstruction.
+
 ## Exports
 
 - **Tucson `.rwl`** — ring-width series
 - **CooRecorder-style `.pos`** — path tick coordinates + scale
 - **`project.json`** — full editable state
+- **`drought.json`** — per-year z-score / stress class + summary
 - **`overlay.png`** — confidence-styled path + ticks
 - **`skeleton.png` / `report.png`** — chronology figures
 

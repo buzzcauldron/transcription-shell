@@ -208,9 +208,15 @@
       ctx.fillStyle = color;
       ctx.fill();
 
-      const showYear =
-        r.year != null &&
-        (i === 0 || i === n - 1 || r.year % 10 === 0 || active || r.flag === "uncertain");
+      // When outer year is known, label denser: every year if short series, else 5/10
+      const dated = project.outer_year != null && r.year != null;
+      let showYear = false;
+      if (r.year != null) {
+        if (active || r.flag === "uncertain" || i === 0 || i === n - 1) showYear = true;
+        else if (dated && n <= 28) showYear = true;
+        else if (dated && r.year % 5 === 0) showYear = true;
+        else if (r.year % 10 === 0) showYear = true;
+      }
       if (showYear) {
         ctx.font = `600 ${Math.max(10, 11 * Math.min(scale * 1.2, 1.15))}px "IBM Plex Mono", monospace`;
         ctx.fillStyle = "rgba(247,249,251,0.92)";
@@ -302,9 +308,12 @@
       const wTxt = w
         ? `${w.um.toFixed(w.unit === "µm" ? 0 : 1)} ${w.unit}`
         : "pith";
+      const di = (seriesCache?.years || []).indexOf(r.year);
+      const dcls = di >= 0 && seriesCache?.drought?.class ? seriesCache.drought.class[di] : "";
+      const dmark = dcls && dcls !== "normal" && dcls !== "missing" ? ` · ${dcls}` : "";
       li.innerHTML =
         `<span class="yr">${r.year ?? "—"}</span>` +
-        `<span class="meta">${r.flag || "ok"}${r.note ? " · " + r.note : ""}</span>` +
+        `<span class="meta">${r.flag || "ok"}${r.note ? " · " + r.note : ""}${dmark}</span>` +
         `<span class="w">${wTxt}</span>`;
       li.onmouseenter = () => {
         hoverFold = { index, ring: r, width: w };
@@ -348,7 +357,13 @@
       else {
         const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
         const unit = project?.scale?.micrometers_per_pixel ? "µm" : "px";
-        summary.textContent = `${vals.length} rings · mean ${mean.toFixed(0)} ${unit}`;
+        const d = s.drought || {};
+        const yrs = s.years || [];
+        const span = yrs.length ? `${Math.max(...yrs)}–${Math.min(...yrs.filter(Boolean))}` : "";
+        const stress = d.n_stress != null
+          ? ` · ${d.n_stress} dry/stress (${((d.stress_frac || 0) * 100).toFixed(0)}%)`
+          : "";
+        summary.textContent = `${vals.length} rings${span ? " · " + span : ""} · mean ${mean.toFixed(0)} ${unit}${stress}`;
       }
     }
   }
@@ -397,7 +412,15 @@
         return;
       }
       const h = (v / max) * 56;
-      sctx.fillStyle = pointer ? "rgba(180, 35, 24, 0.82)" : "rgba(31, 92, 69, 0.78)";
+      const dclass = (s.drought && s.drought.class && s.drought.class[i]) || (pointer ? "dry" : "normal");
+      const colors = {
+        severe: "rgba(140, 20, 20, 0.9)",
+        dry: "rgba(180, 35, 24, 0.82)",
+        normal: "rgba(31, 92, 69, 0.78)",
+        wet: "rgba(40, 110, 160, 0.8)",
+        missing: "rgba(106, 122, 114, 0.5)",
+      };
+      sctx.fillStyle = colors[dclass] || colors.normal;
       sctx.fillRect(x + 0.8, base - h, Math.max(1.5, bw - 1.6), h);
       if (pointer) {
         sctx.strokeStyle = "#b42318";
@@ -592,6 +615,31 @@
     }
     if (project) project.sample_type = t === "auto" ? project.sample_type : t;
   });
+
+  let yearTimer = null;
+  $("outerYear").addEventListener("change", async () => {
+    if (!project) return;
+    const raw = $("outerYear").value;
+    if (raw === "") return;
+    const oy = parseInt(raw, 10);
+    if (!Number.isFinite(oy)) return;
+    try {
+      const res = await api("/api/years", {
+        method: "POST",
+        body: JSON.stringify({ outer_year: oy }),
+      });
+      await showProject(res.project, `Years labeled ${oy} → pith ${res.pith_year ?? "—"}`);
+      await refreshVizFigures();
+    } catch (err) {
+      setStatus(String(err.message || err));
+    }
+  });
+  $("outerYear").addEventListener("input", () => {
+    // debounce live relabel while typing
+    if (yearTimer) clearTimeout(yearTimer);
+    yearTimer = setTimeout(() => $("outerYear").dispatchEvent(new Event("change")), 600);
+  });
+
 
   $("btnDetect").addEventListener("click", async () => {
     if (!project) return;
