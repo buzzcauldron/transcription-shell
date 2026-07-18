@@ -13,6 +13,7 @@
   let modePath = true;
   let cursor = { x: 0, y: 0 };
   let trainTimer = null;
+  let paintStroke = null;
 
   async function api(path, opts = {}) {
     const res = await fetch(path, {
@@ -480,6 +481,13 @@
     const c = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const pt = canvasToImg(c.x, c.y);
 
+    const brush = $("brushMode")?.value || "off";
+    if (brush !== "off") {
+      paintStroke = { mode: brush, points: [pt] };
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+
     if (e.shiftKey || ($("sampleType").value === "disc" && e.altKey)) {
       project.pith = pt;
       redraw();
@@ -500,6 +508,16 @@
   canvas.addEventListener("pointermove", (e) => {
     const rect = canvas.getBoundingClientRect();
     cursor = canvasToImg(e.clientX - rect.left, e.clientY - rect.top);
+    if (paintStroke) {
+      paintStroke.points.push(cursor);
+      // live preview
+      ctx.fillStyle = paintStroke.mode === "erase" ? "rgba(0,0,0,0.35)" : "rgba(212,163,92,0.55)";
+      const c = imgToCanvas(cursor.x, cursor.y);
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, (parseInt($("brushRadius").value, 10) || 3) * scale, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
     if (!dragTick) return;
     const path = primaryPath();
     dragTick.ring.distance_px = distanceAlongPath(path.points, cursor.x, cursor.y);
@@ -507,6 +525,26 @@
   });
 
   canvas.addEventListener("pointerup", async () => {
+    if (paintStroke) {
+      const stroke = paintStroke;
+      paintStroke = null;
+      try {
+        const res = await api("/api/paint", {
+          method: "POST",
+          body: JSON.stringify({
+            mode: stroke.mode,
+            radius: parseInt($("brushRadius").value, 10) || 3,
+            strokes: [{ points: stroke.points }],
+          }),
+        });
+        project = res.project;
+        setStatus(stroke.mode === "erase" ? "Erased paint stroke" : "Painted boundary stroke");
+        redraw();
+      } catch (err) {
+        setStatus(String(err.message || err));
+      }
+      return;
+    }
     if (dragTick) {
       dragTick = null;
       readMetaIntoProject();
@@ -629,15 +667,30 @@
     } else {
       trainTimer = null;
       await refreshModels();
+      if (st.state === "finished" && project) {
+        setStatus("Training finished — running compare overlay");
+        $("btnCompare").click();
+      }
     }
   }
 
   $("btnTrain").addEventListener("click", async () => {
+    const name = $("trainName").value;
+    const overwrite = $("trainOverwrite").checked;
+    const models = await api("/api/models");
+    const exists = (models.models || []).some((m) => m.name === name);
+    if (exists && !overwrite) {
+      const ok = window.confirm(
+        `Model "${name}" already exists. Continue without overwrite (saves a timestamped copy)?\n` +
+          `Cancel and enable "Overwrite same name" to replace it.`
+      );
+      if (!ok) return;
+    }
     try {
       await api("/api/train/start", {
         method: "POST",
         body: JSON.stringify({
-          name: $("trainName").value,
+          name,
           epochs: parseInt($("trainEpochs").value, 10),
           imgsz: parseInt($("trainImgsz").value, 10),
           batch_size: parseInt($("trainBatch").value, 10),
@@ -645,7 +698,9 @@
           device: $("trainDevice").value,
           augment: $("trainAugment").checked,
           fine_tune: $("trainFinetune").checked,
-          overwrite: true,
+          overwrite,
+          species: $("trainSpecies").value || null,
+          tag: $("trainTag").value || null,
         }),
       });
       setStatus("Training started");

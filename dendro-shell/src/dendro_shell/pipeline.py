@@ -101,7 +101,7 @@ def export_all(project: Project, out_dir: Path | str) -> dict[str, str]:
     save_overlay(project, out_dir / "overlay.png")
     render_skeleton_plot(series).save(out_dir / "skeleton.png")
     render_report_png(project, out_dir / "report.png")
-    return {
+    result = {
         "project": str(out_dir / "project.json"),
         "rwl": str(out_dir / f"{stem}.rwl"),
         "pos": str(out_dir / f"{stem}.pos"),
@@ -113,3 +113,12 @@ def export_all(project: Project, out_dir: Path | str) -> dict[str, str]:
             path_length(project.paths[0].points) if project.paths else 0
         ),
     }
+    if project.sample_type == "disc" and project.pith is not None:
+        import json
+
+        from dendro_shell.contours import contours_to_geojson
+
+        geo = out_dir / "rings.geojson"
+        geo.write_text(json.dumps(contours_to_geojson(project), indent=2), encoding="utf-8")
+        result["contours"] = str(geo)
+    return result
