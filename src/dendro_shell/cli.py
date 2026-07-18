@@ -30,19 +30,23 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         x, y = args.pith.split(",")
         pith = Point(x=float(x), y=float(y))
 
-    project = run_detect(
-        args.image,
-        method=args.method,
-        preset=args.preset,
-        sample_type=args.type,
-        pith=pith,
-        angle_deg=args.angle,
-        min_distance_px=args.min_distance,
-        prominence=args.prominence,
-        outer_year=args.outer_year,
-        sample_code=args.sample_code or Path(args.image).stem,
-        auto=True,
-    )
+    try:
+        project = run_detect(
+            args.image,
+            method=args.method,
+            preset=args.preset,
+            sample_type=args.type,
+            pith=pith,
+            angle_deg=args.angle,
+            min_distance_px=args.min_distance,
+            prominence=args.prominence,
+            outer_year=args.outer_year,
+            sample_code=args.sample_code or Path(args.image).stem,
+            auto=True,
+        )
+    except (FileNotFoundError, RuntimeError, ValueError) as e:
+        print(f"detect error: {e}", file=sys.stderr)
+        return 1
     out = Path(args.output or (Path(args.image).parent / "dendro_out"))
     paths = export_all(project, out)
     print(json.dumps(paths, indent=2))

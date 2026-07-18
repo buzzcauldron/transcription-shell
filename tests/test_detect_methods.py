@@ -5,8 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 from PIL import Image
 
+from dendro_shell.detect.classical import infer_sample_type
 from dendro_shell.detect.methods import (
     METHOD_IDS,
     default_method_for,
@@ -59,3 +61,41 @@ def test_pipeline_auto_disc_uses_boolean(tmp_path: Path):
     )
     assert project.detect_method == "boolean"
     assert len(project.paths[0].rings) >= 4
+
+
+def test_infer_round_blob_is_disc_even_in_wide_frame(tmp_path: Path):
+    """Rectangular photo of a round section should still classify as disc."""
+    w, h = 640, 420
+    arr = np.full((h, w), 230, dtype=np.uint8)
+    yy, xx = np.ogrid[:h, :w]
+    cx, cy = w // 2, h // 2
+    r = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
+    arr[r < 160] = 120
+    for rad in np.linspace(30, 150, 10):
+        arr[(r > rad - 1.2) & (r < rad + 1.2)] = 40
+    path = tmp_path / "framed_disc.png"
+    Image.fromarray(arr).save(path)
+    assert infer_sample_type(Image.open(path)) == "disc"
+
+
+def test_infer_elongated_core(tmp_path: Path):
+    w, h = 700, 140
+    arr = np.full((h, w), 170, dtype=np.uint8)
+    for x in np.linspace(40, w - 40, 14):
+        arr[:, int(x) - 1 : int(x) + 2] = 50
+    path = tmp_path / "core.png"
+    Image.fromarray(arr).save(path)
+    assert infer_sample_type(Image.open(path)) == "core"
+
+
+def test_unet_without_checkpoint_raises():
+    from pathlib import Path as P
+
+    # Use tiny blank; run_detect should raise before inventing rings
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        img = P(td) / "x.png"
+        Image.fromarray(np.full((80, 200), 160, dtype=np.uint8)).save(img)
+        with pytest.raises(FileNotFoundError, match="U-Net checkpoint"):
+            run_detect(img, method="unet", sample_type="core", auto=False)
