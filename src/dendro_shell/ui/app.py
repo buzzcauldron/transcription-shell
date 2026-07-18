@@ -421,6 +421,41 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
         _set_project(p)
         return {"project": p.to_dict()}
 
+    @app.get("/api/viz/breaks")
+    def viz_breaks(preset: str = "dark_disc"):
+        """Overlay break mask (red) + ring fragments (teal) for Boolean bridge."""
+        import cv2
+
+        from dendro_shell.detect.boolean_bridge import detect_break_mask, detect_ring_map
+        from dendro_shell.preprocess import preprocess_gray
+        from dendro_shell.viz import image_to_jpeg_bytes
+
+        p = _project()
+        if p is None:
+            return JSONResponse({"error": "no project"}, status_code=400)
+        img = _load_image()
+        gray = preprocess_gray(img, preset or p.preprocess_preset)
+        pith = p.pith or estimate_pith_center(gray)
+        breaks = detect_break_mask(gray, pith=pith)
+        rings = detect_ring_map(gray)
+        frags = cv2.bitwise_and(rings, cv2.bitwise_not(breaks))
+        rgb = np.asarray(img.convert("RGB")).copy()
+        red = rgb.copy()
+        red[:, :, 0] = np.maximum(red[:, :, 0], breaks)
+        teal = rgb.copy()
+        teal[:, :, 1] = np.maximum(teal[:, :, 1], frags)
+        teal[:, :, 2] = np.maximum(teal[:, :, 2], (frags * 0.7).astype(np.uint8))
+        out = cv2.addWeighted(red, 0.55, teal, 0.45, 0)
+        cv2.drawMarker(
+            out,
+            (int(pith.x), int(pith.y)),
+            (212, 163, 92),
+            markerType=cv2.MARKER_CROSS,
+            markerSize=16,
+            thickness=2,
+        )
+        return Response(image_to_jpeg_bytes(Image.fromarray(out)), media_type="image/jpeg")
+
     @app.get("/api/viz/skeleton")
     def viz_skeleton():
         from dendro_shell.viz import image_to_jpeg_bytes, render_skeleton_plot

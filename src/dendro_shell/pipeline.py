@@ -6,6 +6,7 @@ import math
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 from dendro_shell.detect.classical import detect_rings_along_path, infer_sample_type
@@ -93,6 +94,7 @@ def run_detect(
         else:
             path_points = default_core_path(w, h)
 
+    bridge_meta: dict | None = None
     if method == "unet":
         from dendro_shell.detect.unet import detect_rings_unet
 
@@ -103,6 +105,28 @@ def run_detect(
             min_distance_px=min_distance_px or 8.0,
             prominence=prominence or 0.06,
         )
+        rings = result.rings
+    elif method == "boolean":
+        from dendro_shell.detect.boolean_bridge import detect_rings_boolean_bridge
+
+        if pith is None and sample_type == "disc":
+            pith = estimate_pith_center(preprocess_gray(image, preset))
+        # For cores without pith, use path midpoint as pseudo-pith for radius matching
+        if pith is None:
+            mid = path_points[len(path_points) // 2]
+            pith = Point(x=mid.x, y=mid.y)
+        bres = detect_rings_boolean_bridge(
+            image,
+            path_points,
+            pith=pith,
+            preset=preset,
+        )
+        rings = bres.rings
+        bridge_meta = {
+            "n_bridged": sum(1 for b in bres.bridged if b.crossed_break),
+            "n_matched": len(bres.bridged),
+            "break_fraction": float(np.mean(bres.break_mask > 0)),
+        }
     else:
         result = detect_rings_along_path(
             image,
@@ -111,22 +135,31 @@ def run_detect(
             min_distance_px=min_distance_px,
             prominence=prominence,
         )
+        rings = result.rings
 
-    rings = result.rings
     if outer_year is None and rings:
         # Usable chronology out of the box; user can edit outer year in UI
         outer_year = datetime.now().year
     if outer_year is not None:
         rings = assign_years(rings, outer_year)
 
+    notes = ""
+    if bridge_meta:
+        notes = (
+            f"boolean_bridge: matched={bridge_meta['n_matched']} "
+            f"bridged_over_breaks={bridge_meta['n_bridged']} "
+            f"break_frac={bridge_meta['break_fraction']:.3f}"
+        )
+
     project = Project(
         image_path=str(image_path.resolve()),
         sample_code=sample_code or image_path.stem,
         sample_type=sample_type,  # type: ignore[arg-type]
         preprocess_preset=preset,
-        detect_method=method if method in ("classical", "unet") else "classical",  # type: ignore[arg-type]
+        detect_method=method if method in ("classical", "unet", "boolean") else "classical",  # type: ignore[arg-type]
         outer_year=outer_year,
         pith=pith,
+        notes=notes,
         paths=[MeasurePath(id="path0", points=list(path_points), rings=rings)],
     )
     return project

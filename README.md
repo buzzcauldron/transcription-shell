@@ -72,6 +72,21 @@ Corrected projects are ground truth. The Train panel (and `dendro train`) share 
 
 Practical start: 20–50 corrected path samples, `imgsz` 256–512, CPU OK for small runs.
 
+## Boolean bridge (cracks & damage)
+
+Method **`boolean`** matches ring fragments across checks, radial cracks, and damaged zones:
+
+1. Binary ring-edge map + binary break mask  
+2. Fragments = `ring_map AND NOT break_mask`  
+3. Polar morphological close to bridge angular gaps  
+4. Boolean radius predicate `|r_a - r_b| ≤ tol` to assign the same year/ring across the break  
+
+```bash
+dendro detect cracked_disc.jpg --type disc --method boolean -o out/
+```
+
+In the UI: Method → **Boolean bridge**, then Detect. Viz → **Break mask** shows cracks (red) and fragments (teal). Bridged ticks may be flagged `uncertain` with note `bridged`.
+
 ## Visuals
 
 - **Measure canvas** — confidence-sized ticks, year labels, pith marker

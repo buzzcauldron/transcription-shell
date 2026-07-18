@@ -297,6 +297,10 @@
     const bust = Date.now();
     $("growthImg").src = `/api/viz/growth?_=${bust}`;
     $("skeletonImg").src = `/api/viz/skeleton?_=${bust}`;
+    const preset = $("preset")?.value || "dark_disc";
+    if ($("breaksImg")) {
+      $("breaksImg").src = `/api/viz/breaks?preset=${encodeURIComponent(preset)}&_=${bust}`;
+    }
   }
 
   async function syncProjectToServer() {
@@ -613,6 +617,12 @@
 
   $("btnTiles").addEventListener("click", () => refreshTiles());
   $("btnRefreshViz").addEventListener("click", () => refreshVizFigures());
+  $("btnBreaks")?.addEventListener("click", () => {
+    const bust = Date.now();
+    const preset = $("preset")?.value || "dark_disc";
+    $("breaksImg").src = `/api/viz/breaks?preset=${encodeURIComponent(preset)}&_=${bust}`;
+    document.querySelector('.tab[data-tab="viz"]').click();
+  });
   $("btnCompare").addEventListener("click", async () => {
     if (!project) return;
     readMetaIntoProject();

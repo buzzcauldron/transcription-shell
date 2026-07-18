@@ -37,6 +37,7 @@
           <label>Method
             <select id="method">
               <option value="classical">Classical</option>
+              <option value="boolean">Boolean bridge</option>
               <option value="unet">Active U-Net</option>
             </select>
           </label>
@@ -115,7 +116,12 @@
           <div class="top-actions">
             <button id="btnRefreshViz" class="btn small" type="button">Refresh figures</button>
             <button id="btnCompare" class="btn small" type="button">Compare classical / U-Net</button>
+            <button id="btnBreaks" class="btn small" type="button">Break mask</button>
           </div>
+          <figure class="viz-fig">
+            <figcaption>Breaks / fragments (Boolean)</figcaption>
+            <img id="breaksImg" alt="Break mask and ring fragments" />
+          </figure>
           <figure class="viz-fig">
             <figcaption>Growth</figcaption>
             <img id="growthImg" alt="Ring-width growth panel" />
