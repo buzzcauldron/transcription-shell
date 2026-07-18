@@ -39,7 +39,7 @@ _TRANSLATE_SYSTEM = (
 
 def run_translate(
     *,
-    image_path: Path,
+    image_path: Path | None,
     diplomatic_text: str,
     provider: str,
     model: str | None,

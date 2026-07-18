@@ -18,9 +18,10 @@ JOB_DIR="${STREAM_JOB_DIR:-/home/seth/latin-ms-workspace/jobs/$JOB_ID}"
 REMOTE_SCRIPTS="$JOB_DIR/scripts"
 LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-: "${STREAM_URL_TEMPLATE:?set STREAM_URL_TEMPLATE}"
-: "${STREAM_START:?set STREAM_START}"
-: "${STREAM_END:?set STREAM_END}"
+: "${STREAM_URL_TEMPLATE:=}"
+: "${STREAM_SOURCE_URL:=}"
+: "${STREAM_START:=1}"
+: "${STREAM_END:=1}"
 : "${STREAM_DOC_TYPE:=computus_medieval_latin}"
 : "${STREAM_PROVIDER:=gemini}"
 : "${STREAM_TARGET_SLUG:=${JOB_ID}_partial}"
@@ -29,17 +30,19 @@ LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${STREAM_BATCH_SIZE:=8}"
 : "${STREAM_IMAGE_NAME_CONTAINS:=}"
 
-ssh "$REMOTE" "mkdir -p '$REMOTE_SCRIPTS' '$JOB_DIR/logs' '$JOB_DIR/status'"
+ssh -n "$REMOTE" "mkdir -p '$REMOTE_SCRIPTS' '$JOB_DIR/logs' '$JOB_DIR/status'"
 rsync -az \
   "$LOCAL_DIR/remote_stream_acquire_chunks.sh" \
+  "$LOCAL_DIR/remote_stream_acquire_url.sh" \
   "$LOCAL_DIR/remote_stream_watch_transcribe.py" \
   "$LOCAL_DIR/remote_stream_watch_partial_stylo.py" \
   "$REMOTE:$REMOTE_SCRIPTS/"
-ssh "$REMOTE" "chmod +x '$REMOTE_SCRIPTS'/remote_stream_*"
+ssh -n "$REMOTE" "chmod +x '$REMOTE_SCRIPTS'/remote_stream_*"
 
 remote_env=(
   "STREAM_JOB_DIR='$JOB_DIR'"
   "STREAM_URL_TEMPLATE='$STREAM_URL_TEMPLATE'"
+  "STREAM_SOURCE_URL='$STREAM_SOURCE_URL'"
   "STREAM_START='$STREAM_START'"
   "STREAM_END='$STREAM_END'"
   "STREAM_CHUNK_SIZE='$STREAM_CHUNK_SIZE'"
@@ -53,8 +56,15 @@ remote_env=(
 
 env_line="${remote_env[*]}"
 
-ssh "$REMOTE" "cd '$JOB_DIR' && $env_line '$REMOTE_SCRIPTS/remote_stream_acquire_chunks.sh'"
-ssh "$REMOTE" "cd '$JOB_DIR' && $env_line nohup '$REMOTE_SCRIPTS/remote_stream_watch_transcribe.py' > '$JOB_DIR/logs/watch_transcribe.nohup.log' 2>&1 & echo \$! > '$JOB_DIR/status/watch_transcribe.pid'"
-ssh "$REMOTE" "cd '$JOB_DIR' && $env_line nohup '$REMOTE_SCRIPTS/remote_stream_watch_partial_stylo.py' > '$JOB_DIR/logs/watch_partial_stylo.nohup.log' 2>&1 & echo \$! > '$JOB_DIR/status/watch_partial_stylo.pid'"
+if [[ -n "$STREAM_SOURCE_URL" ]]; then
+  ssh -n "$REMOTE" "cd '$JOB_DIR' && $env_line '$REMOTE_SCRIPTS/remote_stream_acquire_url.sh'"
+elif [[ -n "$STREAM_URL_TEMPLATE" ]]; then
+  ssh -n "$REMOTE" "cd '$JOB_DIR' && $env_line '$REMOTE_SCRIPTS/remote_stream_acquire_chunks.sh'"
+else
+  echo "Set STREAM_SOURCE_URL (IIIF/landing page) or STREAM_URL_TEMPLATE (page range)." >&2
+  exit 1
+fi
+ssh -n "$REMOTE" "screen -dmS '${JOB_ID}_tw' bash -c '$env_line exec \"$REMOTE_SCRIPTS/remote_stream_watch_transcribe.py\" > \"$JOB_DIR/logs/watch_transcribe.nohup.log\" 2>&1'"
+ssh -n "$REMOTE" "screen -dmS '${JOB_ID}_ps' bash -c '$env_line exec \"$REMOTE_SCRIPTS/remote_stream_watch_partial_stylo.py\" > \"$JOB_DIR/logs/watch_partial_stylo.nohup.log\" 2>&1'"
 
-ssh "$REMOTE" "cd '$JOB_DIR' && ps -u \"\$USER\" -o pid,etime,pcpu,pmem,command | rg '$JOB_ID|strigil|watch_|transcriber-shell|Rscript' || true"
+ssh -n "$REMOTE" "cd '$JOB_DIR' && ps -u \"\$USER\" -o pid,etime,pcpu,pmem,command | rg '$JOB_ID|strigil|watch_|transcriber-shell|Rscript' || true"

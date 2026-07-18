@@ -19,7 +19,7 @@ def _sleep_backoff(attempt: int) -> None:
 
 def transcribe_gemini(
     *,
-    image_path: Path,
+    image_path: Path | None,
     system: str,
     user_text: str,
     model: str | None = None,
@@ -47,9 +47,6 @@ def transcribe_gemini(
     from provider_adapters import augment_system_for_provider  # noqa: E402
 
     system = augment_system_for_provider(system, "gemini")
-    from transcriber_shell.llm.image_prep import prepare_image
-    raw, mime = prepare_image(image_path)
-
     model_id = model or s.resolved_model("gemini")
     proxy = (s.llm_http_proxy or "").strip()
     env_extra: dict[str, str] = {}
@@ -57,10 +54,12 @@ def transcribe_gemini(
         env_extra["HTTP_PROXY"] = proxy
         env_extra["HTTPS_PROXY"] = proxy
 
-    contents = [
-        genai_types.Part.from_bytes(data=raw, mime_type=mime),
-        user_text,
-    ]
+    if image_path is not None:
+        from transcriber_shell.llm.image_prep import prepare_image
+        raw, mime = prepare_image(image_path)
+        contents = [genai_types.Part.from_bytes(data=raw, mime_type=mime), user_text]
+    else:
+        contents = [user_text]
     generate_kwargs: dict = {
         "model": model_id,
         "contents": contents,

@@ -31,6 +31,7 @@ done
 [[ -n "$best" ]] || { echo "[export-ckpt] could not parse checkpoint names in $CKPT_DIR" >&2; exit 1; }
 
 mkdir -p "$(dirname "$OUT")"
+rm -f "$OUT"
 echo "[export-ckpt] $best (val=$best_val) → $OUT"
 ketos convert -o "$OUT" --weights-format coreml "$best"
 echo "[export-ckpt] done $(wc -c < "$OUT") bytes"
