@@ -15,6 +15,7 @@ from dendro_shell.geometry import (
     path_length,
     radial_path_from_pith,
 )
+from dendro_shell.preprocess import preprocess_gray
 from dendro_shell.project import MeasurePath, Point, Project
 from dendro_shell.series import assign_years, build_width_series
 from dendro_shell.viz import render_report_png, render_skeleton_plot
