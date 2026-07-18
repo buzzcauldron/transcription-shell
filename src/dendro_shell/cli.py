@@ -148,9 +148,9 @@ def build_parser() -> argparse.ArgumentParser:
     det.add_argument("-o", "--output", default=None)
     det.add_argument(
         "--method",
-        choices=["classical", "unet", "boolean"],
-        default="classical",
-        help="classical | unet | boolean (match rings across cracks/damage)",
+        choices=["auto", "classical", "boolean", "unet"],
+        default="auto",
+        help="Detection stack: auto (disc→boolean, core→classical) | classical | boolean | unet",
     )
     det.add_argument("--preset", default="auto", help="Preprocess preset or 'auto'")
     det.add_argument("--type", choices=["core", "disc", "auto"], default="auto")

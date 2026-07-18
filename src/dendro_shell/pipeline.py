@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image
 
 from dendro_shell.detect.classical import detect_rings_along_path, infer_sample_type
+from dendro_shell.detect.methods import resolve_method
 from dendro_shell.export.overlay import save_overlay
 from dendro_shell.export.pos import write_pos
 from dendro_shell.export.rwl import write_rwl
@@ -63,7 +64,7 @@ def diameter_path_from_pith(
 def run_detect(
     image_path: Path | str,
     *,
-    method: str = "classical",
+    method: str = "auto",
     preset: str | None = None,
     sample_type: str | None = None,
     pith: Point | None = None,
@@ -82,6 +83,8 @@ def run_detect(
     if sample_type in (None, "", "auto") and auto:
         sample_type = infer_sample_type(image)
     sample_type = sample_type or "core"
+
+    method = resolve_method(method, sample_type=sample_type)
 
     if preset in (None, "", "auto"):
         preset = "dark_disc" if sample_type == "disc" else "sanded_core"
@@ -156,7 +159,7 @@ def run_detect(
         sample_code=sample_code or image_path.stem,
         sample_type=sample_type,  # type: ignore[arg-type]
         preprocess_preset=preset,
-        detect_method=method if method in ("classical", "unet", "boolean") else "classical",  # type: ignore[arg-type]
+        detect_method=method,
         outer_year=outer_year,
         pith=pith,
         notes=notes,
