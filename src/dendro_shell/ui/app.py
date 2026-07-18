@@ -339,6 +339,49 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
             ]
         }
 
+    @app.post("/api/paint")
+    def paint_stroke(payload: dict):
+        """Paint or erase boundary mask strokes (hard-segment labeling)."""
+        import cv2
+
+        p = _project()
+        if p is None:
+            return JSONResponse({"error": "no project"}, status_code=400)
+        img = _load_image()
+        w, h = img.size
+        mask_path = Path(p.paint_mask) if p.paint_mask else Path(p.image_path).parent / "paint_mask.png"
+        if mask_path.is_file():
+            mask = np.asarray(Image.open(mask_path).convert("L"))
+            if mask.shape[:2] != (h, w):
+                mask = np.zeros((h, w), dtype=np.uint8)
+        else:
+            mask = np.zeros((h, w), dtype=np.uint8)
+        mode = payload.get("mode", "paint")  # paint | erase
+        radius = int(payload.get("radius", 3))
+        value = 0 if mode == "erase" else 255
+        for stroke in payload.get("strokes", []):
+            pts = stroke.get("points") or []
+            if len(pts) == 1:
+                cv2.circle(mask, (int(pts[0]["x"]), int(pts[0]["y"])), radius, value, -1)
+            elif len(pts) >= 2:
+                arr = np.array([[int(pt["x"]), int(pt["y"])] for pt in pts], dtype=np.int32)
+                cv2.polylines(mask, [arr], False, value, max(1, radius * 2), cv2.LINE_AA)
+        mask_path.parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(mask).save(mask_path)
+        p = p.model_copy(update={"paint_mask": str(mask_path)})
+        _set_project(p)
+        return {"paint_mask": str(mask_path), "project": p.to_dict()}
+
+    @app.get("/api/paint")
+    def get_paint():
+        p = _project()
+        if p is None or not p.paint_mask:
+            return JSONResponse({"error": "no paint mask"}, status_code=404)
+        path = Path(p.paint_mask)
+        if not path.is_file():
+            return JSONResponse({"error": "missing file"}, status_code=404)
+        return FileResponse(path, media_type="image/png")
+
     @app.post("/api/path/incline-pair")
     def incline_pair(payload: dict | None = None):
         """Duplicate primary path as path1 and link for incline correction."""

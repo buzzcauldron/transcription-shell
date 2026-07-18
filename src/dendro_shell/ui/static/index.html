@@ -87,6 +87,16 @@
             <button id="btnClearPath" class="btn small" type="button">Clear path</button>
           </div>
           <button id="btnIncline" class="btn small" type="button">Add incline partner path</button>
+          <div class="field-row">
+            <label>Brush
+              <select id="brushMode">
+                <option value="off">Off</option>
+                <option value="paint">Paint boundary</option>
+                <option value="erase">Erase</option>
+              </select>
+            </label>
+            <label>Radius <input id="brushRadius" type="number" value="3" min="1" max="20" /></label>
+          </div>
           <ul id="ringList" class="ring-list"></ul>
           <div class="crossdate">
             <h3>Crossdate</h3>
@@ -149,8 +159,13 @@
               </select>
             </label>
           </div>
+          <div class="field-row">
+            <label>Filter species <input id="trainSpecies" type="text" placeholder="optional" /></label>
+            <label>Filter tag <input id="trainTag" type="text" placeholder="optional" /></label>
+          </div>
           <label class="check"><input id="trainAugment" type="checkbox" checked /> Augment</label>
           <label class="check"><input id="trainFinetune" type="checkbox" checked /> Fine-tune active</label>
+          <label class="check"><input id="trainOverwrite" type="checkbox" /> Overwrite same name</label>
           <div class="top-actions">
             <button id="btnTrain" class="btn primary" type="button">Start training</button>
             <button id="btnTrainStop" class="btn" type="button">Stop</button>

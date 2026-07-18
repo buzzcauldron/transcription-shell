@@ -251,18 +251,34 @@ def _run_impl(config: TrainConfig, notify: Callable[[], None]) -> None:
             )
 
     metrics = {"dice": best_dice, "f1": history[-1]["f1"] if history else 0.0}
+    from dendro_shell.train.registry import load_manifest
+
+    exists = any(e.get("name") == config.name for e in load_manifest().get("models", []))
+    save_name = config.name
+    save_path = out_path
+    if exists and not config.overwrite:
+        import shutil
+
+        stamp = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
+        save_name = f"{config.name}_{stamp}"
+        save_path = models_dir() / f"{save_name}.pt"
+        shutil.copy2(out_path, save_path)
+        msg = f"Done. Saved as {save_name} (refused overwrite of {config.name})"
+    else:
+        msg = f"Done. Active model: {save_name}"
+
     register_checkpoint(
-        config.name,
-        out_path,
+        save_name,
+        save_path,
         metrics=metrics,
         base_checkpoint=base_name,
         activate=config.activate,
-        overwrite=config.overwrite or True,
+        overwrite=True,
     )
     _set(
         state="finished",
-        message=f"Done. Active model: {config.name}",
-        checkpoint=str(out_path),
+        message=msg,
+        checkpoint=str(save_path),
         val_dice=best_dice,
     )
     notify()

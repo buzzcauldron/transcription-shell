@@ -44,6 +44,31 @@ def _edge_strength(profile: np.ndarray, window: int = 11) -> np.ndarray:
     return 0.75 * inv + 0.25 * grad
 
 
+def _enhance_path_neighborhood(
+    gray: np.ndarray,
+    path_points: list[Point] | list[tuple[float, float]],
+    *,
+    half_width: int = 24,
+) -> np.ndarray:
+    """Re-apply local contrast along the path strip (HTR per-crop idea)."""
+    import cv2
+
+    from dendro_shell.geometry import resample_path
+
+    out = gray.copy()
+    sample = resample_path(path_points, step_px=2.0)
+    h, w = gray.shape[:2]
+    mask = np.zeros((h, w), dtype=np.uint8)
+    for x, y in zip(sample.xs, sample.ys):
+        cv2.circle(mask, (int(round(x)), int(round(y))), half_width, 255, -1)
+    if not mask.any():
+        return out
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))
+    local = clahe.apply(gray)
+    out = np.where(mask > 0, local, out).astype(np.uint8)
+    return out
+
+
 def detect_rings_along_path(
     image,
     path_points: list[Point] | list[tuple[float, float]],
@@ -53,6 +78,7 @@ def detect_rings_along_path(
     prominence: float = 0.08,
     half_width: int = 4,
     probability: np.ndarray | None = None,
+    path_neighborhood: bool = True,
 ) -> DetectResult:
     """Detect ring ticks along a path.
 
@@ -64,6 +90,8 @@ def detect_rings_along_path(
         profile, sample = sample_profile(probability.astype(np.float64), path_points, half_width=half_width)
         strength = profile / (profile.max() + 1e-8)
     else:
+        if path_neighborhood and path_points:
+            gray = _enhance_path_neighborhood(gray, path_points)
         profile, sample = sample_profile(gray, path_points, half_width=half_width)
         strength = _edge_strength(profile)
 
