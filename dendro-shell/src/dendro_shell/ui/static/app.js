@@ -325,6 +325,45 @@
     setStatus(statusMsg || `${project.sample_code || "sample"} · ${n} rings · ${project.sample_type}`);
   }
 
+  async function populateMethodSelect() {
+    const sel = $("method");
+    if (!sel) return;
+    const current = sel.value;
+    let stack = null;
+    try {
+      const m = await api("/api/methods");
+      stack = m.stack || [];
+      window.__dendroDefaults = m.defaults || { core: "classical", disc: "boolean" };
+    } catch (_) {
+      stack = [
+        { id: "classical", label: "Classical" },
+        { id: "boolean", label: "Boolean bridge" },
+        { id: "unet", label: "Active U-Net" },
+      ];
+      window.__dendroDefaults = { core: "classical", disc: "boolean" };
+    }
+    sel.innerHTML = "";
+    const autoOpt = document.createElement("option");
+    autoOpt.value = "auto";
+    autoOpt.textContent = "Auto (stack default)";
+    sel.appendChild(autoOpt);
+    stack.forEach((entry) => {
+      const o = document.createElement("option");
+      o.value = entry.id;
+      o.textContent = entry.label || entry.id;
+      if (entry.summary) o.title = entry.summary;
+      sel.appendChild(o);
+    });
+    if ([...sel.options].some((o) => o.value === current)) sel.value = current;
+  }
+
+  function stackDefaultForType(sampleType) {
+    const defaults = window.__dendroDefaults || { core: "classical", disc: "boolean" };
+    if (sampleType === "disc") return defaults.disc || "boolean";
+    if (sampleType === "core") return defaults.core || "classical";
+    return "auto";
+  }
+
   async function bootstrap() {
     const presets = await api("/api/presets");
     const sel = $("preset");
@@ -339,6 +378,8 @@
       o.textContent = p;
       sel.appendChild(o);
     });
+
+    await populateMethodSelect();
 
     const proj = await api("/api/project");
     if (proj.project) {
@@ -358,7 +399,7 @@
     $("mpp").value = project.scale?.micrometers_per_pixel ?? "";
     $("sampleType").value = project.sample_type || "core";
     $("preset").value = project.preprocess_preset || "sanded_core";
-    $("method").value = project.detect_method || "classical";
+    $("method").value = project.detect_method || stackDefaultForType(project.sample_type);
   }
 
   function readMetaIntoProject() {
@@ -396,6 +437,16 @@
     project.preprocess_preset = $("preset").value;
     await loadProjectImage();
     redraw();
+  });
+
+  $("sampleType").addEventListener("change", () => {
+    const t = $("sampleType").value;
+    // Keep Auto; otherwise snap Method to the stack default for this type
+    // when the user hasn't locked in U-Net.
+    if ($("method").value !== "unet" && $("method").value !== "auto") {
+      $("method").value = stackDefaultForType(t === "auto" ? (project?.sample_type || "core") : t);
+    }
+    if (project) project.sample_type = t === "auto" ? project.sample_type : t;
   });
 
   $("btnDetect").addEventListener("click", async () => {
@@ -627,7 +678,7 @@
     if (!project) return;
     readMetaIntoProject();
     await syncProjectToServer();
-    setStatus("Comparing classical vs U-Net…");
+    setStatus("Comparing detection stack…");
     try {
       const res = await fetch("/api/viz/compare", {
         method: "POST",
@@ -641,10 +692,10 @@
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || res.statusText);
       }
-      const unetErr = res.headers.get("X-UNet-Error");
+      const stackNote = res.headers.get("X-Stack-Note");
       const blob = await res.blob();
       $("compareImg").src = URL.createObjectURL(blob);
-      setStatus(unetErr ? `Compare drawn (U-Net: ${unetErr})` : "Compare overlay ready");
+      setStatus(stackNote ? `Stack compare (${stackNote})` : "Stack compare ready");
       document.querySelector('.tab[data-tab="viz"]').click();
     } catch (err) {
       setStatus(String(err.message || err));

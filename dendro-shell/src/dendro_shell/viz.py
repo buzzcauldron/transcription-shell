@@ -19,6 +19,7 @@ _C_INK = (26, 34, 32)
 _C_ACCENT = (212, 163, 92)
 _C_TEAL = (111, 191, 163)
 _C_CORAL = (224, 122, 95)
+_C_BOOLEAN = (120, 170, 230)  # stack: boolean bridge
 _C_MUTED = (154, 173, 163)
 _C_PAPER = (232, 239, 233)
 
@@ -191,8 +192,9 @@ def render_compare_overlay(
     classical_rings: list[RingTick],
     unet_rings: list[RingTick],
     path: MeasurePath,
+    boolean_rings: list[RingTick] | None = None,
 ) -> Image.Image:
-    """Classical ticks in coral, U-Net in teal, matched pairs linked."""
+    """Stack compare: classical (coral), boolean (blue), U-Net (teal)."""
     if isinstance(image, np.ndarray):
         if image.ndim == 2:
             base = Image.fromarray(image, mode="L").convert("RGB")
@@ -213,32 +215,36 @@ def render_compare_overlay(
             pt = point_at_distance(pts, r.distance_px)
             cv2.circle(arr, (int(pt.x) + offset, int(pt.y)), 5, color, -1, cv2.LINE_AA)
 
-    _draw(classical_rings, _C_CORAL, -3)
-    _draw(unet_rings, _C_TEAL, 3)
+    boolean_rings = boolean_rings or []
+    _draw(classical_rings, _C_CORAL, -4)
+    _draw(boolean_rings, _C_BOOLEAN, 0)
+    _draw(unet_rings, _C_TEAL, 4)
 
-    # link nearest matches
+    # link nearest classical ↔ boolean / unet matches
     for cr in classical_rings:
         if cr.flag == "false":
             continue
-        if not unet_rings:
-            break
-        ur = min(unet_rings, key=lambda u: abs(u.distance_px - cr.distance_px))
-        if abs(ur.distance_px - cr.distance_px) > 20:
-            continue
-        a = point_at_distance(pts, cr.distance_px)
-        b = point_at_distance(pts, ur.distance_px)
-        cv2.line(
-            arr,
-            (int(a.x) - 3, int(a.y)),
-            (int(b.x) + 3, int(b.y)),
-            (212, 163, 92),
-            1,
-            cv2.LINE_AA,
-        )
+        for other, xoff in ((boolean_rings, 0), (unet_rings, 4)):
+            if not other:
+                continue
+            ur = min(other, key=lambda u: abs(u.distance_px - cr.distance_px))
+            if abs(ur.distance_px - cr.distance_px) > 20:
+                continue
+            a = point_at_distance(pts, cr.distance_px)
+            b = point_at_distance(pts, ur.distance_px)
+            cv2.line(
+                arr,
+                (int(a.x) - 4, int(a.y)),
+                (int(b.x) + xoff, int(b.y)),
+                (212, 163, 92),
+                1,
+                cv2.LINE_AA,
+            )
 
     # legend
-    cv2.putText(arr, "classical", (12, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.6, _C_CORAL, 2, cv2.LINE_AA)
-    cv2.putText(arr, "unet", (12, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.6, _C_TEAL, 2, cv2.LINE_AA)
+    cv2.putText(arr, "classical", (12, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.55, _C_CORAL, 2, cv2.LINE_AA)
+    cv2.putText(arr, "boolean", (12, 46), cv2.FONT_HERSHEY_SIMPLEX, 0.55, _C_BOOLEAN, 2, cv2.LINE_AA)
+    cv2.putText(arr, "unet", (12, 68), cv2.FONT_HERSHEY_SIMPLEX, 0.55, _C_TEAL, 2, cv2.LINE_AA)
     return Image.fromarray(arr)
 
 

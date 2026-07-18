@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
+from dendro_shell.detect.methods import method_payload
 from dendro_shell.paths import default_library_dir, projects_dir
 from dendro_shell.preprocess import list_presets, preprocess_pil
 from dendro_shell.project import MeasurePath, Point, Project, RingTick, ScaleInfo
@@ -63,19 +64,28 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
 
     @app.get("/api/health")
     def health():
-        return {"ok": True, "version": "0.1.0"}
+        active = get_active_checkpoint()
+        payload = method_payload(active_unet=active.name if active else None)
+        return {"ok": True, "version": "0.1.0", **payload}
 
     @app.get("/api/presets")
     def presets():
         return {"presets": list_presets()}
 
+    @app.get("/api/methods")
+    def methods():
+        """Detection stack: classical → boolean bridge → U-Net."""
+        active = get_active_checkpoint()
+        return method_payload(active_unet=active.name if active else None)
+
     @app.get("/api/models")
     def models():
         active = get_active_checkpoint()
+        payload = method_payload(active_unet=active.name if active else None)
         return {
             "models": list_models(),
             "active": active.name if active else None,
-            "methods": ["classical", "unet"],
+            **payload,
         }
 
     @app.post("/api/models/activate")
@@ -84,10 +94,10 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
         return {"active": payload["name"]}
 
     def _open_and_detect(image_path: Path, *, outer_year: int | None = None) -> Project:
-        """Open image and immediately run adaptive detect so UI is usable."""
+        """Open image and run stack default detect (boolean for discs)."""
         proj = run_detect(
             image_path,
-            method="classical",
+            method="auto",
             preset="auto",
             sample_type="auto",
             outer_year=outer_year,
@@ -176,7 +186,7 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
         p = _project()
         if p is None:
             return JSONResponse({"error": "no project"}, status_code=400)
-        method = payload.get("method", p.detect_method)
+        method = payload.get("method", p.detect_method) or "auto"
         preset = payload.get("preset") or p.preprocess_preset or "auto"
         # None → adaptive; only use explicit values when provided
         min_d = payload.get("min_distance_px")
@@ -493,7 +503,8 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
 
     @app.post("/api/viz/compare")
     def viz_compare(payload: dict | None = None):
-        """Run classical + unet on current path; return compare overlay JPEG."""
+        """Run full detect stack (classical + boolean + unet) compare overlay."""
+        from dendro_shell.detect.boolean_bridge import detect_rings_boolean_bridge
         from dendro_shell.detect.classical import detect_rings_along_path
         from dendro_shell.viz import image_to_jpeg_bytes, render_compare_overlay
 
@@ -509,6 +520,17 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
         classical = detect_rings_along_path(
             img, path_pts, preset=preset, min_distance_px=min_d, prominence=prom
         )
+        boolean_rings = []
+        boolean_error = None
+        try:
+            pith = p.pith
+            if pith is None and path_pts:
+                mid = path_pts[len(path_pts) // 2]
+                pith = Point(x=mid.x, y=mid.y)
+            bres = detect_rings_boolean_bridge(img, path_pts, pith=pith, preset=preset)
+            boolean_rings = bres.rings
+        except Exception as e:  # noqa: BLE001 — surface in response
+            boolean_error = str(e)
         unet_rings = []
         unet_error = None
         try:
@@ -520,11 +542,18 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
             unet_rings = unet.rings
         except Exception as e:  # noqa: BLE001 — surface in response
             unet_error = str(e)
-        overlay = render_compare_overlay(img, classical.rings, unet_rings, p.paths[0])
+        overlay = render_compare_overlay(
+            img, classical.rings, unet_rings, p.paths[0], boolean_rings=boolean_rings
+        )
+        note_parts = []
+        if boolean_error:
+            note_parts.append(f"boolean:{boolean_error}")
+        if unet_error:
+            note_parts.append(f"unet:{unet_error}")
         return Response(
             image_to_jpeg_bytes(overlay),
             media_type="image/jpeg",
-            headers={"X-UNet-Error": (unet_error or "")[:200]},
+            headers={"X-Stack-Note": (" | ".join(note_parts))[:300]},
         )
 
     @app.get("/api/viz/report")

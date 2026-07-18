@@ -42,15 +42,25 @@ Open the UI at [http://127.0.0.1:8765](http://127.0.0.1:8765).
 1. **Open** a core or disc image.
 2. Pick a **preprocess preset** (`sanded_core`, `dark_disc`, `wet_stain`, `narrow_rings`).
 3. Draw a **measurement path** (or use the default mid-line / radial path). For discs: **Estimate pith** or Alt+click.
-4. **Detect** (classical peaks or active U-Net). Edit ticks: drag, `A` add, `D` delete, `M` missing, `F` false.
+4. **Detect** via the stack (`auto` → boolean on discs, classical on cores; or pick classical / boolean / U-Net). Edit ticks: drag, `A` add, `D` delete, `M` missing, `F` false.
 5. Set **outer year** and **µm/px** scale; export `.rwl` / `.pos`.
 6. **Add to training set** → **Train** panel → activate checkpoint → detect with U-Net.
 
 ```text
-image → preset → detect → path ticks → edit → series → rwl/pos
+image → preset → detect stack → path ticks → edit → series → rwl/pos
+              classical | boolean bridge | U-Net
                               ↓
                         training library → in-app train → active model
 ```
+
+## Detection stack
+
+| Method | Role |
+|--------|------|
+| `classical` | Path-neighborhood peaks / latewood troughs (default for cores) |
+| `boolean` | Match ring fragments across cracks & damage (default for discs) |
+| `unet` | Active in-app boundary model when a checkpoint is activated |
+| `auto` | Picks stack default from sample type (`disc`→`boolean`, `core`→`classical`) |
 
 ## Presets
 
@@ -72,9 +82,9 @@ Corrected projects are ground truth. The Train panel (and `dendro train`) share 
 
 Practical start: 20–50 corrected path samples, `imgsz` 256–512, CPU OK for small runs.
 
-## Boolean bridge (cracks & damage)
+### Boolean bridge (cracks & damage)
 
-Method **`boolean`** matches ring fragments across checks, radial cracks, and damaged zones:
+Boolean is a first-class stack layer (not an optional add-on). On open/detect with `auto`, discs use it by default. Matching:
 
 1. Binary ring-edge map + binary break mask  
 2. Fragments = `ring_map AND NOT break_mask`  
@@ -82,17 +92,18 @@ Method **`boolean`** matches ring fragments across checks, radial cracks, and da
 4. Boolean radius predicate `|r_a - r_b| ≤ tol` to assign the same year/ring across the break  
 
 ```bash
+dendro detect cracked_disc.jpg --type disc -o out/          # auto → boolean
 dendro detect cracked_disc.jpg --type disc --method boolean -o out/
 ```
 
-In the UI: Method → **Boolean bridge**, then Detect. Viz → **Break mask** shows cracks (red) and fragments (teal). Bridged ticks may be flagged `uncertain` with note `bridged`.
+UI Method includes **Auto** and **Boolean bridge**. Viz → **Break mask** shows cracks (red) and fragments (teal); **Compare stack** overlays classical / boolean / U-Net. Bridged ticks may be flagged `uncertain` with note `bridged`.
 
 ## Visuals
 
 - **Measure canvas** — confidence-sized ticks, year labels, pith marker
 - **Ring zoom strip** — contact sheet of per-ring crops (comma_review style)
 - **Timeline** — widths + decade years + missing markers + skeleton stems
-- **Viz tab** — growth bars, skeleton plot, classical vs U-Net compare overlay
+- **Viz tab** — growth bars, skeleton plot, stack compare, break mask
 - **Export also writes** `skeleton.png` and stacked `report.png`
 
 ## Exports
@@ -115,7 +126,7 @@ pytest -q
 src/dendro_shell/
   preprocess.py   # OCR-style presets
   geometry.py     # pith, paths, polar unwrap, scale
-  detect/         # classical + U-Net
+  detect/         # classical + boolean bridge + U-Net stack
   series.py       # widths, years, incline
   export/         # rwl, pos, overlay, json
   crossdate.py    # light reference correlator

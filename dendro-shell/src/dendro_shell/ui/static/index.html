@@ -35,7 +35,8 @@
             <select id="preset"></select>
           </label>
           <label>Method
-            <select id="method">
+            <select id="method" title="Detection stack: classical → boolean bridge → U-Net">
+              <option value="auto">Auto (stack default)</option>
               <option value="classical">Classical</option>
               <option value="boolean">Boolean bridge</option>
               <option value="unet">Active U-Net</option>
@@ -112,10 +113,10 @@
 
         <div class="panel" id="panel-viz">
           <h2>Figures</h2>
-          <p class="hint">Skeleton plot, growth bars, and classical vs U-Net compare. Also written on Export.</p>
+          <p class="hint">Skeleton plot, growth bars, stack compare (classical / boolean / U-Net), break mask. Also written on Export.</p>
           <div class="top-actions">
             <button id="btnRefreshViz" class="btn small" type="button">Refresh figures</button>
-            <button id="btnCompare" class="btn small" type="button">Compare classical / U-Net</button>
+            <button id="btnCompare" class="btn small" type="button">Compare stack</button>
             <button id="btnBreaks" class="btn small" type="button">Break mask</button>
           </div>
           <figure class="viz-fig">
