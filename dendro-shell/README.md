@@ -100,10 +100,10 @@ UI Method includes **Auto** and **Boolean bridge**. Viz → **Break mask** shows
 
 ## Visuals
 
-- **Measure canvas** — confidence-sized ticks, year labels, pith marker
-- **Ring zoom strip** — contact sheet of per-ring crops (comma_review style)
-- **Timeline** — widths + decade years + missing markers + skeleton stems
-- **Viz tab** — growth bars, skeleton plot, stack compare, break mask
+- **Measure canvas** — path hairline, perpendicular fold ticks, width ribbons between folds, disc radius arcs, decade year labels
+- **Widths readout** — series bars with pointer years; hover a fold for width callout
+- **Fold zoom strip** — contact sheet of per-ring crops
+- **Figures** — growth, skeleton, stack compare, break mask
 - **Export also writes** `skeleton.png` and stacked `report.png`
 
 ## Exports
