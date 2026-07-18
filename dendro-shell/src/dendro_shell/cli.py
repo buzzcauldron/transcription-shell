@@ -41,6 +41,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         prominence=args.prominence,
         outer_year=args.outer_year,
         sample_code=args.sample_code or Path(args.image).stem,
+        auto=True,
     )
     out = Path(args.output or (Path(args.image).parent / "dendro_out"))
     paths = export_all(project, out)
@@ -146,12 +147,12 @@ def build_parser() -> argparse.ArgumentParser:
     det.add_argument("image")
     det.add_argument("-o", "--output", default=None)
     det.add_argument("--method", choices=["classical", "unet"], default="classical")
-    det.add_argument("--preset", default="sanded_core")
-    det.add_argument("--type", choices=["core", "disc"], default="core")
+    det.add_argument("--preset", default="auto", help="Preprocess preset or 'auto'")
+    det.add_argument("--type", choices=["core", "disc", "auto"], default="auto")
     det.add_argument("--pith", default=None, help="x,y pith for discs")
-    det.add_argument("--angle", type=float, default=0.0, help="Radial angle for discs")
-    det.add_argument("--min-distance", type=float, default=8.0)
-    det.add_argument("--prominence", type=float, default=0.08)
+    det.add_argument("--angle", type=float, default=0.0, help="Diameter angle for discs")
+    det.add_argument("--min-distance", type=float, default=None, help="Min peak spacing (adaptive if omitted)")
+    det.add_argument("--prominence", type=float, default=None, help="Peak prominence (adaptive if omitted)")
     det.add_argument("--outer-year", type=int, default=None)
     det.add_argument("--sample-code", default="")
     det.set_defaults(func=_cmd_detect)

@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
+import math
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image
 
-from dendro_shell.detect.classical import detect_rings_along_path
+from dendro_shell.detect.classical import detect_rings_along_path, infer_sample_type
 from dendro_shell.export.overlay import save_overlay
 from dendro_shell.export.pos import write_pos
 from dendro_shell.export.rwl import write_rwl
 from dendro_shell.geometry import (
     estimate_pith_center,
     path_length,
-    radial_path_from_pith,
 )
 from dendro_shell.preprocess import preprocess_gray
 from dendro_shell.project import MeasurePath, Point, Project
@@ -22,36 +23,73 @@ from dendro_shell.viz import render_report_png, render_skeleton_plot
 
 
 def default_core_path(width: int, height: int) -> list[Point]:
-    """Horizontal mid-line path for cores."""
+    """Horizontal mid-line path for cores / rectangular cuts."""
     y = height / 2.0
-    margin = width * 0.05
+    margin = width * 0.04
     return [Point(x=margin, y=y), Point(x=width - margin, y=y)]
+
+
+def diameter_path_from_pith(
+    pith: Point,
+    width: int,
+    height: int,
+    angle_deg: float = 0.0,
+    margin: float = 8.0,
+) -> list[Point]:
+    """Full bark-to-bark diameter through pith (standard disc transect)."""
+    ang = math.radians(angle_deg)
+    dx, dy = math.cos(ang), math.sin(ang)
+    # Ray-box intersection both directions
+    candidates = []
+    for sign in (-1.0, 1.0):
+        t_vals = []
+        if abs(dx) > 1e-9:
+            t_vals.append((margin - pith.x) / (sign * dx))
+            t_vals.append((width - 1 - margin - pith.x) / (sign * dx))
+        if abs(dy) > 1e-9:
+            t_vals.append((margin - pith.y) / (sign * dy))
+            t_vals.append((height - 1 - margin - pith.y) / (sign * dy))
+        t_pos = [t for t in t_vals if t > 0]
+        t = min(t_pos) if t_pos else min(width, height) * 0.4
+        candidates.append(
+            Point(x=pith.x + sign * dx * t, y=pith.y + sign * dy * t)
+        )
+    # Order so path crosses pith: start → pith → end
+    a, b = candidates
+    return [a, Point(x=pith.x, y=pith.y), b]
 
 
 def run_detect(
     image_path: Path | str,
     *,
     method: str = "classical",
-    preset: str = "sanded_core",
-    sample_type: str = "core",
+    preset: str | None = None,
+    sample_type: str | None = None,
     pith: Point | None = None,
     path_points: list[Point] | None = None,
     angle_deg: float = 0.0,
-    min_distance_px: float = 12.0,
-    prominence: float = 0.08,
+    min_distance_px: float | None = None,
+    prominence: float | None = None,
     outer_year: int | None = None,
     sample_code: str = "",
+    auto: bool = True,
 ) -> Project:
     image_path = Path(image_path)
     image = Image.open(image_path).convert("RGB")
     w, h = image.size
 
-    if path_points is None:
+    if sample_type in (None, "", "auto") and auto:
+        sample_type = infer_sample_type(image)
+    sample_type = sample_type or "core"
+
+    if preset in (None, "", "auto"):
+        preset = "dark_disc" if sample_type == "disc" else "sanded_core"
+
+    if path_points is None or len(path_points) < 2:
         if sample_type == "disc":
             gray = preprocess_gray(image, preset)
             pith = pith or estimate_pith_center(gray)
-            length = min(w, h) * 0.48
-            path_points = radial_path_from_pith(pith, angle_deg, length)
+            path_points = diameter_path_from_pith(pith, w, h, angle_deg=angle_deg)
         else:
             path_points = default_core_path(w, h)
 
@@ -62,8 +100,8 @@ def run_detect(
             image,
             path_points,
             preset=preset,
-            min_distance_px=min_distance_px,
-            prominence=prominence,
+            min_distance_px=min_distance_px or 8.0,
+            prominence=prominence or 0.06,
         )
     else:
         result = detect_rings_along_path(
@@ -75,6 +113,9 @@ def run_detect(
         )
 
     rings = result.rings
+    if outer_year is None and rings:
+        # Usable chronology out of the box; user can edit outer year in UI
+        outer_year = datetime.now().year
     if outer_year is not None:
         rings = assign_years(rings, outer_year)
 
