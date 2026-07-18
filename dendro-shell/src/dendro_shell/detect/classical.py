@@ -21,14 +21,51 @@ class DetectResult:
     edge_strength: np.ndarray
 
 
-def infer_sample_type(image) -> str:
-    """Guess core vs disc from dominant edge orientation.
+def _wood_circularity(gray: np.ndarray) -> float:
+    """Circularity of the largest Otsu foreground blob (1 ≈ circle)."""
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, bw = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # Wood discs are often darker than background OR brighter — try both
+    scores = []
+    for mask in (bw, 255 - bw):
+        n, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        if n <= 1:
+            continue
+        # skip background label 0; pick largest component
+        areas = stats[1:, cv2.CC_STAT_AREA]
+        idx = int(np.argmax(areas)) + 1
+        area = float(stats[idx, cv2.CC_STAT_AREA])
+        if area < gray.size * 0.05:
+            continue
+        comp = np.uint8(labels == idx) * 255
+        cnts, _ = cv2.findContours(comp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not cnts:
+            continue
+        peri = float(cv2.arcLength(cnts[0], True))
+        if peri <= 1e-6:
+            continue
+        scores.append(float(4.0 * np.pi * area / (peri * peri)))
+    return max(scores) if scores else 0.0
 
-    Vertical latewood bands (typical sanded core / rectangular cut) → core.
-    More isotropic / circular structure → disc.
+
+def infer_sample_type(image) -> str:
+    """Guess core vs disc from shape + edge orientation.
+
+    Long thin images / parallel latewood bands → core.
+    Near-circular wood blob (even in a rectangular photo) → disc.
     """
     gray = preprocess_gray(image, "sanded_core")
     h, w = gray.shape[:2]
+    aspect = max(w / max(h, 1), h / max(w, 1))
+
+    # Strongly elongated frames are almost always cores / linear cuts
+    if aspect >= 2.8:
+        return "core"
+
+    circ = _wood_circularity(gray)
+    if circ >= 0.62:
+        return "disc"
+
     # center crop to avoid bark/background
     y0, y1 = int(h * 0.2), int(h * 0.8)
     x0, x1 = int(w * 0.2), int(w * 0.8)
@@ -36,10 +73,9 @@ def infer_sample_type(image) -> str:
     gx = cv2.Sobel(crop, cv2.CV_32F, 1, 0, ksize=3)
     gy = cv2.Sobel(crop, cv2.CV_32F, 0, 1, ksize=3)
     ax, ay = float(np.mean(np.abs(gx))), float(np.mean(np.abs(gy)))
-    if ax > 1.25 * ay:
-        return "core"
-    if ay > 1.25 * ax:
-        return "core"  # horizontal bands — still linear transect
+    if ax > 1.35 * ay or ay > 1.35 * ax:
+        # Parallel banding → core, unless the frame is nearly square (disc crop)
+        return "core" if aspect >= 1.35 else "disc"
     return "disc"
 
 

@@ -100,7 +100,12 @@ def run_detect(
     bridge_meta: dict | None = None
     if method == "unet":
         from dendro_shell.detect.unet import detect_rings_unet
+        from dendro_shell.train.registry import get_active_checkpoint
 
+        if get_active_checkpoint() is None:
+            raise FileNotFoundError(
+                "No active U-Net checkpoint. Train one in the Train panel, then Activate."
+            )
         result = detect_rings_unet(
             image,
             path_points,

@@ -95,15 +95,32 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
 
     def _open_and_detect(image_path: Path, *, outer_year: int | None = None) -> Project:
         """Open image and run stack default detect (boolean for discs)."""
-        proj = run_detect(
-            image_path,
-            method="auto",
-            preset="auto",
-            sample_type="auto",
-            outer_year=outer_year,
-            sample_code=image_path.stem,
-            auto=True,
-        )
+        try:
+            proj = run_detect(
+                image_path,
+                method="auto",
+                preset="auto",
+                sample_type="auto",
+                outer_year=outer_year,
+                sample_code=image_path.stem,
+                auto=True,
+            )
+        except Exception as e:  # noqa: BLE001 — still open image for manual measure
+            from dendro_shell.detect.classical import infer_sample_type
+            from dendro_shell.project import MeasurePath
+
+            img = Image.open(image_path).convert("RGB")
+            st = infer_sample_type(img)
+            proj = Project(
+                image_path=str(image_path.resolve()),
+                sample_code=image_path.stem,
+                sample_type=st,  # type: ignore[arg-type]
+                preprocess_preset="dark_disc" if st == "disc" else "sanded_core",
+                detect_method="classical",
+                outer_year=outer_year,
+                notes=f"auto-detect failed: {e}",
+                paths=[MeasurePath(id="path0")],
+            )
         _set_project(proj)
         return proj
 
@@ -207,20 +224,26 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
             pith = Point(**payload["pith"])
 
         sample_type = payload.get("sample_type") or p.sample_type or "auto"
-        project = run_detect(
-            p.image_path,
-            method=method,
-            preset=preset,
-            sample_type=sample_type,
-            pith=pith,
-            path_points=path_pts,
-            angle_deg=float(payload.get("angle_deg", 0)),
-            min_distance_px=min_d,
-            prominence=prom,
-            outer_year=payload.get("outer_year", p.outer_year),
-            sample_code=p.sample_code,
-            auto=True,
-        )
+        try:
+            project = run_detect(
+                p.image_path,
+                method=method,
+                preset=preset,
+                sample_type=sample_type,
+                pith=pith,
+                path_points=path_pts,
+                angle_deg=float(payload.get("angle_deg", 0)),
+                min_distance_px=min_d,
+                prominence=prom,
+                outer_year=payload.get("outer_year", p.outer_year),
+                sample_code=p.sample_code,
+                auto=True,
+            )
+        except (FileNotFoundError, RuntimeError, ValueError) as e:
+            # Missing U-Net checkpoint / train extra / bad params → JSON, not 500
+            return JSONResponse({"error": str(e)}, status_code=400)
+        except Exception as e:  # noqa: BLE001 — keep UI usable on detect faults
+            return JSONResponse({"error": f"detect failed: {e}"}, status_code=400)
         # Preserve metadata / scale
         project = project.model_copy(
             update={
@@ -568,6 +591,18 @@ def create_app(open_image: str | None = None, library_dir: str | None = None):
     @app.get("/")
     def index():
         return FileResponse(STATIC_DIR / "index.html")
+
+    @app.get("/favicon.ico")
+    def favicon():
+        # Tiny inline SVG as ICO-substitute so browsers don't 404
+        svg = (
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
+            "<circle cx='16' cy='16' r='14' fill='none' stroke='#1f5c45' stroke-width='2'/>"
+            "<circle cx='16' cy='16' r='8' fill='none' stroke='#152019' stroke-width='1.5'/>"
+            "<circle cx='16' cy='16' r='2' fill='#b42318'/>"
+            "</svg>"
+        )
+        return Response(svg, media_type="image/svg+xml")
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     return app
