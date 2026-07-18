@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dendro-shell</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <h1>dendro-shell</h1>
+      </div>
+      <p class="tagline">Path-first ring tracing for hard cores and discs</p>
+      <div class="top-actions">
+        <label class="btn file-btn">
+          Open image
+          <input id="fileInput" type="file" accept="image/*,.tif,.tiff" hidden />
+        </label>
+        <button id="btnDetect" class="btn primary" type="button">Detect</button>
+        <button id="btnLibrary" class="btn" type="button">Add to training set</button>
+        <button id="btnExport" class="btn" type="button">Export</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="stage" aria-label="Image stage">
+        <div class="stage-toolbar">
+          <label>Preset
+            <select id="preset"></select>
+          </label>
+          <label>Method
+            <select id="method">
+              <option value="classical">Classical</option>
+              <option value="unet">Active U-Net</option>
+            </select>
+          </label>
+          <label>Type
+            <select id="sampleType">
+              <option value="core">Core</option>
+              <option value="disc">Disc</option>
+            </select>
+          </label>
+          <label>Outer year
+            <input id="outerYear" type="number" placeholder="e.g. 2024" />
+          </label>
+          <button id="btnPith" class="btn small" type="button">Estimate pith</button>
+          <span id="status" class="status">Load an image to begin</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="canvas"></canvas>
+        </div>
+        <div class="timeline" aria-label="Ring widths">
+          <canvas id="spark" height="64"></canvas>
+        </div>
+      </section>
+
+      <aside class="side">
+        <nav class="tabs" role="tablist">
+          <button class="tab active" data-tab="measure" type="button">Measure</button>
+          <button class="tab" data-tab="polar" type="button">Polar</button>
+          <button class="tab" data-tab="train" type="button">Train</button>
+        </nav>
+
+        <div class="panel active" id="panel-measure">
+          <h2>Path & rings</h2>
+          <p class="hint">Click to add path points. Drag ticks to nudge. Keys: <kbd>A</kbd> add ring at cursor, <kbd>D</kbd> delete nearest, <kbd>M</kbd> flag missing.</p>
+          <div class="field-row">
+            <label>Sample <input id="sampleCode" type="text" /></label>
+            <label>Species <input id="species" type="text" /></label>
+          </div>
+          <div class="field-row">
+            <label>µm / px <input id="mpp" type="number" step="any" /></label>
+            <button id="btnClearPath" class="btn small" type="button">Clear path</button>
+          </div>
+          <ul id="ringList" class="ring-list"></ul>
+          <div class="crossdate">
+            <h3>Crossdate</h3>
+            <label>Reference .rwl path
+              <input id="refRwl" type="text" placeholder="/path/to/master.rwl" />
+            </label>
+            <button id="btnCrossdate" class="btn small" type="button">Correlate</button>
+            <pre id="crossOut" class="mono"></pre>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-polar">
+          <h2>Polar unwrap</h2>
+          <p class="hint">Discs only — rings become horizontal ridges. Set pith first.</p>
+          <img id="polarImg" alt="Polar unwrap preview" />
+          <button id="btnRefreshPolar" class="btn small" type="button">Refresh</button>
+        </div>
+
+        <div class="panel" id="panel-train">
+          <h2>Train U-Net</h2>
+          <p class="hint">Correct rings → Add to training set → train here. Same job as <code>dendro train</code>.</p>
+          <div id="libraryInfo" class="mono"></div>
+          <div class="field-row">
+            <label>Name <input id="trainName" type="text" value="boundary_unet" /></label>
+            <label>Epochs <input id="trainEpochs" type="number" value="20" min="1" /></label>
+          </div>
+          <div class="field-row">
+            <label>imgsz <input id="trainImgsz" type="number" value="256" min="64" /></label>
+            <label>Batch <input id="trainBatch" type="number" value="2" min="1" /></label>
+          </div>
+          <div class="field-row">
+            <label>LR <input id="trainLr" type="number" value="0.001" step="any" /></label>
+            <label>Device
+              <select id="trainDevice">
+                <option value="auto">auto</option>
+                <option value="cpu">cpu</option>
+                <option value="cuda">cuda</option>
+                <option value="mps">mps</option>
+              </select>
+            </label>
+          </div>
+          <label class="check"><input id="trainAugment" type="checkbox" checked /> Augment</label>
+          <label class="check"><input id="trainFinetune" type="checkbox" checked /> Fine-tune active</label>
+          <div class="top-actions">
+            <button id="btnTrain" class="btn primary" type="button">Start training</button>
+            <button id="btnTrainStop" class="btn" type="button">Stop</button>
+          </div>
+          <div id="trainStatus" class="train-status mono">idle</div>
+          <div class="models">
+            <h3>Models</h3>
+            <ul id="modelList"></ul>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
