@@ -146,7 +146,12 @@ def build_parser() -> argparse.ArgumentParser:
     det = sub.add_parser("detect", help="Detect rings along default/auto path")
     det.add_argument("image")
     det.add_argument("-o", "--output", default=None)
-    det.add_argument("--method", choices=["classical", "unet"], default="classical")
+    det.add_argument(
+        "--method",
+        choices=["classical", "unet", "boolean"],
+        default="classical",
+        help="classical | unet | boolean (match rings across cracks/damage)",
+    )
     det.add_argument("--preset", default="auto", help="Preprocess preset or 'auto'")
     det.add_argument("--type", choices=["core", "disc", "auto"], default="auto")
     det.add_argument("--pith", default=None, help="x,y pith for discs")

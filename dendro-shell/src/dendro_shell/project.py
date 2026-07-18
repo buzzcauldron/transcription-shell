@@ -54,7 +54,7 @@ class Project(BaseModel):
     pith: Point | None = None
     sample_type: Literal["core", "disc"] = "core"
     preprocess_preset: str = "sanded_core"
-    detect_method: Literal["classical", "unet"] = "classical"
+    detect_method: Literal["classical", "unet", "boolean"] = "classical"
     scale: ScaleInfo = Field(default_factory=ScaleInfo)
     paths: list[MeasurePath] = Field(default_factory=list)
     # Extra painted mask path relative to project dir (optional)
