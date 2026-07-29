@@ -9,6 +9,9 @@ script: caroline_minuscule
 
 llm:
   primary: gemini-2.5-flash
+  # Cheap corrector when llm_mode=correct (HTR draft primary). Not the silent default
+  # until held-out CER gates pass — set TRANSCRIBER_SHELL_LLM_MODE=correct to use.
+  correct: gemini-2.5-flash
   fallback: claude-sonnet-4
 
 htr:

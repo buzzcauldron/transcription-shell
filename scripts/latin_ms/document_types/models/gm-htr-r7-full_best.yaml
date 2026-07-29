@@ -20,4 +20,8 @@ training:
   notes: "Bridges r7-full retrain; full regularized corpus with Bullinger when present."
 
 metrics:
-  notes: "Current best general medieval Latin HTR from the Bridges r6/r7 pipeline."
+  notes: >
+    Bridges r6/r7 pipeline export. No published val_accuracy / per_corpus_cer —
+    demoted from "best general" claims until score-htr-per-corpus is run.
+  recommend_correct_mode: false
+  held_out_ready: false

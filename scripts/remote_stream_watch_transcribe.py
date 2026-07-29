@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -15,7 +16,7 @@ JOB = Path(os.environ["STREAM_JOB_DIR"]).expanduser()
 SRC = JOB / "00_sources_chunks"
 PAGES = JOB / os.environ.get("STREAM_PAGES_DIR", "01_pages_2500")
 ART = JOB / os.environ.get("STREAM_ARTIFACTS_DIR", "03_artifacts_2500")
-BATCHES = JOB / "transcription_batches"
+BATCHES = Path(os.environ.get("STREAM_BATCHES_DIR", str(JOB / "transcription_batches"))).expanduser()
 LOG = JOB / "logs" / "watch_transcribe.log"
 
 IMAGE_NAME_CONTAINS = os.environ.get("STREAM_IMAGE_NAME_CONTAINS", "")
@@ -24,6 +25,8 @@ BATCH_SIZE = int(os.environ.get("STREAM_BATCH_SIZE", "8"))
 IDLE_LIMIT = int(os.environ.get("STREAM_IDLE_LIMIT", "30"))
 DOC_TYPE = os.environ.get("STREAM_DOC_TYPE", "computus_medieval_latin")
 PROVIDER = os.environ.get("STREAM_PROVIDER", "gemini")
+HTR_COMBINATION = os.environ.get("STREAM_HTR_COMBINATION", "")
+SKIP_LINES_XML_VALIDATION = os.environ.get("STREAM_SKIP_LINES_XML_VALIDATION", "")
 TSHELL_ROOT = Path(os.environ.get("STREAM_TRANSCRIPTION_SHELL_ROOT", "~/Projects/transcription-shell")).expanduser()
 TSHELL_VENV = Path(os.environ.get("STREAM_TRANSCRIPTION_SHELL_VENV", str(TSHELL_ROOT / ".venv-lineation"))).expanduser()
 
@@ -67,7 +70,17 @@ def stage_new() -> int:
 
 
 def valid_yaml(stem: str) -> bool:
-    return (ART / stem / f"{stem}_transcription.yaml").exists()
+    if (ART / stem / f"{stem}_transcription.yaml").exists():
+        return True
+    sanitized = re.sub(r"[^a-zA-Z0-9._-]", "_", stem)
+    if sanitized != stem:
+        sanitized_dir = ART / sanitized
+        # yaml filename inside may use original stem or sanitized name
+        if (sanitized_dir / f"{stem}_transcription.yaml").exists():
+            return True
+        if (sanitized_dir / f"{sanitized}_transcription.yaml").exists():
+            return True
+    return False
 
 
 def pending_images() -> list[Path]:
@@ -101,11 +114,15 @@ def run_batch(imgs: list[Path], idx: int) -> None:
 
     report = JOB / "logs" / f"transcription_batch_{idx:04d}.json"
     log_file = JOB / "logs" / f"transcription_batch_{idx:04d}.log"
+    htr_export = f"export TRANSCRIBER_SHELL_HTR_COMBINATION='{HTR_COMBINATION}' && " if HTR_COMBINATION else ""
+    skip_xml_export = f"export TRANSCRIBER_SHELL_SKIP_LINES_XML_VALIDATION='{SKIP_LINES_XML_VALIDATION}' && " if SKIP_LINES_XML_VALIDATION else ""
     cmd = (
         f"cd '{TSHELL_ROOT}' && "
         f"source '{TSHELL_VENV}/bin/activate' && "
         f"export PYTHONPATH='{TSHELL_ROOT}/src' && "
         f"export TRANSCRIBER_SHELL_ARTIFACTS_DIR='{ART}' && "
+        f"{htr_export}"
+        f"{skip_xml_export}"
         f"transcriber-shell batch '{batch_dir}' "
         f"--doc-type '{DOC_TYPE}' "
         f"--provider '{PROVIDER}' "

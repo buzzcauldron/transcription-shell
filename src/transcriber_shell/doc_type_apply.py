@@ -57,10 +57,18 @@ def apply_doc_type(
     updates: dict = {}
 
     explicit_p = (explicit_provider or "").lower()
-    provider_matches = not explicit_p or explicit_p == spec.primary_provider.lower()
-    if not settings.default_model and provider_matches:
-        updates["default_provider"] = spec.primary_provider
-        updates["default_model"] = spec.primary_model
+    use_correct_llm = (settings.llm_mode or "full").strip().lower() == "correct"
+    if use_correct_llm and spec.correct_model:
+        correct_p = (spec.correct_provider or spec.primary_provider).lower()
+        provider_matches = not explicit_p or explicit_p == correct_p
+        if not settings.default_model and provider_matches:
+            updates["default_provider"] = spec.correct_provider or spec.primary_provider
+            updates["default_model"] = spec.correct_model
+    else:
+        provider_matches = not explicit_p or explicit_p == spec.primary_provider.lower()
+        if not settings.default_model and provider_matches:
+            updates["default_provider"] = spec.primary_provider
+            updates["default_model"] = spec.primary_model
 
     use_tesseract = prefer_tesseract_ocr(spec)
 
@@ -77,6 +85,18 @@ def apply_doc_type(
         updates["htr_combination"] = "tesseract_htr"
     elif spec.htr_path:
         updates["htr_combination"] = "kraken_htr"
+
+    # Promote llm_mode=correct only when held-out gate passes; otherwise leave default.
+    htr_name = spec.htr_model_name
+    if htr_name and (settings.llm_mode or "full").strip().lower() == "full":
+        try:
+            from transcriber_shell.htr.correct_gate import gate_for_registry_model
+
+            gate = gate_for_registry_model(htr_name)
+            if gate.passed:
+                updates["llm_mode"] = "correct"
+        except Exception:
+            pass
 
     print_preset = settings_updates_for_doc_type(doc_type)
     for key, val in print_preset.items():

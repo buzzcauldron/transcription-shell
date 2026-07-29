@@ -411,6 +411,9 @@ class TranscriberGui:
         ttk.Button(btn_row, text="Open artifacts folder", command=self._open_artifacts).pack(
             side=tk.LEFT, padx=(12, 0)
         )
+        ttk.Button(btn_row, text="Run stylo…", command=self._run_stylo_dialog).pack(
+            side=tk.LEFT, padx=(12, 0)
+        )
         ttk.Button(btn_row, text="Save log…", command=self._save_run_log).pack(
             side=tk.LEFT, padx=(12, 0)
         )
@@ -585,6 +588,22 @@ class TranscriberGui:
             bits.append(f"Tesseract ({preset.tesseract_lang or 'on'})")
         elif preset.kraken_htr_model_path:
             bits.append("Kraken HTR")
+        try:
+            from transcriber_shell.document_types import load_doc_type
+            from transcriber_shell.htr.correct_gate import gate_for_registry_model
+
+            extra = [self._settings.document_types_dir] if self._settings.document_types_dir else []
+            spec = load_doc_type(doc_type, extra_dirs=extra)
+            if spec.htr_model_name:
+                gate = gate_for_registry_model(spec.htr_model_name)
+                if gate.recommended and not gate.passed:
+                    bits.append("recommend LLM mode=correct (HTR draft)")
+                elif gate.passed:
+                    bits.append("default LLM mode=correct")
+                    if self._llm_mode.get().strip().lower() == "full":
+                        self._llm_mode.set("correct")
+        except Exception:
+            pass
         self._doc_type_status.set(
             f"Preset applied: {doc_type}"
             + (f" — {' · '.join(bits)}" if bits else "")
@@ -617,7 +636,8 @@ class TranscriberGui:
                 self._lines_dir_row_frame.pack_forget()
             if hasattr(self, "_lines_help_lbl"):
                 self._lines_help_lbl.pack_forget()
-            self._mode_row2.pack_forget()
+            # Keep LLM mode (and translate/figures) visible — correct/off shrink the LLM.
+            self._mode_row2.pack(fill=tk.X, pady=(0, 6), before=self._transcribe_btn.master)
             for child in self._mode_row.winfo_children():
                 if isinstance(child, ttk.Checkbutton):
                     txt = str(child.cget("text"))
@@ -1242,6 +1262,60 @@ class TranscriberGui:
             pady=8,
         )
         self._log.pack(fill=tk.BOTH, expand=True)
+
+        # HTR draft pane — always available so correct-mode users can audit machine text.
+        self._htr_drafts_expanded = tk.BooleanVar(value=False)
+        htr_body, self._apply_htr_drafts_section = self._collapsible_section(
+            outer, "HTR drafts (last run)", self._htr_drafts_expanded, pady=(8, 0)
+        )
+        ttk.Label(
+            htr_body,
+            text="Machine drafts from the last page/batch row. Empty until HTR runs.",
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(0, 2))
+        self._htr_drafts = scrolledtext.ScrolledText(
+            htr_body,
+            height=8,
+            wrap=tk.WORD,
+            font=self._content_font,
+            bg=_FIELD_BG,
+            fg=_FG,
+            insertbackground=_FG,
+            relief=tk.FLAT,
+            padx=8,
+            pady=8,
+        )
+        self._htr_drafts.pack(fill=tk.BOTH, expand=True)
+        self._htr_drafts.insert(tk.END, "(no HTR drafts yet)")
+        self._htr_drafts.configure(state=tk.DISABLED)
+
+        # Style summary pane — filled by stylo integration (P4).
+        self._style_summary_expanded = tk.BooleanVar(value=False)
+        style_body, self._apply_style_summary_section = self._collapsible_section(
+            outer, "Style summary", self._style_summary_expanded, pady=(8, 0)
+        )
+        ttk.Label(
+            style_body,
+            text="Chunk-level FW/MFW genre neighborhood (run stylo after a job).",
+            style="Muted.TLabel",
+            wraplength=520,
+        ).pack(anchor=tk.W, pady=(0, 2))
+        self._style_summary = scrolledtext.ScrolledText(
+            style_body,
+            height=6,
+            wrap=tk.WORD,
+            font=self._content_font,
+            bg=_FIELD_BG,
+            fg=_FG,
+            insertbackground=_FG,
+            relief=tk.FLAT,
+            padx=8,
+            pady=8,
+        )
+        self._style_summary.pack(fill=tk.BOTH, expand=True)
+        self._style_summary.insert(tk.END, "(no style summary yet — use transcriber-shell stylo)")
+        self._style_summary.configure(state=tk.DISABLED)
 
 
     # ── UI state sync ────────────────────────────────────────────────────────
@@ -1998,6 +2072,52 @@ class TranscriberGui:
                     except queue.Full:
                         pass
 
+    def _apply_htr_drafts_pane(self, htr_results: dict | None) -> None:
+        from transcriber_shell.pipeline.display import format_htr_drafts
+
+        text = format_htr_drafts(htr_results) or "(no HTR drafts for this run)"
+        if not hasattr(self, "_htr_drafts"):
+            return
+        self._htr_drafts.configure(state=tk.NORMAL)
+        self._htr_drafts.delete("1.0", tk.END)
+        self._htr_drafts.insert(tk.END, text)
+        self._htr_drafts.configure(state=tk.DISABLED)
+        if htr_results:
+            self._htr_drafts_expanded.set(True)
+            if hasattr(self, "_apply_htr_drafts_section"):
+                self._apply_htr_drafts_section()
+
+    def _apply_style_summary_pane(self, text: str | None) -> None:
+        body = (text or "").strip() or "(no style summary yet — use transcriber-shell stylo)"
+        if not hasattr(self, "_style_summary"):
+            return
+        self._style_summary.configure(state=tk.NORMAL)
+        self._style_summary.delete("1.0", tk.END)
+        self._style_summary.insert(tk.END, body)
+        self._style_summary.configure(state=tk.DISABLED)
+        if text and text.strip():
+            self._style_summary_expanded.set(True)
+            if hasattr(self, "_apply_style_summary_section"):
+                self._apply_style_summary_section()
+
+    def _log_timings_and_drafts(
+        self,
+        *,
+        timings: list | None = None,
+        htr_results: dict | None = None,
+        prefix: str = "",
+    ) -> None:
+        from transcriber_shell.pipeline.display import format_htr_drafts, format_timings
+
+        t = format_timings(timings)
+        if t:
+            self._put_log(f"{prefix}{t}" if prefix else t)
+        drafts = format_htr_drafts(htr_results, max_chars_per_backend=1200)
+        if drafts:
+            header = f"{prefix}HTR drafts:\n" if prefix else "HTR drafts:\n"
+            self._put_log(header + drafts)
+        self._q.put(("htr_drafts", htr_results or {}))
+
     def _poll_queue(self) -> None:
         if self._run_metrics_active and self._run_t0 is not None:
             dt = time.monotonic() - self._run_t0
@@ -2037,6 +2157,10 @@ class TranscriberGui:
                         else None
                     )
                     self._metrics_tokens.set(_format_llm_usage_line(u))
+                elif kind == "htr_drafts":
+                    self._apply_htr_drafts_pane(payload if isinstance(payload, dict) else None)
+                elif kind == "style_summary":
+                    self._apply_style_summary_pane(str(payload) if payload else None)
                 elif kind == "done":
                     self._run_metrics_active = False
                     self._transcribe_btn.configure(state=tk.NORMAL)
@@ -2392,16 +2516,10 @@ class TranscriberGui:
                         if txt_path.exists():
                             self._put_log(f"transcription_txt={txt_path}")
                     self._put_log(f"text_line_count={res.text_line_count}")
-                    if res.timings:
-                        total = sum(s for _, s in res.timings)
-                        max_s = max(s for _, s in res.timings) or 1.0
-                        parts = []
-                        for label, s in res.timings:
-                            bar = "█" * max(1, int(s / max_s * 20))
-                            parts.append(f"  {label:<12} {s:>5.1f}s  {bar}")
-                        self._put_log(
-                            f"timings (total {total:.1f}s):\n" + "\n".join(parts)
-                        )
+                    self._log_timings_and_drafts(
+                        timings=res.timings,
+                        htr_results=res.htr_results,
+                    )
                     if res.errors:
                         for e in res.errors:
                             self._put_log(f"error: {e}")
@@ -2504,6 +2622,11 @@ class TranscriberGui:
                             self._put_log(
                                 f"  text_line_count={tlc if tlc is not None else 0}"
                             )
+                        self._log_timings_and_drafts(
+                            timings=row.get("timings"),
+                            htr_results=row.get("htr_results"),
+                            prefix="  ",
+                        )
                     cum_u: dict[str, int] | None = None
                     for row in rows:
                         cum_u = _merge_llm_usage(cum_u, row.get("llm_usage"))
@@ -2549,6 +2672,44 @@ class TranscriberGui:
                 subprocess.run(["xdg-open", str(d)], check=False)
         except Exception:
             self._gui_notify(f"Folder: {d}", "info")
+
+    def _run_stylo_dialog(self) -> None:
+        """Run chunk-level FW/MFW stylo on a text file or job directory; fill Style summary."""
+        path = filedialog.askopenfilename(
+            title="Select Latin text for stylo (or Cancel to pick a job folder)",
+            filetypes=[("Text", "*.txt"), ("All", "*.*")],
+        )
+        if not path:
+            path = filedialog.askdirectory(title="Select job directory for stylo")
+        if not path:
+            return
+
+        def worker() -> None:
+            try:
+                from transcriber_shell.stylometry.stylo_run import (
+                    analyze_text,
+                    load_text_from_path,
+                    write_summary_json,
+                )
+
+                p = Path(path)
+                text = load_text_from_path(p)
+                summary = analyze_text(text)
+                out = (
+                    p / f"{p.name}_stylo_summary.json"
+                    if p.is_dir()
+                    else p.with_suffix(p.suffix + ".stylo.json")
+                )
+                write_summary_json(summary, out)
+                self._put_log(f"stylo: wrote {out}")
+                self._q.put(("style_summary", summary.format_text()))
+                self._q.put(("status", "Stylo finished."))
+            except Exception as e:  # noqa: BLE001
+                self._put_log(f"stylo error: {e}")
+                self._q.put(("status", "Stylo failed."))
+
+        threading.Thread(target=worker, daemon=True).start()
+        self._status.set("Running stylo…")
 
     def _open_artifacts(self) -> None:
         self._open_folder(str(self._settings.artifacts_dir))

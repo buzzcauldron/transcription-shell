@@ -20,4 +20,8 @@ training:
   notes: "Bridges r6-core retrain; core medieval Latin corpus without Bullinger."
 
 metrics:
-  notes: "Intermediate checkpoint exported before r7-full fine-tune."
+  notes: >
+    Intermediate checkpoint exported before r7-full fine-tune. No published
+    val_accuracy / per_corpus_cer — do not treat as "best general" until scored.
+  recommend_correct_mode: false
+  held_out_ready: false

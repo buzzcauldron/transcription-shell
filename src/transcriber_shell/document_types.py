@@ -48,6 +48,9 @@ class DocumentTypeSpec:
     primary_model: str | None = None
     fallback_provider: str | None = None
     fallback_model: str | None = None
+    # Cheaper model for llm_mode=correct (HTR draft primary).
+    correct_provider: str | None = None
+    correct_model: str | None = None
     htr_path: Path | None = None
     seg_path: Path | None = None
     # Names of the registry entries that resolved htr_path / seg_path (when the
@@ -154,6 +157,9 @@ def _load_spec(raw: dict[str, Any], search_dirs: list[Path]) -> DocumentTypeSpec
     fallback_provider = fallback_model = None
     if fb := llm.get("fallback"):
         fallback_provider, fallback_model = _parse_model_ref(fb)
+    correct_provider = correct_model = None
+    if cr := llm.get("correct"):
+        correct_provider, correct_model = _parse_model_ref(cr)
 
     htr_raw = raw.get("htr", {}) or {}
     seg_raw = raw.get("segmentation", {}) or {}
@@ -175,6 +181,8 @@ def _load_spec(raw: dict[str, Any], search_dirs: list[Path]) -> DocumentTypeSpec
         primary_model=primary_model,
         fallback_provider=fallback_provider,
         fallback_model=fallback_model,
+        correct_provider=correct_provider,
+        correct_model=correct_model,
         htr_path=htr_path,
         seg_path=seg_path,
         htr_model_name=htr_model_name,

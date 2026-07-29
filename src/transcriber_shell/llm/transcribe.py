@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from transcriber_shell.config import Settings
+from transcriber_shell.llm.correct_prompt import build_correct_prompts, should_use_short_correct
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.protocol_paths import ensure_prompt_builder_on_path
 
@@ -41,39 +42,43 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
 
     s = settings or Settings()
     cfg = dict(job.prompt_cfg)
-    extra = ""
-    if job.line_hint:
-        extra = f"\nLINEATION NOTE (for segment lineRange consistency): {job.line_hint}\n"
-    system, user_text = build_zones(cfg)
-    user_text = user_text + extra
-    # normalizationMode=normalized: inject the expansion reference so the LLM expands
-    # ẽt→et, p̃benda→prebenda, drops abbreviation diacritics, etc.
-    if str(cfg.get("normalizationMode") or "").strip().lower() == "normalized":
-        guide = _load_expansion_guide()
-        if guide:
-            system = (
-                system
-                + "\n\nNORMALIZED MODE — abbreviation expansion is REQUIRED. Every "
-                "abbreviation glyph (tilde over vowel, macron, suspension stroke, "
-                "p/q ligatures, Tironian et, long-s, round-r, etc.) must be expanded "
-                "to its full Latin word in the segment `text`. The reader must not see "
-                "ẽt, p̃benda, q̃d, m̃ — they must see et, prebenda, quod, mm/mn. "
-                "Drop diacritics that mark abbreviation once the expansion is supplied. "
-                "Follow the rules in the reference below.\n\n"
-                + guide
-            )
-    # llm_mode=correct: treat HTR drafts in the user message as the primary content;
-    # do not re-transcribe from scratch. The full protocol output is still required.
-    if (s.llm_mode or "full").lower() == "correct" and job.line_hint and "HTR machine-readable drafts" in job.line_hint:
-        system = (
-            system
-            + "\n\nCORRECT MODE: An HTR machine draft is provided in the user message. "
-            "Treat it as the primary source of character recognition; your job is to fix "
-            "obvious recognition errors (e.g. expand abbreviation marks like ẽt→et, "
-            "p̃benda→prebenda) and arbitrate where multiple drafts disagree. Do NOT re-read "
-            "the image from scratch; use it only to resolve ambiguous spots in the draft. "
-            "Preserve the protocol YAML output format."
+    norm_mode = str(cfg.get("normalizationMode") or "").strip().lower()
+    lang_hint = str(cfg.get("language") or cfg.get("script") or "").strip() or None
+
+    # Phase 3: short correct prompt — draft-primary, skip full protocol zones.
+    if should_use_short_correct(s.llm_mode or "full", job.line_hint):
+        system, user_text = build_correct_prompts(
+            line_hint=job.line_hint or "",
+            normalization_mode=norm_mode or "diplomatic",
+            language_hint=lang_hint,
         )
+        # Expansion guide only when normalized correct (never for diplomatic/computus ink).
+        if norm_mode in ("normalized", "normalised"):
+            guide = _load_expansion_guide()
+            if guide:
+                system = system + "\n\nAbbreviation expansion reference:\n\n" + guide
+    else:
+        extra = ""
+        if job.line_hint:
+            extra = f"\nLINEATION NOTE (for segment lineRange consistency): {job.line_hint}\n"
+        system, user_text = build_zones(cfg)
+        user_text = user_text + extra
+        # normalizationMode=normalized: inject the expansion reference so the LLM expands
+        # ẽt→et, p̃benda→prebenda, drops abbreviation diacritics, etc.
+        if norm_mode in ("normalized", "normalised"):
+            guide = _load_expansion_guide()
+            if guide:
+                system = (
+                    system
+                    + "\n\nNORMALIZED MODE — abbreviation expansion is REQUIRED. Every "
+                    "abbreviation glyph (tilde over vowel, macron, suspension stroke, "
+                    "p/q ligatures, Tironian et, long-s, round-r, etc.) must be expanded "
+                    "to its full Latin word in the segment `text`. The reader must not see "
+                    "ẽt, p̃benda, q̃d, m̃ — they must see et, prebenda, quod, mm/mn. "
+                    "Drop diacritics that mark abbreviation once the expansion is supplied. "
+                    "Follow the rules in the reference below.\n\n"
+                    + guide
+                )
 
     provider = job.provider.lower()
     mo = job.model_override

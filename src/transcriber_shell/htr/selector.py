@@ -39,12 +39,24 @@ def _effective_combination(s: "Settings") -> str:
     return raw
 
 
+def _force_htr_before_llm(plan: HtrExecutionPlan) -> HtrExecutionPlan:
+    """``llm_mode=correct`` needs drafts in ``line_hint`` before ``run_transcribe``.
+
+    Parallel-with-LLM plans never inject drafts; upgrade them to before-LLM.
+    """
+    if plan.kind == HtrPlanKind.WITH_LLM_PARALLEL and plan.tasks:
+        return HtrExecutionPlan(kind=HtrPlanKind.BEFORE_LLM_PARALLEL, tasks=plan.tasks)
+    return plan
+
+
 def plan_htr_execution(
     s: "Settings",
     all_tasks: dict[str, Callable[[], HtrResult]],
 ) -> HtrExecutionPlan:
     """Map settings + built tasks to an execution plan (may be NONE)."""
     c = _effective_combination(s)
+    llm_mode = (s.llm_mode or "full").strip().lower()
+    correct_needs_draft = llm_mode == "correct"
 
     if c in ("off", "shell", "none", "llm_only"):
         # LLM-only path: never run HTR backends, even when seg/HTR models are configured.
@@ -77,7 +89,8 @@ def plan_htr_execution(
     if c == "parallel":
         if not all_tasks:
             return HtrExecutionPlan(kind=HtrPlanKind.NONE)
-        return HtrExecutionPlan(kind=HtrPlanKind.WITH_LLM_PARALLEL, tasks=dict(all_tasks))
+        plan = HtrExecutionPlan(kind=HtrPlanKind.WITH_LLM_PARALLEL, tasks=dict(all_tasks))
+        return _force_htr_before_llm(plan) if correct_needs_draft else plan
 
     if c == "sequential":
         if not all_tasks:

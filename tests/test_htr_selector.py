@@ -67,6 +67,15 @@ def test_plan_default_parallel_when_htr_parallel_true() -> None:
     assert plan.tasks == tasks
 
 
+def test_plan_correct_mode_forces_htr_before_llm() -> None:
+    """llm_mode=correct must not run HTR in parallel with the LLM (drafts never inject)."""
+    tasks = {"kraken-htr": lambda: HtrResult(text="z", backend="kraken-htr", line_count=1)}
+    s = Settings(htr_combination="parallel", htr_parallel=True, llm_mode="correct")
+    plan = plan_htr_execution(s, tasks)
+    assert plan.kind == HtrPlanKind.BEFORE_LLM_PARALLEL
+    assert plan.tasks == tasks
+
+
 def test_plan_default_sequential_when_htr_parallel_false() -> None:
     tasks = {"kraken-htr": lambda: HtrResult(text="z", backend="kraken-htr", line_count=1)}
     s = Settings(htr_combination="default", htr_parallel=False)

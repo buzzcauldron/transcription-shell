@@ -280,6 +280,7 @@ def run_batch(
             else None,
             "llm_usage": res.llm_usage,
             "htr_results": _htr_results_for_report(res.htr_results),
+            "timings": list(res.timings) if res.timings else [],
         }
 
     if workers <= 1:

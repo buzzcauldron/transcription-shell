@@ -436,14 +436,20 @@ def _clip01(x: float) -> float:
 # ── stylometry-r style Delta references ──────────────────────────────────────
 
 def _genre_reference_texts() -> dict[str, list[str]]:
-    """Build compact genre prototypes for Delta ranking.
+    """Corpus-backed refs when available; else compact genre prototypes.
 
-    ``stylometry-r`` expects genre-matched reference directories.  For this repo
-    we do not ship a large labelled medieval corpus yet, so the fallback scorer
-    uses small genre reference prototypes built from high-value diagnostic terms.
-    The API in ``stylo_delta`` also accepts real reference chunks, so these can
-    be replaced by corpus-backed references later without changing callers.
+    Prefer stylometry-r ``reference_set_medieval_mixed`` chunks (mapped onto local
+    labels). Synthetic term bags remain a last resort when the corpus is absent.
     """
+    try:
+        from transcriber_shell.stylometry.reference_corpus import load_local_label_references
+
+        corpus = load_local_label_references(max_per_genre=30)
+        if corpus:
+            return corpus
+    except Exception:
+        pass
+
     refs: dict[str, list[str]] = {}
     for genre, terms in GENRE_TERMS.items():
         words: list[str] = []

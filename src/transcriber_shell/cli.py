@@ -357,6 +357,8 @@ def _pipeline_settings(args: argparse.Namespace) -> Settings:
         updates["htr_combination"] = args.htr_combination
     elif getattr(args, "htr_sequential", False):
         updates["htr_parallel"] = False
+    if getattr(args, "llm_mode", None):
+        updates["llm_mode"] = args.llm_mode
     if getattr(args, "expand", False):
         updates["expand_diplomatic_enabled"] = True
     if updates:
@@ -1209,6 +1211,44 @@ def cmd_htr_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_stylo(args: argparse.Namespace) -> int:
+    """Chunk-level FW/MFW genre neighborhood for a text file or latin_ms job dir."""
+    from transcriber_shell.stylometry.stylo_run import (
+        analyze_text,
+        load_text_from_path,
+        write_summary_json,
+    )
+
+    path = Path(args.path).expanduser()
+    try:
+        text = load_text_from_path(path)
+    except FileNotFoundError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    ref = Path(args.ref_dir).expanduser() if args.ref_dir else None
+    try:
+        summary = analyze_text(text, ref_dir=ref)
+    except FileNotFoundError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    out_json = Path(args.out).expanduser() if args.out else None
+    if out_json is None and path.is_dir():
+        out_json = path / f"{path.name}_stylo_summary.json"
+    elif out_json is None:
+        out_json = path.with_suffix(path.suffix + ".stylo.json") if path.is_file() else Path("stylo_summary.json")
+
+    write_summary_json(summary, out_json)
+    if args.json:
+        import json
+
+        print(json.dumps(summary.to_dict(), indent=2))
+    else:
+        print(summary.format_text())
+        print(f"\nwrote {out_json}")
+    return 0
+
+
 def cmd_list_doc_types(_args: argparse.Namespace) -> int:
     from transcriber_shell.document_types import list_doc_types
     settings = Settings()
@@ -1461,6 +1501,17 @@ def main() -> None:
         ),
     )
     run.add_argument(
+        "--llm-mode",
+        dest="llm_mode",
+        default=None,
+        choices=["full", "correct", "off"],
+        help=(
+            "full=protocol transcription (default); correct=HTR draft primary + LLM fix "
+            "(forces HTR before LLM); off=write HTR drafts only, skip LLM "
+            "(env: TRANSCRIBER_SHELL_LLM_MODE)."
+        ),
+    )
+    run.add_argument(
         "--xml-only",
         action="store_true",
         help=(
@@ -1636,6 +1687,17 @@ def main() -> None:
             "Glyph Machina HTR + Zenodo kraken-htr + LLM shell: shell=LLM only; kraken_htr|gm_htr=one backend; "
             "parallel|sequential=all configured; gm_then_kraken|kraken_then_gm=ordered before LLM. "
             "Overrides --htr-sequential when set (env: TRANSCRIBER_SHELL_HTR_COMBINATION)."
+        ),
+    )
+    batch.add_argument(
+        "--llm-mode",
+        dest="llm_mode",
+        default=None,
+        choices=["full", "correct", "off"],
+        help=(
+            "full=protocol transcription (default); correct=HTR draft primary + LLM fix "
+            "(forces HTR before LLM); off=write HTR drafts only, skip LLM "
+            "(env: TRANSCRIBER_SHELL_LLM_MODE)."
         ),
     )
     batch.add_argument(
@@ -1890,6 +1952,31 @@ def main() -> None:
     hc.add_argument("--centroid-match-px", type=int, default=8)
     hc.add_argument("--json", action="store_true")
     hc.set_defaults(func=cmd_htr_compare)
+
+    # ── stylo ────────────────────────────────────────────────────────────────
+    sty = sub.add_parser(
+        "stylo",
+        help=(
+            "Chunk-level Latin style/genre neighborhood (FW register + MFW content) "
+            "for a .txt file or latin_ms job directory."
+        ),
+    )
+    sty.add_argument(
+        "path",
+        help="Plain text file, whole-manuscript .txt, or job directory with *_transcription.yaml",
+    )
+    sty.add_argument(
+        "--ref-dir",
+        default=None,
+        help="Override reference_set_medieval_mixed directory (or set STYLOMETRY_R_REF)",
+    )
+    sty.add_argument(
+        "--out",
+        default=None,
+        help="Write JSON summary path (default: <path>_stylo_summary.json)",
+    )
+    sty.add_argument("--json", action="store_true", help="Print JSON to stdout")
+    sty.set_defaults(func=cmd_stylo)
 
     # ── list-doc-types ───────────────────────────────────────────────────────
     ldt = sub.add_parser("list-doc-types", help="List available document type specs")

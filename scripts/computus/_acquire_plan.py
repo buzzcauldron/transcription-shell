@@ -9,9 +9,16 @@ from pathlib import Path
 
 
 def strigil_flags(url: str) -> str:
-    if any(x in url for x in ("bl.uk", "wellcomecollection", "morgan.org")):
+    if any(x in url for x in ("bl.uk", "wellcomecollection", "morgan.org",
+                               "diglib.hab.de", "internetculturale.it",
+                               "digital.staatsbibliothek-berlin.de")):
         return "--js"
+    # Direct IIIF manifest endpoints: gallica with --source iiif, plus any URL
+    # ending in /manifest or /manifest.json (cecilia, BLB, Cologne, Bremen, IRHT, e-codices direct)
     if "gallica.bnf.fr" in url:
+        return "--source iiif"
+    stripped = url.split("?")[0]
+    if stripped.endswith("/manifest") or stripped.endswith("/manifest.json"):
         return "--source iiif"
     return ""
 

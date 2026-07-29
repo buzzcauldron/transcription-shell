@@ -30,10 +30,16 @@ training:
 metrics:
   val_accuracy: 0.9434
   val_word_accuracy: 0.759
-  per_corpus_cer: {}
+  # Provisional CER from ketos val (1 - accuracy). Not frozen held-out.
+  per_corpus_cer:
+    ketos_val_aggregate: 0.0566
+  recommend_correct_mode: true
+  held_out_ready: false
   notes: >
     Carolingian minuscule specialist trained on akdeniz RTX 4090. Epoch 17 best
     checkpoint (val_accuracy 0.9434 vs r2 baseline 0.841 — +10.2pp).
     Training was still improving at epoch 17; model OOM'd at ep18 before saving
     _best.mlmodel naturally. Checkpoint exported via VGSLRecognitionModel.net.save_model().
     c2 round planned to continue from this checkpoint once GPU is free.
+    llm_mode=correct is RECOMMENDED (CER≈5.7%) but not the silent default until
+    held_out_ready + score-htr-per-corpus fills a true held-out per_corpus_cer map.

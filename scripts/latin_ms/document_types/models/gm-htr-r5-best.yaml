@@ -32,3 +32,10 @@ corpora:
 notes: >
   Use gm-htr-computus_best (0.9434) for computus-specific pages where available;
   prefer r5 for diverse or non-computus Latin pages.
+metrics:
+  val_accuracy: 0.9289
+  val_word_accuracy: 0.737
+  per_corpus_cer:
+    ketos_val_aggregate: 0.0711
+  recommend_correct_mode: true
+  held_out_ready: false

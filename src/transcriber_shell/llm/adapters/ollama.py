@@ -40,6 +40,14 @@ def transcribe_ollama(
         ],
         "stream": False,
     }
+    # Optional larger context for dense protocol prompts / manuscript pages.
+    num_ctx = int(getattr(s, "ollama_num_ctx", 0) or 0)
+    if not num_ctx:
+        import os
+
+        num_ctx = int(os.environ.get("TRANSCRIBER_SHELL_OLLAMA_NUM_CTX", "0") or 0)
+    if num_ctx > 0:
+        payload["options"] = {"num_ctx": num_ctx}
     body = json.dumps(payload).encode("utf-8")
     req = Request(
         f"{base}/api/chat",
