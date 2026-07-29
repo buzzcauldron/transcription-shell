@@ -1,9 +1,9 @@
 # Carolingian/computus HTR — fine-tune from gm-htr-r2_best on early medieval Latin scientific MSS.
 # Specialist model targeting Caroline minuscule computus and astronomical texts, 6th-11th c.
 # Trained on akdeniz (RTX 4090), epoch 17 best checkpoint exported 2026-05-29.
-name: gm-htr-computus_best
+name: computus-caroline-c1
 kind: htr
-path: "${HOME}/src/latin_documents/gm-htr-computus_best.mlmodel"
+path: "${HOME}/src/gm-htr-computus_best.mlmodel"
 size_mb: 24
 
 languages: [lat-Latn]

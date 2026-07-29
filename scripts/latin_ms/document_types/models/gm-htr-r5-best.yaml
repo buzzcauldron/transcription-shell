@@ -1,37 +1,29 @@
-name: gm-htr-r5-best
-description: >
-  Round 5 HTR model — broad Carolingian/medieval Latin corpus, 290k train / 15k val lines.
-  Trained on akdeniz (RTX 4090) from the r2 baseline; SIGTERM'd at epoch 23, epoch 22
-  checkpoint exported (best validated). Slightly below the computus-specific model on
-  computus pages but stronger across diverse script types.
-path: "${HOME}/src/latin_documents/gm-htr-r5-best.mlmodel"
-val_accuracy: 0.9289
-val_word_accuracy: 0.737
-epoch: 22
-trained: "2026-06-02"
-base_model: gm-htr-r2
-training_lines_train: 290414
-training_lines_val: 15285
-batch_size: 16
-learning_rate: 0.00001
-schedule: cosine
-scripts:
-  - caroline_minuscule
-  - protogothic
-  - pregothic
-  - insular_minuscule
+# carolingian-r5 — Carolingian/early medieval Latin specialist.
+# Scripts: caroline_minuscule, protogothic, pregothic, insular_minuscule (no anglicana/gothic cursive).
+# Round-5 fine-tune from gm-htr-r2_best on expanded Carolingian corpus; epoch 22 checkpoint.
+name: carolingian-r5
+kind: htr
+path: "${HOME}/src/gm-htr-r5-best.mlmodel"
+size_mb: 24
+
+languages: [lat-Latn]
+eras: [late_antique, early_medieval, medieval]
+scripts: [caroline_minuscule, protogothic, pregothic, insular_minuscule]
 era_range: "500-1400"
-corpora:
-  - carolingian-latin-2025
-  - carolingian-latin-vienna
-  - catmus-medieval
-  - cremma-medieval-lat
-  - paris-bible
-  - eutyches
-  - konigsfelden-charters
-notes: >
-  Use gm-htr-computus_best (0.9434) for computus-specific pages where available;
-  prefer r5 for diverse or non-computus Latin pages.
+
+training:
+  base_model: medieval-broad-r2
+  round: 5
+  date: 2026-06-02
+  epochs_run: 22
+  corpora: [carolingian-latin-2025, carolingian-latin-vienna, catmus-medieval, cremma-medieval-lat, paris-bible, eutyches, konigsfelden-charters]
+  hyperparams:
+    learning_rate: 0.00001
+    batch_size: 16
+    schedule: cosine
+    augment: true
+  notes: "SIGTERM'd at epoch 23; epoch 22 best checkpoint exported."
+
 metrics:
   val_accuracy: 0.9289
   val_word_accuracy: 0.737
@@ -39,3 +31,6 @@ metrics:
     ketos_val_aggregate: 0.0711
   recommend_correct_mode: true
   held_out_ready: false
+  notes: >
+    Broad Carolingian/early medieval specialist. Use computus-caroline-c1 (0.9434 acc)
+    for dedicated computus pages; prefer carolingian-r5 for diverse non-computus Latin.

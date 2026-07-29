@@ -1,6 +1,6 @@
-name: gm-htr-r6-core_best
+name: medieval-lat-r6
 kind: htr
-path: "${HOME}/src/latin_documents/gm-htr-r6-core_best.mlmodel"
+path: "${HOME}/src/gm-htr-r6-core_best.mlmodel"
 size_mb: 24
 
 languages: [lat-Latn]

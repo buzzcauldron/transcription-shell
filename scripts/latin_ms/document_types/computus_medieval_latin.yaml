@@ -15,10 +15,8 @@ llm:
   fallback: claude-sonnet-4
 
 htr:
-  # Dedicated Carolingian/computus specialist — not yet trained; registry scoring will
-  # fall back to gm-htr-r2_best until gm-htr-computus_best.mlmodel is present.
-  model: gm-htr-computus_best
-  path: "${HOME}/src/latin_documents/gm-htr-computus_best.mlmodel"
+  model: computus-caroline-c1
+  path: "${HOME}/src/gm-htr-computus_best.mlmodel"
 
 segmentation:
   model: gm-seg

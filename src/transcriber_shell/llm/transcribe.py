@@ -7,8 +7,33 @@ from typing import NamedTuple
 
 from transcriber_shell.config import Settings
 from transcriber_shell.llm.correct_prompt import build_correct_prompts, should_use_short_correct
+from transcriber_shell.llm.errors import LLMProviderError
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.protocol_paths import ensure_prompt_builder_on_path
+
+_OLLAMA_QWEN_FALLBACK = "qwen3.6:27b"
+
+_KEY_WALL_PHRASES = (
+    "api key",
+    "authentication failed",
+    "api_key_invalid",
+    "unauthorized",
+    "401",
+    "403",
+    "forbidden",
+    "permission denied",
+    "insufficient",
+    "billing",
+    "quota",
+    "no anthropic api key",
+    "no google api key",
+    "no openai api key",
+)
+
+
+def _is_key_wall(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return any(p in msg for p in _KEY_WALL_PHRASES)
 
 
 class TranscribeResult(NamedTuple):
@@ -82,36 +107,64 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
 
     provider = job.provider.lower()
     mo = job.model_override
+
+    def _ollama_qwen_fallback() -> TranscribeResult:
+        from transcriber_shell.llm.adapters.ollama import transcribe_ollama
+        import warnings
+        warnings.warn(
+            f"[transcriber-shell] {provider} key wall — falling back to ollama/{_OLLAMA_QWEN_FALLBACK}",
+            stacklevel=4,
+        )
+        return transcribe_ollama(
+            image_path=job.image_path,
+            system=system,
+            user_text=user_text,
+            model=_OLLAMA_QWEN_FALLBACK,
+            settings=s,
+        )
+
     if provider == "anthropic":
         from transcriber_shell.llm.adapters.anthropic import transcribe_anthropic
-
-        return transcribe_anthropic(
-            image_path=job.image_path,
-            system=system,
-            user_text=user_text,
-            model=mo,
-            settings=s,
-        )
+        try:
+            return transcribe_anthropic(
+                image_path=job.image_path,
+                system=system,
+                user_text=user_text,
+                model=mo,
+                settings=s,
+            )
+        except (LLMProviderError, RuntimeError) as exc:
+            if _is_key_wall(exc):
+                return _ollama_qwen_fallback()
+            raise
     if provider == "openai":
         from transcriber_shell.llm.adapters.openai import transcribe_openai
-
-        return transcribe_openai(
-            image_path=job.image_path,
-            system=system,
-            user_text=user_text,
-            model=mo,
-            settings=s,
-        )
+        try:
+            return transcribe_openai(
+                image_path=job.image_path,
+                system=system,
+                user_text=user_text,
+                model=mo,
+                settings=s,
+            )
+        except (LLMProviderError, RuntimeError) as exc:
+            if _is_key_wall(exc):
+                return _ollama_qwen_fallback()
+            raise
     if provider == "gemini":
         from transcriber_shell.llm.adapters.gemini import transcribe_gemini
-
-        return transcribe_gemini(
-            image_path=job.image_path,
-            system=system,
-            user_text=user_text,
-            model=mo,
-            settings=s,
-        )
+        try:
+            return transcribe_gemini(
+                image_path=job.image_path,
+                system=system,
+                user_text=user_text,
+                model=mo,
+                settings=s,
+            )
+        except (LLMProviderError, RuntimeError) as exc:
+            if _is_key_wall(exc):
+                return _ollama_qwen_fallback()
+            raise
     if provider == "ollama":
         from transcriber_shell.llm.adapters.ollama import transcribe_ollama
 

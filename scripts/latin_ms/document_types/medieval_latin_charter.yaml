@@ -14,12 +14,11 @@ htr:
   # Broad medieval/early-modern model (covers gothic_cursiva, gothic_textura,
   # caroline_minuscule).  Narrower than legal r4 but better generalisation
   # across continental hands.
-  model: gm-htr-r2_best
-  path: "${HOME}/src/latin_documents/gm-htr-r2.mlmodel_best.mlmodel"
+  model: medieval-full-r7
+  path: "${HOME}/src/gm-htr-r7-full_best.mlmodel"
 
 segmentation:
   model: kraken-merged-seg_best
-  path: "${HOME}/src/latin_documents/kraken-merged-seg_best.mlmodel"
 
 prompt: prompt_charter.yaml
 

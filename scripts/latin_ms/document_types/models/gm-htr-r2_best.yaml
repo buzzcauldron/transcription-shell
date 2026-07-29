@@ -1,8 +1,8 @@
-# r2 HTR — round-2 fine-tune from gm-hf-htr_best on the trimmed train manifest.
-# Currently the default HTR model for medieval + early modern Latin.
-name: gm-htr-r2_best
+# medieval-broad-r2 — multilingual medieval/early-modern HTR (Latin/French/English),
+# cursive scripts: anglicana, gothic, humanist. Round-2 fine-tune from gm-hf-htr_best.
+name: medieval-broad-r2
 kind: htr
-path: "${HOME}/src/latin_documents/gm-htr-r2.mlmodel_best.mlmodel"
+path: "${HOME}/src/gm-htr-r2.mlmodel_best.mlmodel"
 size_mb: 24
 
 languages: [lat-Latn, fra-Latn, eng-Latn]

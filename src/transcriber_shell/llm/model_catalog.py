@@ -17,6 +17,9 @@ ANTHROPIC_BUDGET_MODELS: tuple[str, ...] = (
 )
 
 ANTHROPIC_PREMIUM_MODELS: tuple[str, ...] = (
+    "claude-sonnet-5",
+    "claude-opus-5",
+    "claude-fable-5",
     "claude-sonnet-4-20250514",
     "claude-3-5-sonnet-20241022",
     "claude-opus-4-20250514",
@@ -73,12 +76,13 @@ GEMINI_PREMIUM_MODELS: tuple[str, ...] = (
 
 # Ollama: local, no API key; vision-capable tags (install with `ollama pull <name>`).
 OLLAMA_LOCAL_FREE_MODELS: tuple[str, ...] = (
+    "qwen3.6:27b",
+    "qwen2.5vl",
     "llava",
     "llava-phi3",
     "moondream",
     "llama3.2-vision",
     "minicpm-v",
-    "qwen2.5vl",
     "bakllava",
     "llava-llama3",
 )

@@ -15,12 +15,12 @@ htr:
   # Round-2 HF-fine-tuned HTR model; same checkpoint we use for medieval-Latin
   # legal hands works passably here too. Replace once a dedicated early-modern
   # Latin model is trained.
-  model: gm-htr-r2_best
-  path: "${HOME}/src/latin_documents/gm-htr-r2.mlmodel_best.mlmodel"
+  model: medieval-broad-r2
+  path: "${HOME}/src/gm-htr-r2.mlmodel_best.mlmodel"
 
 segmentation:
   model: kraken-merged-seg_best
-  path: "${HOME}/src/latin_documents/kraken-merged-seg.mlmodel_best.mlmodel"
+  path: "${HOME}/src/kraken-merged-seg.mlmodel_best.mlmodel"
 
 prompt: prompt_latin.yaml
 

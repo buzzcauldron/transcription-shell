@@ -1,10 +1,14 @@
-name: trocr-gothic-bible
+# gothic-bible-trocr — TrOCR fine-tune on Paris Bible PBP 1.0 + CREMMA gothic literary lines.
+# Not a Kraken model; requires TRANSCRIBER_SHELL_TROCR_ENABLED=1.
+name: gothic-bible-trocr
 kind: htr
 path: ${TRANSCRIBER_SHELL_MODELS}/trocr-gothic-bible
-languages: [latin]
-era: medieval
-script: gothic
-round: r8-trocr
-notes: >
-  TrOCR fine-tune on Paris Bible PBP 1.0 + CREMMA/HTRomance gothic literary lines.
-  Enable with TRANSCRIBER_SHELL_TROCR_ENABLED=1 and TRANSCRIBER_SHELL_TROCR_MODEL=<path>.
+languages: [lat-Latn]
+eras: [medieval]
+scripts: [gothic_textura]
+era_range: "1200-1400"
+
+training:
+  round: r8-trocr
+  corpora: [paris-bible-pbp, cremma-htr-romance-gothic]
+  notes: "TrOCR architecture; enable with TRANSCRIBER_SHELL_TROCR_ENABLED=1 and TRANSCRIBER_SHELL_TROCR_MODEL=<path>."

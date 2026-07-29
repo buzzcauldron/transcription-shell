@@ -1,0 +1,21 @@
+# gothic-bible-r8 — Kraken HTR fine-tune for gothic textura bible hands.
+# Complements gothic-bible-trocr; use when TrOCR is unavailable.
+name: gothic-bible-r8
+kind: htr
+path: "${HOME}/src/gm-htr-r8-gothic-bible_best.mlmodel"
+size_mb: 24
+
+languages: [lat-Latn]
+eras: [medieval]
+scripts: [gothic_textura]
+era_range: "1200-1450"
+
+training:
+  base_model: medieval-full-r7
+  round: 8
+  corpora: [paris-bible, cremma-medieval-lat]
+  notes: "r8 gothic-bible specialist trained on Bridges after r7-full."
+
+metrics:
+  notes: "No published val_accuracy yet — not scored against held-out set."
+  held_out_ready: false

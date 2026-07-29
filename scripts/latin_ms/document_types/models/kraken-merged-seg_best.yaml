@@ -2,7 +2,7 @@
 # downstream HTR backends. Trained on vatlib + deed GT (April 2026 campaign).
 name: kraken-merged-seg_best
 kind: segmentation
-path: "${HOME}/src/latin_documents/kraken-merged-seg.mlmodel_best.mlmodel"
+path: "${HOME}/src/kraken-merged-seg.mlmodel_best.mlmodel"
 size_mb: 4.8
 
 # Segmentation models are largely script-agnostic — the same baselines work for

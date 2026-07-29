@@ -1,6 +1,6 @@
-name: gm-htr-r7-full_best
+name: medieval-full-r7
 kind: htr
-path: "${HOME}/src/latin_documents/gm-htr-r7-full_best.mlmodel"
+path: "${HOME}/src/gm-htr-r7-full_best.mlmodel"
 size_mb: 24
 
 languages: [lat-Latn, fra-Latn, eng-Latn]

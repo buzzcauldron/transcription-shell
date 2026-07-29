@@ -9,7 +9,7 @@ llm:
   fallback: claude-sonnet-4
 
 htr:
-  model: gm-htr-computus_best
+  model: medieval-full-r7
 
 segmentation:
   model: kraken-merged-seg_best
