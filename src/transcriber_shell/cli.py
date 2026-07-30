@@ -536,6 +536,32 @@ def _cli_extract_figures(
         print(f"figure extraction failed: {e}", file=sys.stderr)
 
 
+def _cli_classify_batch(rows: list, model_path: Path) -> None:
+    """Best-effort medieval-proof classification pass for --classify. Logs errors and returns."""
+    try:
+        from transcriber_shell.stylometry.medieval_proof import classify_transcription
+    except ImportError as e:
+        print(f"classify: medieval-proof not available: {e}", file=sys.stderr)
+        return
+    ok = fail = 0
+    for row in rows:
+        if not row.get("ok") or row.get("skipped"):
+            continue
+        yml = row.get("transcription_yaml")
+        if not yml:
+            continue
+        result = classify_transcription(Path(yml), model_path, write_sidecar=True)
+        if "error" in result:
+            print(f"classify warn {Path(yml).name}: {result['error']}", file=sys.stderr)
+            fail += 1
+        else:
+            rm = result.get("reasoning_mode", {})
+            top_genre = (result.get("genre", {}).get("ranked") or [{}])[0].get("label", "?")
+            print(f"classify ok  {Path(yml).name}: genre={top_genre}  reasoning_mode={rm.get('label','?')}")
+            ok += 1
+    print(f"classify: {ok} ok, {fail} failed")
+
+
 def _cli_translate(
     *,
     yaml_path: Path,
@@ -694,6 +720,12 @@ def cmd_batch(args: argparse.Namespace) -> int:
                         model=args.model,
                         settings=settings,
                     )
+        if getattr(args, "classify", False):
+            classify_model = getattr(args, "classify_model", None)
+            if not classify_model:
+                print("warn: --classify set but --classify-model not provided; skipping", file=sys.stderr)
+            else:
+                _cli_classify_batch(rows, Path(classify_model))
     rows = all_rows
     doc_job_id = getattr(args, "doc_job_id", None) or None
     if doc_job_id:
@@ -1746,6 +1778,19 @@ def main() -> None:
         dest="translate",
         action="store_true",
         help="After each transcription succeeds, run an English translation pass and save <stem>_translation.txt.",
+    )
+    batch.add_argument(
+        "--classify",
+        dest="classify",
+        action="store_true",
+        help="After each transcription succeeds, run medieval-proof genre + reasoning-mode classification and save <stem>_classification.json.",
+    )
+    batch.add_argument(
+        "--classify-model",
+        dest="classify_model",
+        default=None,
+        metavar="PATH",
+        help="Path to a medieval-proof genre model (.json or .pkl). Required when --classify is set.",
     )
     batch.add_argument(
         "--extract-figures",
