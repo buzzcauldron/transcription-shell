@@ -13,6 +13,7 @@ import yaml
 
 from transcriber_shell.config import Settings
 from transcriber_shell.llm.validate_output import (
+    has_correct_mode_text,
     load_transcription_root,
     load_yaml_or_json_path,
     validate_transcript_file,
@@ -401,13 +402,19 @@ def has_successful_transcription(
     *,
     settings: Settings | None = None,
 ) -> bool:
-    """True when artifacts/<job_id>/<image_stem>_transcription.yaml exists and validates cleanly."""
+    """True when artifacts/<job_id>/<image_stem>_transcription.yaml exists and validates cleanly.
+
+    For llm_mode=correct output (minimal YAML without full protocol fields), falls back to
+    a lenient check that only requires segments with non-empty text.
+    """
     s = settings or Settings()
     p = transcription_yaml_path(s.artifacts_dir, job_id, image_path)
     if not p.is_file() or p.stat().st_size == 0:
         return False
     ok, _errs, _warns = validate_transcript_file(p, settings=s)
-    return ok
+    if ok:
+        return True
+    return has_correct_mode_text(p)
 
 
 def write_batch_report(path: Path, rows: list[dict[str, Any]]) -> None:

@@ -28,6 +28,7 @@ from transcriber_shell.llm.errors import LLMProviderError
 from transcriber_shell.mask_lineation import MaskLineationError, fetch_lines_xml_mask
 from transcriber_shell.llm.transcribe import run_transcribe, strip_yaml_fence, TranscribeResult
 from transcriber_shell.llm.validate_output import (
+    has_correct_mode_text,
     normalize_transcription_yaml_data,
     validate_transcript_file,
 )
@@ -672,7 +673,10 @@ def run_pipeline(
     val_ok, val_errs, val_warns = validate_transcript_file(out_yaml, settings=s)
     warnings.extend(val_warns)
     if not val_ok:
-        errors.extend(val_errs)
+        if has_correct_mode_text(out_yaml):
+            warnings.extend(val_errs)
+        else:
+            errors.extend(val_errs)
 
     expanded_tei: Path | None = None
     expanded_txt: Path | None = None

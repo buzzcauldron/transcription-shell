@@ -403,3 +403,21 @@ def validate_transcript_file(
     if root is None:
         return False, ["top-level transcriptionOutput object not found"], []
     return validate_transcription_output(root)
+
+
+def has_correct_mode_text(path: Path) -> bool:
+    """Lenient check for llm_mode=correct output: just needs segments with text."""
+    try:
+        data = load_yaml_or_json_path(path)
+        root = load_transcription_root(data)
+        if root is None:
+            return False
+        segs = root.get("segments")
+        if not isinstance(segs, list) or not segs:
+            return False
+        return any(
+            isinstance(s, dict) and isinstance(s.get("text"), str) and s["text"].strip()
+            for s in segs
+        )
+    except Exception:
+        return False
