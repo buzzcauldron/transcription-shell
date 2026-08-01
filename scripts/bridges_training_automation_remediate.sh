@@ -24,8 +24,18 @@ run() {
 }
 
 echo "[remediate] running health check first..."
-bash "$SCRIPT_DIR/bridges_training_automation_check.sh" && CHECK_OK=1 || CHECK_OK=0
-[[ "${CHECK_OK:-0}" -eq 1 ]] && { echo "[remediate] already healthy"; exit 0; }
+set +e
+bash "$SCRIPT_DIR/bridges_training_automation_check.sh"
+CHECK_RC=$?
+set -e
+if [[ "$CHECK_RC" -eq 0 ]]; then
+  echo "[remediate] already healthy"
+  exit 0
+fi
+if [[ "$CHECK_RC" -eq 2 ]]; then
+  echo "[remediate] cannot reach Bridges — configure BRIDGES_SSH_KEY in automation secrets"
+  exit 2
+fi
 
 echo "[remediate] cancelling DependencyNeverSatisfied orphans"
 bridges_ssh "squeue -u \$USER -h -o '%i %r' | awk '\$2 == \"(DependencyNeverSatisfied)\" { print \$1 }'" \

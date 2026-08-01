@@ -8,8 +8,9 @@
 #   BRIDGES_LOGIN         default: bridges2
 #   BRIDGES_DTN           default: bridges2-dtn
 
-BRIDGES_LOGIN="${BRIDGES_LOGIN:-bridges2}"
-BRIDGES_DTN="${BRIDGES_DTN:-bridges2-dtn}"
+# FQDN defaults: cloud agents lack ~/.ssh/config Host aliases (bridges2, bridges2-dtn).
+BRIDGES_LOGIN="${BRIDGES_LOGIN:-bridges2.psc.edu}"
+BRIDGES_DTN="${BRIDGES_DTN:-data.bridges2.psc.edu}"
 
 _bridges_ssh_key_path=""
 if [[ -n "${BRIDGES_SSH_KEY_FILE:-}" && -f "$BRIDGES_SSH_KEY_FILE" ]]; then
