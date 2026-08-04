@@ -1,4 +1,4 @@
-"""Local Ollama /api/chat with vision (no cloud API key)."""
+"""Local Ollama /api/chat with optional vision (no cloud API key)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from transcriber_shell.llm.transcribe import TranscribeResult
 
 def transcribe_ollama(
     *,
-    image_path: Path,
+    image_path: Path | None,
     system: str,
     user_text: str,
     model: str | None = None,
@@ -24,19 +24,18 @@ def transcribe_ollama(
     base = str(s.ollama_base_url).rstrip("/")
     model_id = model or s.resolved_model("ollama")
 
-    from transcriber_shell.llm.image_prep import prepare_image
-    raw, _mime = prepare_image(image_path)
-    b64 = base64.standard_b64encode(raw).decode("ascii")
+    user_msg: dict = {"role": "user", "content": user_text}
+    if image_path is not None:
+        from transcriber_shell.llm.image_prep import prepare_image
+        raw, _mime = prepare_image(image_path)
+        b64 = base64.standard_b64encode(raw).decode("ascii")
+        user_msg["images"] = [b64]
 
     payload = {
         "model": model_id,
         "messages": [
             {"role": "system", "content": system},
-            {
-                "role": "user",
-                "content": user_text,
-                "images": [b64],
-            },
+            user_msg,
         ],
         "stream": False,
     }

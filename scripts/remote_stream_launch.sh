@@ -29,6 +29,7 @@ LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${STREAM_CHUNK_SIZE:=85}"
 : "${STREAM_BATCH_SIZE:=8}"
 : "${STREAM_IMAGE_NAME_CONTAINS:=}"
+: "${STREAM_STRIGIL_FLAGS:=}"
 
 ssh -n "$REMOTE" "mkdir -p '$REMOTE_SCRIPTS' '$JOB_DIR/logs' '$JOB_DIR/status'"
 rsync -az \
@@ -36,6 +37,7 @@ rsync -az \
   "$LOCAL_DIR/remote_stream_acquire_url.sh" \
   "$LOCAL_DIR/remote_stream_watch_transcribe.py" \
   "$LOCAL_DIR/remote_stream_watch_partial_stylo.py" \
+  "$LOCAL_DIR/remote_stream_start_watchers.sh" \
   "$REMOTE:$REMOTE_SCRIPTS/"
 ssh -n "$REMOTE" "chmod +x '$REMOTE_SCRIPTS'/remote_stream_*"
 
@@ -52,6 +54,8 @@ remote_env=(
   "STREAM_TARGET_SLUG='$STREAM_TARGET_SLUG'"
   "STREAM_STYLO_OUT='$STREAM_STYLO_OUT'"
   "STREAM_IMAGE_NAME_CONTAINS='$STREAM_IMAGE_NAME_CONTAINS'"
+  "STREAM_STRIGIL_FLAGS='$STREAM_STRIGIL_FLAGS'"
+  "STREAM_SCRIPTS_DIR='$REMOTE_SCRIPTS'"
 )
 
 env_line="${remote_env[*]}"
@@ -64,7 +68,7 @@ else
   echo "Set STREAM_SOURCE_URL (IIIF/landing page) or STREAM_URL_TEMPLATE (page range)." >&2
   exit 1
 fi
-ssh -n "$REMOTE" "screen -dmS '${JOB_ID}_tw' bash -c '$env_line exec \"$REMOTE_SCRIPTS/remote_stream_watch_transcribe.py\" > \"$JOB_DIR/logs/watch_transcribe.nohup.log\" 2>&1'"
-ssh -n "$REMOTE" "screen -dmS '${JOB_ID}_ps' bash -c '$env_line exec \"$REMOTE_SCRIPTS/remote_stream_watch_partial_stylo.py\" > \"$JOB_DIR/logs/watch_partial_stylo.nohup.log\" 2>&1'"
 
-ssh -n "$REMOTE" "cd '$JOB_DIR' && ps -u \"\$USER\" -o pid,etime,pcpu,pmem,command | rg '$JOB_ID|strigil|watch_|transcriber-shell|Rscript' || true"
+# Detached via start_new_session so ssh returns immediately.
+ssh -n "$REMOTE" "cd '$JOB_DIR' && $env_line '$REMOTE_SCRIPTS/remote_stream_start_watchers.sh'"
+ssh -n "$REMOTE" "ls '$JOB_DIR/status'"

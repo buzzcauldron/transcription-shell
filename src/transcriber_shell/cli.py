@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -341,6 +342,24 @@ def _skip_lines_xml_validation_from_cli(args: argparse.Namespace, settings: Sett
 def _pipeline_settings(args: argparse.Namespace) -> Settings:
     """Apply optional CLI overrides for LLM proxy and Glyph Machina browser profile."""
     s = Settings()
+    auto = bool(getattr(args, "auto_efficiency", False)) or (
+        os.environ.get("TRANSCRIBER_SHELL_AUTO_EFFICIENCY", "").strip().lower()
+        in ("1", "true", "yes", "on")
+    )
+    if auto:
+        from transcriber_shell.runtime.machine_profile import apply_machine_efficiency
+
+        s, profile, msgs = apply_machine_efficiency(
+            s, force=bool(getattr(args, "force_efficiency", False))
+        )
+        print(
+            f"auto-efficiency: host={profile.alias} class={profile.host_class} "
+            f"gpu={profile.gpu_name or 'none'}",
+            file=sys.stderr,
+        )
+        for m in msgs:
+            print(f"auto-efficiency: {m}", file=sys.stderr)
+
     updates: dict = {}
     if getattr(args, "llm_proxy", None):
         updates["llm_use_proxy"] = True
@@ -374,6 +393,23 @@ def _add_expand_args(p: argparse.ArgumentParser) -> None:
             "After diplomatic transcription, run expand-diplomatic (TEI + expanded.txt "
             "derivatives). Requires expand-diplomatic install and GEMINI_API_KEY for gemini backend."
         ),
+    )
+
+
+def _add_auto_efficiency_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--auto-efficiency",
+        action="store_true",
+        help=(
+            "Tune Settings for this host (batch parallel, reuse_lines_xml, prefer "
+            "kraken + llm_mode=correct) without changing pipeline stages. "
+            "Explicit CLI flags still win. Env: TRANSCRIBER_SHELL_AUTO_EFFICIENCY=1."
+        ),
+    )
+    p.add_argument(
+        "--force-efficiency",
+        action="store_true",
+        help="Accepted for compatibility; auto-efficiency never drops HTR/LLM stages.",
     )
 
 
@@ -1404,7 +1440,7 @@ def main() -> None:
     run.add_argument(
         "--provider",
         default=None,
-        choices=["anthropic", "openai", "gemini", "ollama"],
+        choices=["anthropic", "openai", "gemini", "ollama", "groq", "cerebras"],
         help="LLM provider (default: TRANSCRIBER_SHELL_DEFAULT_PROVIDER or anthropic)",
     )
     run.add_argument(
@@ -1580,6 +1616,7 @@ def main() -> None:
         help="After transcription succeeds, run DocLayNet figure detection, save crops, and weave [fig:id] markers into the YAML.",
     )
     _add_pipeline_network_args(run)
+    _add_auto_efficiency_args(run)
     _add_expand_args(run)
     run.set_defaults(func=cmd_run)
 
@@ -1599,7 +1636,7 @@ def main() -> None:
     batch.add_argument(
         "--provider",
         default=None,
-        choices=["anthropic", "openai", "gemini", "ollama"],
+        choices=["anthropic", "openai", "gemini", "ollama", "groq", "cerebras"],
         help="LLM provider (default: TRANSCRIBER_SHELL_DEFAULT_PROVIDER or anthropic)",
     )
     batch.add_argument("--model", default=None, help="Override model id for every job")
@@ -1799,6 +1836,7 @@ def main() -> None:
         help="After each transcription succeeds, run DocLayNet figure detection, save crops, and weave [fig:id] markers into the YAML.",
     )
     _add_pipeline_network_args(batch)
+    _add_auto_efficiency_args(batch)
     _add_expand_args(batch)
     batch.set_defaults(func=cmd_batch)
 

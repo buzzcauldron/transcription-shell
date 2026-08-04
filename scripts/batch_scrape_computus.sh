@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Batch-launch strigil acquisition for all computus manuscripts with confirmed IIIF manifests.
+# Batch-launch strigil acquisition for all computus manuscripts with archive pages.
 #
 # Reads references/computus-library/manifest.json and launches remote_stream_launch.sh
-# for each entry where iiif_manifest is set and strigil_acquire is true.
+# for each entry where archive_ms_page is set and strigil_acquire is true.
 # Skips entries whose job directory already exists on REMOTE.
 #
 # Usage:
@@ -44,11 +44,12 @@ existing=$(ssh "$REMOTE" "ls $JOBS_ROOT/ 2>/dev/null || true")
 launched=0
 skipped=0
 no_iiif=0
+failed=0
 
 # Read manifest with Python since jq may not be available
-while IFS=$'\t' read -r id iiif_manifest strigil_acquire strigil_flags; do
+while IFS=$'\t' read -r id source_url strigil_acquire strigil_flags; do
   [[ "$strigil_acquire" == "True" ]] || continue
-  [[ -n "$iiif_manifest" && "$iiif_manifest" != "null" && "$iiif_manifest" != "None" ]] || { ((no_iiif++)); continue; }
+  [[ -n "$source_url" && "$source_url" != "null" && "$source_url" != "None" ]] || { no_iiif=$((no_iiif + 1)); continue; }
   [[ -z "$FILTER" || "$id" == *"$FILTER"* ]] || continue
 
   # Derive job ID: lowercase, trim to 40 chars
@@ -57,7 +58,7 @@ while IFS=$'\t' read -r id iiif_manifest strigil_acquire strigil_flags; do
   # Skip if job already exists
   if echo "$existing" | grep -qxF "$job_id"; then
     echo "SKIP (exists): $job_id"
-    ((skipped++))
+    skipped=$((skipped + 1))
     continue
   fi
 
@@ -65,35 +66,49 @@ while IFS=$'\t' read -r id iiif_manifest strigil_acquire strigil_flags; do
   [[ "$extra" == "null" || "$extra" == "None" ]] && extra=""
 
   echo "LAUNCH: $job_id"
-  echo "  url: $iiif_manifest"
+  echo "  url: $source_url"
   [[ -n "$extra" ]] && echo "  flags: $extra"
 
   if [[ "$DRY_RUN" == "false" ]]; then
-    STREAM_REMOTE="$REMOTE" \
-    STREAM_JOB_ID="$job_id" \
-    STREAM_SOURCE_URL="$iiif_manifest" \
-    STREAM_DOC_TYPE="computus_medieval_latin" \
-    STREAM_TARGET_SLUG="${job_id}_partial" \
-    STREAM_STRIGIL_FLAGS="$extra" \
-    bash "$SCRIPT_DIR/remote_stream_launch.sh"
-    ((launched++))
+    if STREAM_REMOTE="$REMOTE" \
+      STREAM_JOB_ID="$job_id" \
+      STREAM_SOURCE_URL="$source_url" \
+      STREAM_DOC_TYPE="computus_medieval_latin" \
+      STREAM_TARGET_SLUG="${job_id}_partial" \
+      STREAM_STRIGIL_FLAGS="$extra" \
+      bash "$SCRIPT_DIR/remote_stream_launch.sh"
+    then
+      launched=$((launched + 1))
+    else
+      echo "FAIL: $job_id (launch exit $?)" >&2
+      failed=$((failed + 1))
+    fi
     # Brief pause between submissions to avoid overwhelming akdeniz
-    sleep 3
+    sleep 5
   else
-    ((launched++))
+    launched=$((launched + 1))
   fi
 
 done < <(python3 - <<'PY'
-import json, sys
-m = json.load(open('references/computus-library/manifest.json'))
-for ms in m['manuscripts']:
-    iiif = ms.get('iiif_manifest') or ''
-    acquire = ms.get('strigil_acquire', False)
-    flags = ms.get('strigil_flags') or ''
-    print(f"{ms['id']}\t{iiif}\t{acquire}\t{flags}")
+import json
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path("scripts/computus").resolve()))
+from _acquire_plan import strigil_flags
+
+m = json.load(open("references/computus-library/manifest.json"))
+for ms in m["manuscripts"]:
+    # Prefer explicit iiif_manifest; fall back to CitCA archive_ms_page.
+    url = ms.get("iiif_manifest") or ms.get("archive_ms_page") or ""
+    acquire = bool(ms.get("strigil_acquire", False))
+    flags = ms.get("strigil_flags") or (strigil_flags(url) if url else "")
+    print(f"{ms['id']}\t{url}\t{acquire}\t{flags}")
 PY
 )
 
 echo ""
-echo "Done: $launched launched, $skipped skipped (job exists), $no_iiif skipped (no IIIF manifest)"
-[[ "$DRY_RUN" == "true" ]] && echo "(dry run — nothing actually submitted)"
+echo "Done: launched=$launched skipped_exists=$skipped skipped_no_url=$no_iiif failed=$failed"
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo "dry run — nothing actually submitted"
+fi
+exit "$failed"

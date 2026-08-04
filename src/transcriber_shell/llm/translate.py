@@ -82,9 +82,14 @@ def run_translate(
         from transcriber_shell.llm.adapters.gemini import transcribe_gemini as fn
     elif p == "ollama":
         from transcriber_shell.llm.adapters.ollama import transcribe_ollama as fn
+    elif p == "groq":
+        from transcriber_shell.llm.adapters.groq import transcribe_groq as fn
+    elif p == "cerebras":
+        from transcriber_shell.llm.adapters.cerebras import transcribe_cerebras as fn
+        image_path = None  # Cerebras text-only
     else:
         raise ValueError(
-            f"Unknown provider {provider!r}. Use anthropic, openai, gemini, ollama, or deepl."
+            f"Unknown provider {provider!r}. Use anthropic, openai, gemini, ollama, groq, cerebras, or deepl."
         )
 
     r = fn(

@@ -391,14 +391,20 @@ def normalize_transcription_yaml_data(data: dict[str, Any]) -> None:
 
 
 def validate_transcript_file(
-    path: Path, settings: Settings | None = None
+    path: Path,
+    settings: Settings | None = None,
+    *,
+    preloaded_data: dict | None = None,
 ) -> Tuple[bool, list[str], list[str]]:
     ensure_protocol_benchmark_on_path(settings)
     from validate_schema import validate_transcription_output
 
-    data = load_yaml_or_json_path(path)
-    if isinstance(data, dict):
-        normalize_transcription_yaml_data(data)
+    if preloaded_data is not None:
+        data: Any = preloaded_data
+    else:
+        data = load_yaml_or_json_path(path)
+        if isinstance(data, dict):
+            normalize_transcription_yaml_data(data)
     root = load_transcription_root(data)
     if root is None:
         return False, ["top-level transcriptionOutput object not found"], []

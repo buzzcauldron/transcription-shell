@@ -1,0 +1,113 @@
+{
+  "stamp": "20260803T131854Z",
+  "host": "Mac",
+  "backends": {
+    "htr_model": "/Users/halxiii/src/latin_documents/gm-htr-computus_best.mlmodel",
+    "seg_model": "/Users/halxiii/src/latin_documents/kraken-merged-seg.mlmodel_best.mlmodel",
+    "stylo_ref": "/Users/halxiii/Projects/stylometry-r/output/de_luce_r_rescore/reference_set_medieval_mixed",
+    "google_api_key": "AIza\u2026",
+    "nypl_pairs": 99
+  },
+  "micro": {
+    "registry_load_all": {
+      "seconds": 0.007300750003196299,
+      "repeats": 5,
+      "mean_s": 0.007779491797555238,
+      "min_s": 0.007300750003196299,
+      "max_s": 0.009363458986626938,
+      "result": {
+        "n": 10
+      }
+    },
+    "registry_by_name_x10": {
+      "seconds": 0.07445729200844653,
+      "repeats": 5,
+      "mean_s": 0.07442707520676776,
+      "min_s": 0.0735867920157034,
+      "max_s": 0.07606225000927225,
+      "result_repr": "[ModelSpec(name='computus-caroline-c1', kind='htr', path=PosixPath('/Users/halxiii/src/gm-htr-computus_best.mlmodel'), size_mb=24.0, languages=['lat-Latn'], eras=['late_antique', 'early_medieval'], sc"
+    },
+    "doc_types_load_all": {
+      "seconds": 0.20105566701386124,
+      "repeats": 3,
+      "mean_s": 0.20017087500309572,
+      "min_s": 0.1983620829996653,
+      "max_s": 0.20109487499576062,
+      "result": {
+        "n": 13,
+        "errors": []
+      }
+    },
+    "prompt_build_full": {
+      "error": "No module named 'prompt_builder'"
+    },
+    "prompt_build_correct": {
+      "seconds": 5.00003807246685e-07,
+      "repeats": 20,
+      "mean_s": 1.0250005288980901e-06,
+      "min_s": 5.00003807246685e-07,
+      "max_s": 6.209011189639568e-06,
+      "result": {
+        "chars": 3066
+      }
+    },
+    "yaml_validate": {
+      "seconds": 0.04727049998473376,
+      "repeats": 5,
+      "mean_s": 0.029096207802649588,
+      "min_s": 0.02383341602399014,
+      "max_s": 0.04727049998473376,
+      "result": {
+        "ok": true
+      }
+    },
+    "yaml_extract": {
+      "seconds": 0.017374874994857237,
+      "repeats": 10,
+      "mean_s": 0.018799937501898966,
+      "min_s": 0.017028250003932044,
+      "max_s": 0.02999275000183843,
+      "result": {
+        "chars": 6220
+      }
+    },
+    "genre_signal_internal": {
+      "seconds": 1.0415998985990882e-05,
+      "repeats": 1,
+      "mean_s": 1.0415998985990882e-05,
+      "min_s": 1.0415998985990882e-05,
+      "max_s": 1.0415998985990882e-05,
+      "error": "TypeError: compute_genre_signal() missing 1 required positional argument: 'doc_id'"
+    },
+    "stylo_analyze_text": {
+      "seconds": 3.5532154999964405,
+      "repeats": 1,
+      "mean_s": 3.5532154999964405,
+      "min_s": 3.5532154999964405,
+      "max_s": 3.5532154999964405,
+      "result": {
+        "primary": "legal-writing",
+        "secondary": "computus",
+        "n_words": 2024,
+        "fw_windows": 13,
+        "mfw_windows": 13
+      }
+    },
+    "xml_validate_lines": {
+      "seconds": 0.0001750410010572523,
+      "repeats": 5,
+      "mean_s": 0.0002480831986758858,
+      "min_s": 0.0001750410010572523,
+      "max_s": 0.0004993329930584878,
+      "result": {
+        "ok": true
+      }
+    }
+  },
+  "callouts": [
+    "Registry `by_name`\u00d710 takes 0.0744s vs load_all 0.0078s \u2014 by_name rescans YAMLs each call."
+  ],
+  "recommendations": [
+    "Cache `model_registry.load_all()` results; make `by_name` O(1)."
+  ]
+}

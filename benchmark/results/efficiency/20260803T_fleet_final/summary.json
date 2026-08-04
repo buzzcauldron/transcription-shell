@@ -1,0 +1,396 @@
+{
+  "stamp": "20260803T_fleet_final",
+  "fleet": {
+    "local": {
+      "hostname": "Mac",
+      "alias": "local",
+      "host_class": "local_metal",
+      "cpus": 12,
+      "mem_gb": 18.0,
+      "load1": 4.90478515625,
+      "gpu_name": null,
+      "gpu_vram_mb": null,
+      "gpu_util_pct": null,
+      "has_nvidia": false,
+      "has_cuda_torch": false,
+      "has_kraken": true,
+      "slurm_partition": null,
+      "slurm_job_id": null,
+      "warnings": [],
+      "notes": [
+        "Prefer remote HTR on akdeniz; local Gemini llm_mode=correct for LLM"
+      ]
+    },
+    "local_recommend": {
+      "updates": {
+        "reuse_lines_xml": true,
+        "batch_parallel_pages": 1,
+        "llm_mode": "correct"
+      },
+      "advice": [
+        "Prefer remote HTR on akdeniz; local Gemini llm_mode=correct for LLM",
+        "Metal/CPU host: use --skip-gm with pre-lineated XML or remote_stream on akdeniz"
+      ],
+      "refuse_interactive_htr": false
+    },
+    "routing": [
+      {
+        "stage": "lineation + Kraken HTR (interactive)",
+        "preferred": "akdeniz",
+        "fallback": "halxvi (if load low)",
+        "current_host": "local",
+        "current_class": "local_metal"
+      },
+      {
+        "stage": "HTR / training batch",
+        "preferred": "bridges_gpu (GPU-shared v100-32 sbatch)",
+        "fallback": "akdeniz",
+        "current_host": "local",
+        "current_class": "local_metal"
+      },
+      {
+        "stage": "LLM correct/full",
+        "preferred": "any + Gemini API",
+        "fallback": "Ollama if vision model local",
+        "current_host": "local",
+        "current_class": "local_metal"
+      },
+      {
+        "stage": "stylo / YAML extract",
+        "preferred": "local Mac / any CPU",
+        "fallback": "akdeniz",
+        "current_host": "local",
+        "current_class": "local_metal"
+      },
+      {
+        "stage": "bridges_login",
+        "preferred": "submit/monitor only",
+        "fallback": "\u2014",
+        "current_host": "local",
+        "current_class": "local_metal"
+      }
+    ],
+    "fleet_yaml": {
+      "fleet": {
+        "local": {
+          "ssh": null,
+          "roles": [
+            "orchestrate",
+            "llm",
+            "stylo"
+          ],
+          "host_class": "local_metal",
+          "notes": "Mac M3 \u2014 Gemini/API LLM + stylo; not primary CUDA HTR"
+        },
+        "halxvi": {
+          "ssh": [
+            "hal-direct",
+            "halxvi"
+          ],
+          "roles": [
+            "htr_interactive"
+          ],
+          "host_class": "cuda_interactive",
+          "gpu": "RTX 3080 10GB",
+          "notes": "Fallback interactive HTR when load1 << cpus"
+        },
+        "akdeniz": {
+          "ssh": [
+            "akdeniz",
+            "akdeniz.lan.cmu.edu"
+          ],
+          "roles": [
+            "htr_interactive",
+            "lineation"
+          ],
+          "host_class": "cuda_interactive",
+          "gpu": "RTX 4090 24GB",
+          "notes": "Primary interactive lineation + Kraken HTR (remote_stream_*)"
+        },
+        "bridges_login": {
+          "ssh": [
+            "bridges2",
+            "bridges2.psc.edu"
+          ],
+          "roles": [
+            "submit_only"
+          ],
+          "host_class": "bridges_login",
+          "gpu": null,
+          "notes": "Login node \u2014 no GPU. Never run interactive HTR/train here."
+        },
+        "bridges_gpu": {
+          "ssh": null,
+          "roles": [
+            "train",
+            "htr_batch"
+          ],
+          "host_class": "bridges_gpu_compute",
+          "partition": "GPU-shared",
+          "gres": "gpu:v100-32:1",
+          "account": "hum260002p",
+          "dtn": "bridges2-dtn",
+          "project": "/ocean/projects/hum260002p/sstrickland/transcriber-shell",
+          "notes": "Training + optional batch HTR efficiency via sbatch"
+        }
+      },
+      "routing": {
+        "lineation_htr_interactive": "akdeniz",
+        "htr_interactive_fallback": "halxvi",
+        "train_htr_batch": "bridges_gpu",
+        "llm": "gemini_any_host",
+        "stylo": "local"
+      }
+    },
+    "ssh": {
+      "halxvi": {
+        "ssh": "hal-direct",
+        "ok": false,
+        "raw": [
+          "HOST=halxvi",
+          "UNAME=Linux 7.1.5-201.fc44.x86_64 x86_64",
+          "CPUS=12",
+          "LOAD=10.40, 10.29, 9.33",
+          "GPU=NVIDIA GeForce RTX 3080, 10240 MiB, 0 %",
+          "MLMODELS=2",
+          "TS=transcriber_shell"
+        ],
+        "host": "halxvi",
+        "uname": "Linux 7.1.5-201.fc44.x86_64 x86_64",
+        "cpus": "12",
+        "load": "10.40, 10.29, 9.33",
+        "gpu": "NVIDIA GeForce RTX 3080, 10240 MiB, 0 %",
+        "mlmodels": "2",
+        "ts": "transcriber_shell"
+      },
+      "akdeniz": {
+        "ssh": "akdeniz",
+        "ok": false,
+        "raw": [
+          "HOST=akdeniz",
+          "UNAME=Linux 6.8.0-111-generic x86_64",
+          "CPUS=32",
+          "LOAD=7.07, 7.16, 5.91",
+          "GPU=NVIDIA GeForce RTX 4090, 24564 MiB, 0 %",
+          "MLMODELS=9",
+          "TS=transcriber_shell"
+        ],
+        "host": "akdeniz",
+        "uname": "Linux 6.8.0-111-generic x86_64",
+        "cpus": "32",
+        "load": "7.07, 7.16, 5.91",
+        "gpu": "NVIDIA GeForce RTX 4090, 24564 MiB, 0 %",
+        "mlmodels": "9",
+        "ts": "transcriber_shell"
+      },
+      "bridges_login": {
+        "ssh": "bridges2",
+        "ok": true,
+        "raw": [
+          "HOST=br014.ib.bridges2.psc.edu",
+          "UNAME=Linux 4.18.0-553.22.1.el8_10.x86_64 x86_64",
+          "CPUS=256",
+          "LOAD=6.50, 8.60, 12.02",
+          "GPU=none",
+          "SINFO=PARTITION NODES STATE GRES",
+          "SINFO=GPU-shared 1 drained* gpu:l40s-48:8",
+          "SINFO=GPU-shared 1 drained* gpu:v100-16:8",
+          "SINFO=GPU-shared 1 drained* gpu:v100-32:16(S:0-95)",
+          "SINFO=GPU-shared 2 completing gpu:h100-80:8",
+          "SINFO=GPU-shared 1 drained gpu:h100-80:8",
+          "SINFO=GPU-shared 2 mixed gpu:l40s-48:8",
+          "SINFO=GPU-shared 5 mixed gpu:v100-32:8",
+          "MLMODELS=0",
+          "BRIDGES_PROJ=1"
+        ],
+        "host": "br014.ib.bridges2.psc.edu",
+        "uname": "Linux 4.18.0-553.22.1.el8_10.x86_64 x86_64",
+        "cpus": "256",
+        "load": "6.50, 8.60, 12.02",
+        "gpu": "none",
+        "mlmodels": "0",
+        "bridges_proj": "1",
+        "note": "login has no GPU; use GPU-shared sbatch for HTR/train"
+      }
+    }
+  },
+  "remote": {
+    "ssh": "akdeniz",
+    "summary": {
+      "profile": {
+        "hostname": "akdeniz",
+        "alias": "akdeniz",
+        "host_class": "cuda_interactive",
+        "cpus": 32,
+        "mem_gb": 124.90357208251953,
+        "load1": 7.14111328125,
+        "gpu_name": "NVIDIA GeForce RTX 4090",
+        "gpu_vram_mb": 24564,
+        "gpu_util_pct": 0.0,
+        "has_nvidia": true,
+        "has_cuda_torch": true,
+        "has_kraken": true,
+        "slurm_partition": null,
+        "slurm_job_id": null,
+        "warnings": [],
+        "notes": []
+      },
+      "recommend": {
+        "updates": {
+          "reuse_lines_xml": true,
+          "lineation_backend": "kraken",
+          "htr_combination": "kraken_htr",
+          "llm_mode": "correct",
+          "batch_parallel_pages": 3
+        },
+        "advice": [],
+        "refuse_interactive_htr": false
+      },
+      "wall_s": 9.271,
+      "timings": {
+        "lineation": 2.680998295545578e-05,
+        "htr": 9.267982725054026
+      },
+      "ok": true,
+      "errors": [],
+      "image": "page/58210353_default.jpg"
+    },
+    "ok": true
+  },
+  "micro": {
+    "registry_load_all": {
+      "seconds": 0.007300750003196299,
+      "repeats": 5,
+      "mean_s": 0.007779491797555238,
+      "min_s": 0.007300750003196299,
+      "max_s": 0.009363458986626938,
+      "result": {
+        "n": 10
+      }
+    },
+    "registry_by_name_x10": {
+      "seconds": 0.07445729200844653,
+      "repeats": 5,
+      "mean_s": 0.07442707520676776,
+      "min_s": 0.0735867920157034,
+      "max_s": 0.07606225000927225,
+      "result_repr": "[ModelSpec(name='computus-caroline-c1', kind='htr', path=PosixPath('/Users/halxiii/src/gm-htr-computus_best.mlmodel'), size_mb=24.0, languages=['lat-Latn'], eras=['late_antique', 'early_medieval'], sc"
+    },
+    "doc_types_load_all": {
+      "seconds": 0.20105566701386124,
+      "repeats": 3,
+      "mean_s": 0.20017087500309572,
+      "min_s": 0.1983620829996653,
+      "max_s": 0.20109487499576062,
+      "result": {
+        "n": 13,
+        "errors": []
+      }
+    },
+    "prompt_build_full": {
+      "error": "No module named 'prompt_builder'"
+    },
+    "prompt_build_correct": {
+      "seconds": 5.00003807246685e-07,
+      "repeats": 20,
+      "mean_s": 1.0250005288980901e-06,
+      "min_s": 5.00003807246685e-07,
+      "max_s": 6.209011189639568e-06,
+      "result": {
+        "chars": 3066
+      }
+    },
+    "yaml_validate": {
+      "seconds": 0.04727049998473376,
+      "repeats": 5,
+      "mean_s": 0.029096207802649588,
+      "min_s": 0.02383341602399014,
+      "max_s": 0.04727049998473376,
+      "result": {
+        "ok": true
+      }
+    },
+    "yaml_extract": {
+      "seconds": 0.017374874994857237,
+      "repeats": 10,
+      "mean_s": 0.018799937501898966,
+      "min_s": 0.017028250003932044,
+      "max_s": 0.02999275000183843,
+      "result": {
+        "chars": 6220
+      }
+    },
+    "genre_signal_internal": {
+      "seconds": 1.0415998985990882e-05,
+      "repeats": 1,
+      "mean_s": 1.0415998985990882e-05,
+      "min_s": 1.0415998985990882e-05,
+      "max_s": 1.0415998985990882e-05,
+      "error": "TypeError: compute_genre_signal() missing 1 required positional argument: 'doc_id'"
+    },
+    "stylo_analyze_text": {
+      "seconds": 3.5532154999964405,
+      "repeats": 1,
+      "mean_s": 3.5532154999964405,
+      "min_s": 3.5532154999964405,
+      "max_s": 3.5532154999964405,
+      "result": {
+        "primary": "legal-writing",
+        "secondary": "computus",
+        "n_words": 2024,
+        "fw_windows": 13,
+        "mfw_windows": 13
+      }
+    },
+    "xml_validate_lines": {
+      "seconds": 0.0001750410010572523,
+      "repeats": 5,
+      "mean_s": 0.0002480831986758858,
+      "min_s": 0.0001750410010572523,
+      "max_s": 0.0004993329930584878,
+      "result": {
+        "ok": true
+      }
+    }
+  },
+  "bridges_job": "42948067",
+  "callouts": [
+    "Stage routing: interactive HTR\u2192akdeniz; train/batch\u2192bridges GPU-shared V100; LLM\u2192Gemini; stylo\u2192local; bridges login=submit only.",
+    "Registry by_name\u00d710=0.0744s vs load_all=0.007779491797555238s \u2014 cache load_all.",
+    "akdeniz HTR-only wall=9.271s (lineation=0.000s, htr=9.268s); auto batch_parallel=3.",
+    "halxvi load=10.40, 10.29, 9.33 gpu=NVIDIA GeForce RTX 3080, 10240 MiB, 0 % \u2014 busy; skip unless --force.",
+    "bridges_login probe gpu=none \u2014 login has no GPU; use GPU-shared sbatch for HTR/train.",
+    "Bridges eff-htr job 42946599 pending/running on GPU-shared."
+  ],
+  "recommendations": [
+    "Route interactive Kraken HTR to akdeniz (4090); enable --auto-efficiency on CUDA hosts.",
+    "Cache model_registry.load_all/by_name and Kraken HTR .mlmodel across pages.",
+    "Bridges: never HTR on login \u2014 use scripts/submit_bridges_efficiency.sh / GPU-shared v100-32 sbatch.",
+    "Prefer llm_mode=correct for LLM throughput; orchestrate from Mac.",
+    "halxvi only as fallback when load1 << cpus."
+  ],
+  "bridges_gpu": {
+    "host": "bridges_gpu",
+    "wall_s": 132.626,
+    "timings": {
+      "lineation": 0.0,
+      "htr": 132.462
+    },
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      "htr_only: output is raw HTR text, not protocol-compliant YAML."
+    ],
+    "image": "/ocean/projects/hum260002p/sstrickland/transcriber-shell/src/benchmark/efficiency_fixture/58210353_default.jpg",
+    "skip_gm": true,
+    "settings": {
+      "batch_parallel_pages": 1,
+      "llm_mode": "off",
+      "htr_combination": "kraken_htr_only",
+      "lineation_backend": "kraken"
+    },
+    "gpu_name": "Tesla V100-SXM2-32GB",
+    "slurm_job_id": "42948067",
+    "slurm_partition": "GPU-shared"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "profile": {
+    "hostname": "akdeniz",
+    "alias": "akdeniz",
+    "host_class": "cuda_interactive",
+    "cpus": 32,
+    "mem_gb": 124.90357208251953,
+    "load1": 7.14111328125,
+    "gpu_name": "NVIDIA GeForce RTX 4090",
+    "gpu_vram_mb": 24564,
+    "gpu_util_pct": 0.0,
+    "has_nvidia": true,
+    "has_cuda_torch": true,
+    "has_kraken": true,
+    "slurm_partition": null,
+    "slurm_job_id": null,
+    "warnings": [],
+    "notes": []
+  },
+  "recommend": {
+    "updates": {
+      "reuse_lines_xml": true,
+      "lineation_backend": "kraken",
+      "htr_combination": "kraken_htr",
+      "llm_mode": "correct",
+      "batch_parallel_pages": 3
+    },
+    "advice": [],
+    "refuse_interactive_htr": false
+  },
+  "wall_s": 9.271,
+  "timings": {
+    "lineation": 2.680998295545578e-05,
+    "htr": 9.267982725054026
+  },
+  "ok": true,
+  "errors": [],
+  "image": "page/58210353_default.jpg"
+}

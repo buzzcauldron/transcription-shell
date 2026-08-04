@@ -1,0 +1,14 @@
+[bridges-eff] sync scripts + runtime
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+[bridges-eff] job id: 42946599
+Monitor: ssh bridges2 squeue -u $USER
+Log:     ssh bridges2 tail -f /ocean/projects/hum260002p/sstrickland/transcriber-shell/src/eff-htr-42946599.out
+Pull:    rsync -az bridges2-dtn:/ocean/projects/hum260002p/sstrickland/transcriber-shell/src/benchmark/results/efficiency/ ./benchmark/results/efficiency/

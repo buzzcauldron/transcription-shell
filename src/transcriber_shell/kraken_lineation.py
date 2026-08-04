@@ -19,6 +19,8 @@ warnings.filterwarnings(
     category=RuntimeWarning,
 )
 
+import threading
+
 from PIL import Image
 
 from transcriber_shell.config import Settings
@@ -89,6 +91,10 @@ _model = None
 _model_path_loaded: Path | None = None
 _model_device_loaded: str | None = None
 _blla_seg_params: frozenset[str] | None = None
+# Serializes blla.segment calls across batch worker threads.  The model is a
+# module-level singleton; concurrent forward passes on one CUDA model are not
+# thread-safe and cause VRAM OOM on a GPU shared with Ollama.
+_inference_lock = threading.Lock()
 
 
 def _get_blla_seg_params() -> frozenset[str]:
@@ -181,8 +187,6 @@ def fetch_lines_xml_kraken(
 
     out_dir = (s.artifacts_dir / job_id).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
-    meta = out_dir / "source_image.sha256"
-    meta.write_text(f"{_checksum_image(image_path)}  {image_path.name}\n", encoding="utf-8")
 
     model_path = s.kraken_model_path.expanduser().resolve()
     if not model_path.is_file():
@@ -207,7 +211,8 @@ def fetch_lines_xml_kraken(
     if "min_length" in params:
         seg_kwargs["min_length"] = s.kraken_min_length
 
-    res = blla.segment(im, **seg_kwargs)
+    with _inference_lock:
+        res = blla.segment(im, **seg_kwargs)
     model_fn = model_path.name
     credit = s.lineation_credit_repo_url
     xml_contents = serialization.serialize(

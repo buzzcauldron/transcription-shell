@@ -23,6 +23,11 @@ JOBS_LIST=(
   basel_ubb_an_iv_18 basel_ubb_f_vii_12
   bav_pal_lat_1354 bav_reg_lat_123 bav_reg_lat_141_cu1
   oxford_sjc_17 pal_lat_1407
+  # extras already on disk (partial or alternate Wellcome witnesses)
+  nypl_computus_text_3
+  wellcome_3 wellcome_103
+  bl_harley_531
+  bsb_clm_4376 bsb_clm_4382
 )
 
 mkdir -p "$STYLO_OUT/batch_stylo_texts"

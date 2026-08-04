@@ -1,0 +1,50 @@
+# Multi-machine fleet for transcription-shell.
+# Same pipeline everywhere (lineation → HTR → LLM → post); hosts differ only in
+# Settings knobs (--auto-efficiency) and where you choose to run for speed.
+# SSH aliases match ~/.ssh/config Host entries.
+
+fleet:
+  local:
+    ssh: null
+    roles: [run_pipeline, orchestrate]
+    host_class: local_metal
+    notes: "Same pipeline; slower HTR on Metal/CPU — good for LLM/API orchestration"
+
+  halxvi:
+    ssh: [hal-direct, halxvi]
+    roles: [run_pipeline]
+    host_class: cuda_interactive
+    gpu: "RTX 3080 10GB"
+    notes: "Same pipeline; batch_parallel=1; fallback when akdeniz busy"
+
+  akdeniz:
+    ssh: [akdeniz, akdeniz.lan.cmu.edu]
+    roles: [run_pipeline]
+    host_class: cuda_interactive
+    gpu: "RTX 4090 24GB"
+    notes: "Same pipeline; fastest interactive HTR (batch_parallel up to 3)"
+
+  bridges_login:
+    ssh: [bridges2, bridges2.psc.edu]
+    roles: [submit_only]
+    host_class: bridges_login
+    gpu: null
+    notes: "Submit identical jobs to GPU-shared; login itself has no GPU"
+
+  bridges_gpu:
+    ssh: null  # allocated via sbatch/interact from bridges_login
+    roles: [run_pipeline, train]
+    host_class: bridges_gpu_compute
+    partition: GPU-shared
+    gres: "gpu:v100-32:1"
+    account: hum260002p
+    dtn: bridges2-dtn
+    project: /ocean/projects/hum260002p/sstrickland/transcriber-shell
+    notes: "Same pipeline on V100; batch_parallel=1"
+
+# Preferred hosts for running the identical pipeline (throughput), not different stages.
+routing:
+  interactive: akdeniz
+  interactive_fallback: halxvi
+  batch_sbatch: bridges_gpu
+  orchestrate: local

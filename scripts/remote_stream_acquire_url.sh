@@ -18,10 +18,20 @@ STRIGIL_DIR="${STREAM_STRIGIL_DIR:-$HOME/Projects/strigil}"
 WORKERS="${STREAM_WORKERS:-6}"
 MIN_IMAGE="${STREAM_MIN_IMAGE:-200k}"
 EXTRA_FLAGS="${STREAM_STRIGIL_FLAGS:-}"
+# Prefer a dedicated strigil venv (Playwright/--js) when present.
+if [[ -n "${STREAM_STRIGIL_PYTHON:-}" ]]; then
+  STRIGIL_PY="$STREAM_STRIGIL_PYTHON"
+elif [[ -x "$HOME/.venv-strigil/bin/python" ]]; then
+  STRIGIL_PY="$HOME/.venv-strigil/bin/python"
+elif [[ -x "$STRIGIL_DIR/.venv/bin/python" ]]; then
+  STRIGIL_PY="$STRIGIL_DIR/.venv/bin/python"
+else
+  STRIGIL_PY="python3"
+fi
 
 mkdir -p "$JOB/00_sources_chunks/full" "$JOB/logs" "$JOB/status"
 
-nohup bash -lc "cd '$STRIGIL_DIR' && PYTHONPATH='$STRIGIL_DIR' python3 -m strigil.cli \
+nohup bash -lc "cd '$STRIGIL_DIR' && PYTHONPATH='$STRIGIL_DIR' '$STRIGIL_PY' -m strigil.cli \
   --url '$URL' \
   --out-dir '$JOB/00_sources_chunks/full' \
   --types images \
@@ -32,4 +42,4 @@ nohup bash -lc "cd '$STRIGIL_DIR' && PYTHONPATH='$STRIGIL_DIR' python3 -m strigi
   $EXTRA_FLAGS" \
   > "$JOB/logs/acquire_full.log" 2>&1 &
 echo $! > "$JOB/status/acquire_full.pid"
-echo "started full acquire pid=$(cat "$JOB/status/acquire_full.pid") url=$URL"
+echo "started full acquire pid=$(cat "$JOB/status/acquire_full.pid") url=$URL py=$STRIGIL_PY"

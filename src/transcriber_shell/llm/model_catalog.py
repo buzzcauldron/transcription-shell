@@ -76,8 +76,8 @@ GEMINI_PREMIUM_MODELS: tuple[str, ...] = (
 
 # Ollama: local, no API key; vision-capable tags (install with `ollama pull <name>`).
 OLLAMA_LOCAL_FREE_MODELS: tuple[str, ...] = (
-    "qwen3.6:27b",
-    "qwen2.5vl",
+    "qwen2.5vl:32b",
+    "qwen2.5vl:7b",
     "llava",
     "llava-phi3",
     "moondream",
@@ -92,6 +92,28 @@ OLLAMA_LOCAL_LARGER_MODELS: tuple[str, ...] = (
     "llava:13b",
     "llava:34b",
 )
+
+# Groq: free-tier cloud inference — vision available on llama-3.2-vision-preview models.
+GROQ_FREE_MODELS: tuple[str, ...] = (
+    "llama-3.2-11b-vision-preview",
+    "llama-3.1-8b-instant",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-70b-versatile",
+    "gemma2-9b-it",
+    "qwen-qwq-32b",
+)
+
+GROQ_PREMIUM_MODELS: tuple[str, ...] = (
+    "llama-3.2-90b-vision-preview",
+)
+
+# Cerebras: free-tier cloud inference — text-only, extremely fast (~2000 tok/s).
+CEREBRAS_FREE_MODELS: tuple[str, ...] = (
+    "llama3.3-70b",
+    "llama3.1-8b",
+)
+
+CEREBRAS_PREMIUM_MODELS: tuple[str, ...] = ()
 
 
 def merged_model_ids_for_selector(
@@ -129,6 +151,10 @@ def models_for_provider(provider: str) -> tuple[tuple[str, ...], tuple[str, ...]
         return (GEMINI_BUDGET_MODELS, GEMINI_PREMIUM_MODELS)
     if p == "ollama":
         return (OLLAMA_LOCAL_FREE_MODELS, OLLAMA_LOCAL_LARGER_MODELS)
+    if p == "groq":
+        return (GROQ_FREE_MODELS, GROQ_PREMIUM_MODELS)
+    if p == "cerebras":
+        return (CEREBRAS_FREE_MODELS, CEREBRAS_PREMIUM_MODELS)
     return (ANTHROPIC_BUDGET_MODELS, ANTHROPIC_PREMIUM_MODELS)
 
 

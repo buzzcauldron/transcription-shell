@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ProviderName = Literal["anthropic", "openai", "gemini", "ollama"]
+ProviderName = Literal["anthropic", "openai", "gemini", "ollama", "groq", "cerebras"]
 LineationBackend = Literal["mask", "kraken", "glyph_machina"]
 
 
@@ -44,6 +44,14 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("DEEPL_API_KEY", "TRANSCRIBER_SHELL_DEEPL_API_KEY"),
     )
+    groq_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("GROQ_API_KEY", "TRANSCRIBER_SHELL_GROQ_API_KEY"),
+    )
+    cerebras_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("CEREBRAS_API_KEY", "TRANSCRIBER_SHELL_CEREBRAS_API_KEY"),
+    )
 
     anthropic_model: str = Field(
         default="claude-sonnet-4-20250514",
@@ -60,7 +68,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_GEMINI_MODEL", "GEMINI_MODEL"),
     )
     ollama_model: str = Field(
-        default="llava",
+        default="qwen2.5vl:32b",
         validation_alias=AliasChoices("TRANSCRIBER_SHELL_OLLAMA_MODEL", "OLLAMA_MODEL"),
     )
     ollama_base_url: str = Field(
@@ -68,6 +76,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "TRANSCRIBER_SHELL_OLLAMA_BASE_URL", "OLLAMA_BASE_URL"
         ),
+    )
+    groq_model: str = Field(
+        default="llama-3.2-11b-vision-preview",
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_GROQ_MODEL", "GROQ_MODEL"),
+    )
+    cerebras_model: str = Field(
+        default="llama3.3-70b",
+        validation_alias=AliasChoices("TRANSCRIBER_SHELL_CEREBRAS_MODEL", "CEREBRAS_MODEL"),
     )
     ollama_timeout_seconds: float = Field(
         default=3_600.0,
@@ -711,6 +727,21 @@ class Settings(BaseSettings):
         ),
     )
 
+    correct_mode_vision: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_CORRECT_MODE_VISION",
+            "CORRECT_MODE_VISION",
+        ),
+        description=(
+            "When True, send the page image to the LLM even in llm_mode=correct. "
+            "Default is False (text-only correction from the HTR draft). "
+            "Enable for manuscripts with high HTR error rates where glyph ambiguity "
+            "cannot be resolved from the text alone (e.g. dense medieval abbreviations, "
+            "damaged folios). Has no effect when llm_mode=full (image always sent)."
+        ),
+    )
+
     expand_diplomatic_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices(
@@ -933,7 +964,7 @@ class Settings(BaseSettings):
     @field_validator("default_provider", mode="before")
     @classmethod
     def _normalize_default_provider(cls, v: object) -> str:
-        allowed = ("anthropic", "openai", "gemini", "ollama")
+        allowed = ("anthropic", "openai", "gemini", "ollama", "groq", "cerebras")
         if v is None or (isinstance(v, str) and not str(v).strip()):
             return "anthropic"
         if not isinstance(v, str):
@@ -1043,4 +1074,8 @@ class Settings(BaseSettings):
             return self.gemini_model
         if p == "ollama":
             return self.ollama_model
+        if p == "groq":
+            return self.groq_model
+        if p == "cerebras":
+            return self.cerebras_model
         return self.anthropic_model

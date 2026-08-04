@@ -1,10 +1,4 @@
-"""Orchestrate: lineation → (optional HTR) → LLM → YAML normalize/validate.
-
-Stages are run sequentially by ``run_pipeline``; each is implemented as a small private
-helper (``_do_lineation``, ``_do_htr``, ``_call_llm``, ``_write_output``). Backends and
-the HTR-vs-LLM ordering are controlled by ``Settings`` (``lineation_backend``,
-``htr_combination``).
-"""
+"""Orchestrate: lineation → (optional HTR) → LLM → YAML normalize/validate."""
 
 from __future__ import annotations
 
@@ -360,37 +354,6 @@ def _do_htr(
     return early, None, None, None
 
 
-def _write_output(
-    raw: str,
-    s: Settings,
-    job: TranscribeJob,
-) -> tuple[Path, list[str]]:
-    """Write LLM output as YAML, normalize, and emit a plain-text sidecar.
-
-    Returns ``(out_yaml, errors)`` — errors is non-empty when the model output isn't valid YAML.
-    """
-    raw = strip_yaml_fence(raw)
-    out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
-    out_yaml.parent.mkdir(parents=True, exist_ok=True)
-    out_yaml.write_text(raw, encoding="utf-8")
-    try:
-        data = yaml.safe_load(raw)
-    except yaml.YAMLError as e:
-        return out_yaml, [
-            f"Model returned text that is not valid YAML: {e}. "
-            "Retry or switch model; ensure the prompt asks for YAML matching the Academic Transcription Protocol."
-        ]
-    if isinstance(data, dict):
-        normalize_transcription_yaml_data(data)
-        out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
-        try:
-            transcription_txt_path(s.artifacts_dir, job.job_id, job.image_path).write_text(
-                _extract_plain_text(data), encoding="utf-8"
-            )
-        except OSError:
-            pass
-    return out_yaml, []
-
 
 def run_pipeline(
     job: TranscribeJob,
@@ -633,8 +596,8 @@ def run_pipeline(
     raw = _repair_yaml_uncertain_tokens(raw)
     out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
     out_yaml.parent.mkdir(parents=True, exist_ok=True)
-    out_yaml.write_text(raw, encoding="utf-8")
 
+    normalized_data: dict | None = None
     try:
         data = yaml.safe_load(raw)
         if isinstance(data, dict):
@@ -652,7 +615,11 @@ def run_pipeline(
                 out_txt.write_text(_extract_plain_text(data), encoding="utf-8")
             except OSError:
                 pass
+            normalized_data = data
+        else:
+            out_yaml.write_text(raw, encoding="utf-8")
     except yaml.YAMLError as e:
+        out_yaml.write_text(raw, encoding="utf-8")
         errors.append(
             f"Model returned text that is not valid YAML: {e}. "
             "Retry or switch model; ensure the prompt asks for YAML matching the Academic Transcription Protocol."
@@ -670,7 +637,9 @@ def run_pipeline(
             ),
         )
 
-    val_ok, val_errs, val_warns = validate_transcript_file(out_yaml, settings=s)
+    val_ok, val_errs, val_warns = validate_transcript_file(
+        out_yaml, settings=s, preloaded_data=normalized_data
+    )
     warnings.extend(val_warns)
     if not val_ok:
         if has_correct_mode_text(out_yaml):

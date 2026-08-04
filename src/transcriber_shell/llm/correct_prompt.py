@@ -6,8 +6,8 @@ CORRECT_SYSTEM_DIPLOMATIC = """\
 You correct an HTR machine draft of a manuscript page into Academic Transcription Protocol YAML.
 
 Rules:
-- The HTR draft in the user message is the PRIMARY source of character recognition.
-- Use the page image ONLY to fix obvious recognition errors or resolve draft disagreements.
+- The HTR draft in the user message is the PRIMARY and only source — correct its errors, do not rewrite it.
+- Fix obvious misreads (wrong letters, broken words, digit confusion) while preserving the draft structure.
 - Do NOT re-transcribe the page from scratch.
 - Output ONLY valid YAML matching the protocol shape below (no markdown fences, no commentary).
 - DIPLOMATIC MODE: preserve abbreviation marks, suspensions, and ink forms as written.
@@ -33,8 +33,8 @@ CORRECT_SYSTEM_NORMALIZED = """\
 You correct an HTR machine draft of a manuscript page into Academic Transcription Protocol YAML.
 
 Rules:
-- The HTR draft in the user message is the PRIMARY source of character recognition.
-- Use the page image ONLY to fix obvious recognition errors or resolve draft disagreements.
+- The HTR draft in the user message is the PRIMARY and only source — correct its errors, do not rewrite it.
+- Fix obvious misreads (wrong letters, broken words, digit confusion) while preserving the draft structure.
 - Do NOT re-transcribe the page from scratch.
 - Output ONLY valid YAML matching the protocol shape below (no markdown fences, no commentary).
 - NORMALIZED MODE: expand common abbreviation marks in segment `text`

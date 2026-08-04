@@ -11,7 +11,7 @@ from transcriber_shell.llm.errors import LLMProviderError
 from transcriber_shell.models.job import TranscribeJob
 from transcriber_shell.protocol_paths import ensure_prompt_builder_on_path
 
-_OLLAMA_QWEN_FALLBACK = "qwen3.6:27b"
+_OLLAMA_QWEN_FALLBACK = "qwen2.5vl:32b"
 
 _KEY_WALL_PHRASES = (
     "api key",
@@ -107,6 +107,12 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
 
     provider = job.provider.lower()
     mo = job.model_override
+    # In correct mode the HTR draft is the sole input by default — text-only
+    # calls are ~20x cheaper and faster. Set correct_mode_vision=True for
+    # manuscripts where Kraken's glyph errors can't be resolved from text alone
+    # (dense medieval abbreviations, damaged folios).
+    is_correct = should_use_short_correct(s.llm_mode or "full", job.line_hint)
+    effective_image = job.image_path if (not is_correct or s.correct_mode_vision) else None
 
     def _ollama_qwen_fallback() -> TranscribeResult:
         from transcriber_shell.llm.adapters.ollama import transcribe_ollama
@@ -116,7 +122,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
             stacklevel=4,
         )
         return transcribe_ollama(
-            image_path=job.image_path,
+            image_path=effective_image,
             system=system,
             user_text=user_text,
             model=_OLLAMA_QWEN_FALLBACK,
@@ -127,7 +133,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
         from transcriber_shell.llm.adapters.anthropic import transcribe_anthropic
         try:
             return transcribe_anthropic(
-                image_path=job.image_path,
+                image_path=effective_image,
                 system=system,
                 user_text=user_text,
                 model=mo,
@@ -141,7 +147,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
         from transcriber_shell.llm.adapters.openai import transcribe_openai
         try:
             return transcribe_openai(
-                image_path=job.image_path,
+                image_path=effective_image,
                 system=system,
                 user_text=user_text,
                 model=mo,
@@ -155,7 +161,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
         from transcriber_shell.llm.adapters.gemini import transcribe_gemini
         try:
             return transcribe_gemini(
-                image_path=job.image_path,
+                image_path=effective_image,
                 system=system,
                 user_text=user_text,
                 model=mo,
@@ -169,14 +175,34 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
         from transcriber_shell.llm.adapters.ollama import transcribe_ollama
 
         return transcribe_ollama(
-            image_path=job.image_path,
+            image_path=effective_image,
+            system=system,
+            user_text=user_text,
+            model=mo,
+            settings=s,
+        )
+    if provider == "groq":
+        from transcriber_shell.llm.adapters.groq import transcribe_groq
+
+        return transcribe_groq(
+            image_path=effective_image,
+            system=system,
+            user_text=user_text,
+            model=mo,
+            settings=s,
+        )
+    if provider == "cerebras":
+        from transcriber_shell.llm.adapters.cerebras import transcribe_cerebras
+
+        return transcribe_cerebras(
+            image_path=None,
             system=system,
             user_text=user_text,
             model=mo,
             settings=s,
         )
     raise ValueError(
-        f"Unknown provider {job.provider!r}. Use anthropic, openai, gemini, or ollama "
+        f"Unknown provider {job.provider!r}. Use anthropic, openai, gemini, ollama, groq, or cerebras "
         "(see Provider in the GUI or --provider on the CLI)."
     )
 
