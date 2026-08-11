@@ -4,6 +4,8 @@
 **Version 0.1.0** · Python 3.11+ — canonical metadata in [`pyproject.toml`](pyproject.toml). After a pull or version bump, run `python scripts/sync_repo_docs.py`.
 <!-- transcriber-shell-sync:end:pyproject.version -->
 
+Sibling package **[dendro-shell](dendro-shell/)** — path-first tree-ring tracing, hard-image presets, chronology export, and in-app U-Net training. See [`dendro-shell/README.md`](dendro-shell/README.md).
+
 **Python 3.11+** package **`transcriber-shell`** (`transcriber_shell`), built with **[Hatchling](https://hatch.pypa.io/)** from [`pyproject.toml`](pyproject.toml). It installs from a **git checkout** — see [Quick start](#quick-start) for the fast path, or [Installation](#installation) / [PACKAGING.md](PACKAGING.md) for installer scripts, manual venv, and Docker.
 
 **Simple mental model:** pre-cropped image → **lines XML** (default: Glyph Machina in the browser) → **LLM** with a protocol prompt → **`<image_stem>_transcription.yaml`** (e.g. `page_transcription.yaml` for `page.jpg`). Optional pieces (mask/Kraken, HTTP API, batch, extra validators) are documented in **[docs/simple-workflow.md](docs/simple-workflow.md)**; details below are for reference.

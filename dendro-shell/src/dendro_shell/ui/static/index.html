@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dendro-shell</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="masthead">
+      <div class="brand-block">
+        <div class="brand-row">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <h1>dendro-shell</h1>
+        </div>
+        <p class="tagline">Trace folds along a path. Read widths. Export the series.</p>
+      </div>
+      <div class="mast-actions">
+        <label class="btn file-btn">
+          Open
+          <input id="fileInput" type="file" accept="image/*,.tif,.tiff" hidden />
+        </label>
+        <button id="btnDetect" class="btn primary" type="button">Detect</button>
+        <button id="btnExport" class="btn" type="button">Export</button>
+        <button id="btnLibrary" class="btn ghost" type="button">Train set</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="stage" aria-label="Measure stage">
+        <div class="stage-toolbar">
+          <label class="field">
+            <span>Preset</span>
+            <select id="preset"></select>
+          </label>
+          <label class="field">
+            <span>Method</span>
+            <select id="method" title="Detection stack: classical → boolean bridge → U-Net">
+              <option value="auto">Auto</option>
+              <option value="classical">Classical</option>
+              <option value="boolean">Boolean bridge</option>
+              <option value="unet">Active U-Net</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Type</span>
+            <select id="sampleType">
+              <option value="auto">Auto</option>
+              <option value="core">Core</option>
+              <option value="disc">Disc</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Outer year</span>
+            <input id="outerYear" type="number" placeholder="bark year" title="Known outermost year — labels folds bark→pith" />
+          </label>
+          <button id="btnPith" class="btn small" type="button">Pith</button>
+          <span id="status" class="status">Open a core or disc</span>
+        </div>
+
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="canvas"></canvas>
+          <div class="canvas-legend" aria-hidden="true">
+            <span><i class="lg-path"></i>path</span>
+            <span><i class="lg-fold"></i>fold</span>
+            <span><i class="lg-width"></i>width</span>
+          </div>
+        </div>
+
+        <div class="readout" aria-label="Ring-width series">
+          <div class="readout-head">
+            <span>Widths</span>
+            <span id="widthSummary">—</span>
+          </div>
+          <canvas id="spark" height="110"></canvas>
+        </div>
+
+        <div class="tile-strip" aria-label="Per-ring zoom">
+          <div class="readout-head">
+            <span>Folds</span>
+            <button id="btnTiles" class="btn small" type="button">Refresh</button>
+          </div>
+          <div id="tileRail" class="tile-rail"></div>
+        </div>
+      </section>
+
+      <aside class="side">
+        <nav class="tabs" role="tablist">
+          <button class="tab active" data-tab="measure" type="button">Measure</button>
+          <button class="tab" data-tab="viz" type="button">Figures</button>
+          <button class="tab" data-tab="polar" type="button">Polar</button>
+          <button class="tab" data-tab="train" type="button">Train</button>
+        </nav>
+
+        <div class="panel active" id="panel-measure">
+          <h2>Path &amp; folds</h2>
+          <p class="hint">
+            Click path points. Drag a fold to nudge.
+            <kbd>A</kbd> add · <kbd>D</kbd> delete · <kbd>M</kbd> missing · <kbd>F</kbd> false.
+            Disc pith: Alt-click.
+          </p>
+          <div class="field-row">
+            <label class="field"><span>Sample</span><input id="sampleCode" type="text" /></label>
+            <label class="field"><span>Species</span><input id="species" type="text" /></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span>µm / px</span><input id="mpp" type="number" step="any" /></label>
+            <button id="btnClearPath" class="btn small" type="button">Clear path</button>
+          </div>
+          <button id="btnIncline" class="btn small" type="button">Incline partner</button>
+          <div class="field-row">
+            <label class="field">
+              <span>Brush</span>
+              <select id="brushMode">
+                <option value="off">Off</option>
+                <option value="paint">Paint fold</option>
+                <option value="erase">Erase</option>
+              </select>
+            </label>
+            <label class="field"><span>Radius</span><input id="brushRadius" type="number" value="3" min="1" max="20" /></label>
+          </div>
+          <ul id="ringList" class="ring-list"></ul>
+          <div class="crossdate">
+            <h3>Crossdate</h3>
+            <label class="field">
+              <span>Reference .rwl</span>
+              <input id="refRwl" type="text" placeholder="/path/to/master.rwl" style="max-width:none" />
+            </label>
+            <div class="panel-actions">
+              <button id="btnCrossdate" class="btn small" type="button">Correlate</button>
+            </div>
+            <pre id="crossOut" class="mono"></pre>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-viz">
+          <h2>Figures</h2>
+          <p class="hint">Growth, skeleton, break mask, and stack compare. Written again on Export.</p>
+          <div class="panel-actions">
+            <button id="btnRefreshViz" class="btn small" type="button">Refresh</button>
+            <button id="btnCompare" class="btn small" type="button">Compare stack</button>
+            <button id="btnBreaks" class="btn small" type="button">Break mask</button>
+          </div>
+          <figure class="viz-fig">
+            <figcaption>Breaks / fragments</figcaption>
+            <img id="breaksImg" alt="Break mask and ring fragments" />
+          </figure>
+          <figure class="viz-fig">
+            <figcaption>Growth</figcaption>
+            <img id="growthImg" alt="Ring-width growth panel" />
+          </figure>
+          <figure class="viz-fig">
+            <figcaption>Skeleton</figcaption>
+            <img id="skeletonImg" alt="Skeleton plot" />
+          </figure>
+          <figure class="viz-fig">
+            <figcaption>Stack compare</figcaption>
+            <img id="compareImg" alt="Classical / boolean / U-Net overlay" />
+          </figure>
+        </div>
+
+        <div class="panel" id="panel-polar">
+          <h2>Polar unwrap</h2>
+          <p class="hint">Discs — folds become horizontal ridges. Set pith first.</p>
+          <img id="polarImg" alt="Polar unwrap preview" />
+          <button id="btnRefreshPolar" class="btn small" type="button">Refresh</button>
+        </div>
+
+        <div class="panel" id="panel-train">
+          <h2>Train U-Net</h2>
+          <p class="hint">Correct folds → Train set → train here. Same job as <code>dendro train</code>.</p>
+          <div id="libraryInfo" class="mono"></div>
+          <div class="field-row">
+            <label class="field"><span>Name</span><input id="trainName" type="text" value="boundary_unet" /></label>
+            <label class="field"><span>Epochs</span><input id="trainEpochs" type="number" value="20" min="1" /></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span>imgsz</span><input id="trainImgsz" type="number" value="256" min="64" /></label>
+            <label class="field"><span>Batch</span><input id="trainBatch" type="number" value="2" min="1" /></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span>LR</span><input id="trainLr" type="number" value="0.001" step="any" /></label>
+            <label class="field">
+              <span>Device</span>
+              <select id="trainDevice">
+                <option value="auto">auto</option>
+                <option value="cpu">cpu</option>
+                <option value="cuda">cuda</option>
+                <option value="mps">mps</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span>Species</span><input id="trainSpecies" type="text" placeholder="optional" /></label>
+            <label class="field"><span>Tag</span><input id="trainTag" type="text" placeholder="optional" /></label>
+          </div>
+          <label class="check"><input id="trainAugment" type="checkbox" checked /> Augment</label>
+          <label class="check"><input id="trainFinetune" type="checkbox" checked /> Fine-tune active</label>
+          <label class="check"><input id="trainOverwrite" type="checkbox" /> Overwrite same name</label>
+          <div class="panel-actions">
+            <button id="btnTrain" class="btn primary" type="button">Start training</button>
+            <button id="btnTrainStop" class="btn" type="button">Stop</button>
+          </div>
+          <div id="trainStatus" class="train-status mono">idle</div>
+          <div class="models">
+            <h3>Models</h3>
+            <ul id="modelList"></ul>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
