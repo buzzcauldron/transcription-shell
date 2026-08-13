@@ -332,9 +332,29 @@ def _htr_only_short_circuit(
         except OSError:
             pass
     warnings.append("htr_only: on-machine HTR YAML (no LLM correct).")
+    expanded_tei: Path | None = None
+    expanded_txt: Path | None = None
+    if s.expand_diplomatic_enabled:
+        from transcriber_shell.expand.bridge import maybe_run_expand_stage
+
+        s_rules = s.model_copy(
+            update={
+                "expand_diplomatic_backend": "rules",
+                "expand_diplomatic_whole_document": False,
+            }
+        )
+        t_exp = time.perf_counter()
+        expanded_tei, expanded_txt, expand_warns = maybe_run_expand_stage(
+            out_yaml, job.prompt_cfg, s_rules
+        )
+        warnings.extend(expand_warns)
+        if expanded_tei is not None:
+            timings.append(("expand", time.perf_counter() - t_exp))
     return PipelineResult(
         job.job_id, lines_out, out_yaml, text_line_count,
         errors=errors, warnings=warnings, htr_results=htr_results, timings=timings,
+        expanded_tei_path=expanded_tei,
+        expanded_txt_path=expanded_txt,
     )
 
 

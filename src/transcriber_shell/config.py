@@ -777,8 +777,9 @@ class Settings(BaseSettings):
             "EXPAND_DIPLOMATIC_ENABLED",
         ),
         description=(
-            "After diplomatic LLM transcription, run expand-diplomatic (TEI derivative). "
-            "Requires expand-diplomatic checkout or pip install; set EXPAND_DIPLOMATIC_ROOT."
+            "After diplomatic HTR (before LLM cleanup), run expand-diplomatic. "
+            "Backend ``rules`` expands from examples.json with no LLM. "
+            "Requires expand-diplomatic checkout; set EXPAND_DIPLOMATIC_ROOT."
         ),
     )
     expand_diplomatic_root: Path | None = Field(
@@ -789,11 +790,12 @@ class Settings(BaseSettings):
         ),
     )
     expand_diplomatic_backend: str = Field(
-        default="gemini",
+        default="rules",
         validation_alias=AliasChoices(
             "EXPAND_DIPLOMATIC_BACKEND",
             "TRANSCRIBER_SHELL_EXPAND_BACKEND",
         ),
+        description="rules (no LLM) | gemini | groq | anthropic | local",
     )
     expand_diplomatic_model: str = Field(
         default="gemini-2.5-flash",

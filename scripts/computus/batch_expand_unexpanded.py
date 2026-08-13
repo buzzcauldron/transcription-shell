@@ -73,8 +73,17 @@ def yaml_has_text(path: Path) -> bool:
     return bool(raw.strip()) and ("text:" in raw or "Unicode" in raw)
 
 
-def yaml_ready_for_expand(path: Path) -> bool:
-    """Skip HTR-only drafts; expand-diplomatic expects LLM-cleaned diplomatic YAML."""
+LLM_EXPAND_BACKENDS = frozenset({"anthropic", "gemini", "groq", "local"})
+
+
+def yaml_ready_for_expand(path: Path, *, backend: str = "rules") -> bool:
+    """Rules expand runs on diplomatic HTR before LLM cleanup.
+
+    LLM backends still skip HTR-only drafts and ``.needs_llm`` markers.
+    """
+    be = (backend or "rules").strip().lower()
+    if be not in LLM_EXPAND_BACKENDS:
+        return True
     if (path.parent / ".needs_llm").is_file():
         return False
     try:
@@ -94,10 +103,22 @@ def mark_expand_skip(yaml_path: Path, reason: str) -> None:
     dest.write_text(reason.strip()[:800] + "\n", encoding="utf-8")
 
 
+ARTIFACT_DIR_NAMES = ("03_artifacts_2500", "03_artifacts")
+
+
+def job_artifacts_dir(job: Path) -> Path | None:
+    """Prefer ``03_artifacts_2500`` (akdeniz HTR) then ``03_artifacts`` (local jobs)."""
+    for name in ARTIFACT_DIR_NAMES:
+        p = job / name
+        if p.is_dir():
+            return p
+    return None
+
+
 def job_ids(jobs_root: Path) -> list[str]:
     ids = []
     for p in sorted(jobs_root.iterdir()):
-        if p.is_dir() and (p / "03_artifacts_2500").is_dir():
+        if p.is_dir() and job_artifacts_dir(p) is not None:
             ids.append(p.name)
     return ids
 
@@ -159,7 +180,11 @@ def main() -> int:
     ap.add_argument("--limit-jobs", type=int, default=0)
     ap.add_argument("--limit-pages", type=int, default=0)
     ap.add_argument("--parallel-files", type=int, default=2)
-    ap.add_argument("--backend", default="gemini", choices=("anthropic", "gemini", "groq"))
+    ap.add_argument(
+        "--backend",
+        default="rules",
+        choices=("rules", "anthropic", "gemini", "groq", "local"),
+    )
     ap.add_argument("--model", default="claude-haiku-4-5-20251001")
     ap.add_argument("--modality", default="full")
     ap.add_argument("--passes", type=int, default=1)
@@ -172,6 +197,7 @@ def main() -> int:
     expand_xml, extract_text_lines, load_examples = _load_expand(args.expand_root)
     examples_path = args.expand_root / "examples.json"
     examples = load_examples(examples_path) if examples_path.is_file() else []
+    api_key: str | None = None
     if args.backend == "anthropic":
         api_key = (
             os.environ.get("ANTHROPIC_API_KEY")
@@ -190,6 +216,8 @@ def main() -> int:
         if not api_key:
             print("GROQ_API_KEY missing", file=sys.stderr)
             return 2
+    elif args.backend in ("rules", "local"):
+        api_key = None
     else:
         api_key = (
             os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or ""
@@ -200,7 +228,10 @@ def main() -> int:
 
     os.environ.setdefault("GEMINI_TIMEOUT", "120")
     os.environ.setdefault("GEMINI_RETRY_ATTEMPTS", "3")
-    os.environ.setdefault("EXPANDER_MAX_CONCURRENT", "2")
+    os.environ.setdefault(
+        "EXPANDER_MAX_CONCURRENT",
+        "8" if args.backend == "rules" else "2",
+    )
 
     priority: list[str] = []
     if args.priority_file and args.priority_file.is_file():
@@ -212,7 +243,7 @@ def main() -> int:
 
     if args.only_job.strip():
         jid = args.only_job.strip()
-        jobs = [jid] if (args.jobs_root / jid / "03_artifacts_2500").is_dir() else []
+        jobs = [jid] if job_artifacts_dir(args.jobs_root / jid) is not None else []
         if not jobs:
             print(f"[expand] only-job {jid} not found under {args.jobs_root}", file=sys.stderr)
             return 1
@@ -249,7 +280,10 @@ def main() -> int:
 
     for jid in jobs:
         job = args.jobs_root / jid
-        artifacts = job / "03_artifacts_2500"
+        artifacts = job_artifacts_dir(job)
+        if artifacts is None:
+            print(f"[job] {jid}: no artifacts dir", flush=True)
+            continue
         tei_dir = job / ".tei_stage"
         exp_dir = job / "04_expanded"
         tei_dir.mkdir(parents=True, exist_ok=True)
@@ -271,7 +305,7 @@ def main() -> int:
             if not yaml_has_text(yf):
                 status["empty"] += 1
                 continue
-            if not yaml_ready_for_expand(yf):
+            if not yaml_ready_for_expand(yf, backend=args.backend):
                 status["skip"] += 1
                 continue
             tei_path = tei_dir / f"{stem}_tei.xml"
@@ -303,7 +337,7 @@ def main() -> int:
             f"[job] {jid}: expand {len(pending)} pages skip_tei={skip_tei}",
             flush=True,
         )
-        workers = max(1, min(args.parallel_files, 4))
+        workers = max(1, min(args.parallel_files, 16 if args.backend == "rules" else 4))
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futs = {
                 pool.submit(

@@ -16,6 +16,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -66,10 +67,16 @@ EXPAND_ENABLED = os.environ.get("STREAM_EXPAND", "1").strip().lower() not in (
     "no",
     "off",
 )
-EXPAND_BACKEND = os.environ.get("EXPAND_DIPLOMATIC_BACKEND", "gemini").strip() or "gemini"
+EXPAND_BACKEND = os.environ.get("EXPAND_DIPLOMATIC_BACKEND", "rules").strip() or "rules"
 EXPAND_MODEL = os.environ.get(
     "EXPAND_DIPLOMATIC_MODEL",
-    "claude-haiku-4-5-20251001" if EXPAND_BACKEND == "anthropic" else "gemini-2.5-flash",
+    "claude-haiku-4-5-20251001"
+    if EXPAND_BACKEND == "anthropic"
+    else "llama-3.3-70b-versatile"
+    if EXPAND_BACKEND == "groq"
+    else "gemini-2.5-flash"
+    if EXPAND_BACKEND == "gemini"
+    else "",
 )
 STYLO_REF = Path(
     os.environ.get(
@@ -122,17 +129,27 @@ def log(msg: str) -> None:
 
 
 def _first_existing(names: tuple[str, ...], env_key: str = "") -> str:
+    """Resolve a checkpoint path. Ignore Mac /Users/ paths leaked into Linux .env."""
+
+    def _ok(p: Path) -> bool:
+        if not p.is_file():
+            return False
+        if "/Users/" in str(p) and sys.platform != "darwin":
+            return False
+        return True
+
     if env_key:
         explicit = os.environ.get(env_key, "").strip()
         if explicit:
             p = Path(explicit).expanduser()
-            if p.is_file() and "/Users/" not in str(p):
+            if _ok(p):
                 return str(p)
-    src = Path.home() / "src"
+    roots = (Path.home() / "src", Path.home() / "src" / "latin_documents")
     for name in names:
-        p = src / name
-        if p.is_file():
-            return str(p)
+        for root in roots:
+            p = root / name
+            if _ok(p):
+                return str(p)
     return ""
 
 

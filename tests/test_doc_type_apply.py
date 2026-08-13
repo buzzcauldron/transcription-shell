@@ -44,3 +44,12 @@ def test_form_preset_resolves_provider_and_model() -> None:
     assert preset.provider == "anthropic"
     assert preset.model_id is not None
     assert preset.prompt_path is not None
+
+
+def test_medieval_latin_miscellany_pins_carolingian_r5() -> None:
+    spec = load_doc_type("medieval_latin_miscellany")
+    assert spec.htr_model_name == "carolingian-r5"
+    settings, prompt = apply_doc_type("medieval_latin_miscellany", Settings(), None)
+    assert settings.htr_combination == "kraken_htr"
+    assert prompt is not None
+    assert "prompt_latin" in prompt

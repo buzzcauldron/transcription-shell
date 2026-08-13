@@ -22,7 +22,7 @@ export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-4}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
 export GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-120}"
 export GEMINI_RETRY_ATTEMPTS="${GEMINI_RETRY_ATTEMPTS:-3}"
-export EXPANDER_MAX_CONCURRENT="${EXPANDER_MAX_CONCURRENT:-2}"
+export EXPANDER_MAX_CONCURRENT="${EXPANDER_MAX_CONCURRENT:-8}"
 export HIST_CORE_REUSE_PILOT=0
 export STYLO_BATCH_TEXTS="$BATCH_EXPANDED"
 export HIST_CORE_OUT="$HIST_OUT"
@@ -30,9 +30,12 @@ export STYLO_MAX_SLICES="${STYLO_MAX_SLICES:-120}"
 
 mkdir -p "$LOG_DIR" "$BATCH_EXPANDED" "$PILOT_TEXT"
 
-if [[ ! -f "$EXPAND_ROOT/.env" && ! -f "$TSHELL/.env" ]]; then
-  echo "missing expand/tshell .env (need ANTHROPIC_API_KEY)" >&2
-  exit 2
+BACKEND="${EXPAND_DIPLOMATIC_BACKEND:-rules}"
+if [[ "$BACKEND" != "rules" && "$BACKEND" != "local" ]]; then
+  if [[ ! -f "$EXPAND_ROOT/.env" && ! -f "$TSHELL/.env" ]]; then
+    echo "missing expand/tshell .env (need API key for backend=$BACKEND)" >&2
+    exit 2
+  fi
 fi
 set -a
 # shellcheck disable=SC1091
@@ -40,8 +43,16 @@ set -a
 # shellcheck disable=SC1091
 [[ -f "$EXPAND_ROOT/.env" ]] && source "$EXPAND_ROOT/.env"
 set +a
-if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+if [[ "$BACKEND" == "anthropic" && -z "${ANTHROPIC_API_KEY:-}" ]]; then
   echo "ANTHROPIC_API_KEY not set after sourcing .env" >&2
+  exit 2
+fi
+if [[ "$BACKEND" == "groq" && -z "${GROQ_API_KEY:-}" && -z "${TRANSCRIBER_SHELL_GROQ_API_KEY:-}" ]]; then
+  echo "GROQ_API_KEY not set after sourcing .env" >&2
+  exit 2
+fi
+if [[ "$BACKEND" == "gemini" && -z "${GEMINI_API_KEY:-}" && -z "${GOOGLE_API_KEY:-}" ]]; then
+  echo "GEMINI_API_KEY / GOOGLE_API_KEY not set after sourcing .env" >&2
   exit 2
 fi
 
@@ -52,18 +63,18 @@ fi
     | sed 's/_latin\.txt$//'
 } > "$PRIORITY"
 
-echo "[$(date -Iseconds)] expand start backend=${EXPAND_DIPLOMATIC_BACKEND:-gemini} jobs=$JOBS parallel=${EXPAND_PARALLEL_FILES:-2}"
+echo "[$(date -Iseconds)] expand start backend=${BACKEND} jobs=$JOBS parallel=${EXPAND_PARALLEL_FILES:-8}"
 "$PY" "$TSHELL/scripts/computus/batch_expand_unexpanded.py" \
   --jobs-root "$JOBS" \
   --tshell-src "$TSHELL/src" \
   --expand-root "$EXPAND_ROOT" \
   --priority-file "$PRIORITY" \
-  --backend "${EXPAND_DIPLOMATIC_BACKEND:-gemini}" \
-  --parallel-files "${EXPAND_PARALLEL_FILES:-2}" \
-  --model "${EXPAND_DIPLOMATIC_MODEL:-gemini-2.5-flash}" \
+  --backend "$BACKEND" \
+  --parallel-files "${EXPAND_PARALLEL_FILES:-8}" \
+  --model "${EXPAND_DIPLOMATIC_MODEL:-}" \
   --modality "${EXPAND_DIPLOMATIC_MODALITY:-full}" \
   --passes "${EXPAND_DIPLOMATIC_PASSES:-1}" \
-  --whole-doc \
+  --no-whole-doc \
   --status-json "$STATUS_JSON"
 
 echo "[$(date -Iseconds)] extract expanded texts"

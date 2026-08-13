@@ -58,10 +58,12 @@ if [[ -z "$HARVEST_ROOT" ]]; then
   fi
 fi
 
-if [[ -d /mnt/constantinople/seth/latin-ms-workspace/jobs ]]; then
-  JOBS_ROOT=/mnt/constantinople/seth/latin-ms-workspace/jobs
-else
-  JOBS_ROOT="${JOBS_ROOT:-$HOME/latin-ms-workspace/jobs}"
+if [[ -z "${JOBS_ROOT:-}" ]]; then
+  if [[ -d /mnt/constantinople/seth/latin-ms-workspace/jobs ]]; then
+    JOBS_ROOT=/mnt/constantinople/seth/latin-ms-workspace/jobs
+  else
+    JOBS_ROOT="$HOME/latin-ms-workspace/jobs"
+  fi
 fi
 
 if [[ -d /mnt/constantinople/seth/Projects/stylometry-r ]]; then
@@ -222,8 +224,8 @@ start_watcher() {
     STREAM_STYLO_OUT="$job/05_stylo" \
     EXPAND_DIPLOMATIC_ENABLED=1 \
     TRANSCRIBER_SHELL_EXPAND_DIPLOMATIC=1 \
-    EXPAND_DIPLOMATIC_BACKEND="${EXPAND_DIPLOMATIC_BACKEND:-groq}" \
-    EXPAND_DIPLOMATIC_MODEL="${EXPAND_DIPLOMATIC_MODEL:-llama-3.3-70b-versatile}" \
+    EXPAND_DIPLOMATIC_BACKEND="${EXPAND_DIPLOMATIC_BACKEND:-rules}" \
+    EXPAND_DIPLOMATIC_MODEL="${EXPAND_DIPLOMATIC_MODEL:-}" \
     EXPAND_DIPLOMATIC_ROOT="$EXPAND_ROOT" \
     EXPAND_DIPLOMATIC_WHOLE_DOC=1 \
     TRANSCRIBER_SHELL_AUTO_EFFICIENCY=1 \

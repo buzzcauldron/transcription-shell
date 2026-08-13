@@ -13,8 +13,10 @@ from transcriber_shell.expand.bridge import (
     expand_pagexml_string,
     extract_unicode_lines,
     maybe_run_expand_stage,
+    resolve_expand_output_paths,
     resolve_expand_root,
     should_run_expand,
+    _expand_kwargs,
 )
 
 
@@ -74,3 +76,25 @@ def test_maybe_run_expand_skips_normalized(tmp_path: Path) -> None:
         yaml_path, {"normalizationMode": "normalized"}, s
     )
     assert tei is None and txt is None and not warns
+
+
+def test_expand_kwargs_rules_needs_no_api_key() -> None:
+    s = Settings(expand_diplomatic_backend="rules", expand_diplomatic_model="")
+    kw = _expand_kwargs(s, [])
+    assert kw["backend"] == "rules"
+    assert kw["api_key"] is None
+
+
+def test_resolve_expand_output_paths_job_tree(tmp_path: Path) -> None:
+    artifacts = tmp_path / "job" / "03_artifacts_2500" / "p0001"
+    artifacts.mkdir(parents=True)
+    yaml_path = artifacts / "p0001_transcription.yaml"
+    yaml_path.write_text("x\n", encoding="utf-8")
+    tei, exp_tei, exp_txt = resolve_expand_output_paths(yaml_path)
+    assert tei.parent.name == ".tei_stage"
+    assert exp_tei.parent.name == "04_expanded"
+    assert exp_txt.name == "p0001_expanded.txt"
+
+
+def test_default_expand_backend_is_rules() -> None:
+    assert Settings().expand_diplomatic_backend == "rules"

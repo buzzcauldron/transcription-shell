@@ -1,0 +1,24 @@
+# Document type: non-computus medieval Latin miscellanies (control harvest).
+# Caroline / proto-gothic Latin; mixed compilation, no Easter/computus host work.
+name: medieval_latin_miscellany
+language: lat-Latn
+era: early_medieval
+era_range: 500-1500
+script: caroline_minuscule
+
+llm:
+  primary: gemini-2.5-flash
+  correct: claude-haiku-4
+  fallback: claude-sonnet-4
+
+htr:
+  model: carolingian-r5
+
+segmentation:
+  model: gm-seg
+
+prompt: prompt_latin.yaml
+
+notes: >
+  Control cohort against the frozen computus CORE. Use gm-htr-r5-best
+  (carolingian-r5), not gm-htr-computus_best. Do not merge into HIST_SLUGS.
