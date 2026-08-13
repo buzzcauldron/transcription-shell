@@ -1,0 +1,72 @@
+[
+  {
+    "id": "clat_90",
+    "display": "Cologne, Historisches Archiv, W* 209",
+    "institution": "cologne historisches archiv",
+    "material_role": "direct_computus",
+    "status": "access_blocked",
+    "confirmed_url": null,
+    "page_estimate": null,
+    "downloaded_pages": 0,
+    "rights": null,
+    "last_error": "robots_disallow",
+    "cohort_slug": null,
+    "job_dir": null
+  },
+  {
+    "id": "clat_462",
+    "display": "Fulda, Hochschul- und Landesbibliothek, Aa 31",
+    "institution": "fulda hochschul- und landesbibliothek",
+    "material_role": "direct_computus",
+    "status": "access_blocked",
+    "confirmed_url": null,
+    "page_estimate": null,
+    "downloaded_pages": 0,
+    "rights": null,
+    "last_error": "robots_disallow",
+    "cohort_slug": null,
+    "job_dir": null
+  },
+  {
+    "id": "clat_470",
+    "display": "Fulda, Hochschul- und Landesbibliothek, Aa 122",
+    "institution": "fulda hochschul- und landesbibliothek",
+    "material_role": "direct_computus",
+    "status": "access_blocked",
+    "confirmed_url": null,
+    "page_estimate": null,
+    "downloaded_pages": 0,
+    "rights": null,
+    "last_error": "robots_disallow",
+    "cohort_slug": null,
+    "job_dir": null
+  },
+  {
+    "id": "clat_497",
+    "display": "Fulda, Hochschul- und Landesbibliothek, Aa 136",
+    "institution": "fulda hochschul- und landesbibliothek",
+    "material_role": "direct_computus",
+    "status": "access_blocked",
+    "confirmed_url": null,
+    "page_estimate": null,
+    "downloaded_pages": 0,
+    "rights": null,
+    "last_error": "robots_disallow",
+    "cohort_slug": null,
+    "job_dir": null
+  },
+  {
+    "id": "clat_442",
+    "display": "Fulda, Hochschul- und Landesbibliothek, B 2",
+    "institution": "fulda hochschul- und landesbibliothek",
+    "material_role": "direct_computus",
+    "status": "access_blocked",
+    "confirmed_url": null,
+    "page_estimate": null,
+    "downloaded_pages": 0,
+    "rights": null,
+    "last_error": "robots_disallow",
+    "cohort_slug": null,
+    "job_dir": null
+  }
+]

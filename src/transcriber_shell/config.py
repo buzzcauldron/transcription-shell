@@ -723,7 +723,22 @@ class Settings(BaseSettings):
             "LLM stage behavior. full (current default — protocol YAML); "
             "correct (short prompt: treat HTR draft as primary, fix recognition errors); "
             "off (skip LLM entirely — equivalent to setting htr_combination to a *_only variant). "
-            "Honored only when an HTR backend produced drafts; falls back to full otherwise."
+            "When require_htr_before_llm is true (default), correct/full both require a "
+            "non-empty HTR draft before the LLM runs — there is no LLM-only fallback."
+        ),
+    )
+
+    require_htr_before_llm: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM",
+            "REQUIRE_HTR_BEFORE_LLM",
+        ),
+        description=(
+            "If true (default), refuse to call the LLM unless a non-empty HTR draft was "
+            "produced first (lineation → HTR → LLM). Blocks htr_combination=shell/llm_only, "
+            "parallel-with-LLM plans, continue-on-lineation-failure without lines, and "
+            "empty/failed HTR. Set false only for deliberate LLM-only experiments."
         ),
     )
 

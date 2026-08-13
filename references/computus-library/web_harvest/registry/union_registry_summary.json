@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-08-10T22:05:17.710126+00:00",
+  "n_records": 752,
+  "by_status": {
+    "needs_discovery": 381,
+    "has_url": 370,
+    "local": 1
+  },
+  "by_role": {
+    "direct_computus": 747,
+    "counterpoint": 5
+  },
+  "with_iiif": 256,
+  "with_digitization_only": 114,
+  "with_no_url": 382,
+  "top_hosts": {
+    "digi.vatlib.it": 125,
+    "gallica.bnf.fr": 120,
+    "www.e-codices.unifr.ch": 115,
+    "iiif.bodleian.ox.ac.uk": 38,
+    "digital.bodleian.ox.ac.uk": 38,
+    "www.bl.uk": 35,
+    "api.digitale-sammlungen.de": 18,
+    "www.digitale-sammlungen.de": 18,
+    "bibliotheca-laureshamensis-digital.de": 14,
+    "bvmm.irht.cnrs.fr": 13,
+    "digital.dombibliothek-koeln.de": 11,
+    "e-codices.unifr.ch": 8,
+    "portail.biblissima.fr": 7,
+    "digi.ub.uni-heidelberg.de": 6,
+    "uurl.kbr.be": 5,
+    "dms-data.stanford.edu": 5,
+    "parker.stanford.edu": 5,
+    "vb.uni-wuerzburg.de": 5,
+    "fuldig.hs-fulda.de": 4,
+    "digital.blb-karlsruhe.de": 4,
+    "computus.huma-num.fr": 4,
+    "diglib.hab.de": 3,
+    "searcharchives.bl.uk": 3,
+    "doi.org": 3,
+    "warburg-archive.sas.ac.uk": 2,
+    "zendsbb.digitale-sammlungen.de": 2,
+    "dl.ub.uni-freiburg.de": 2,
+    "bdh-rd.bne.es": 2,
+    "www.internetculturale.it": 2,
+    "elmss.nuigalway.ie": 2
+  }
+}

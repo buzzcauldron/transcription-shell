@@ -27,7 +27,7 @@ export PIPELINE_MAX_CONCURRENT="${PIPELINE_MAX_CONCURRENT:-1}"
 export PIPELINE_MIN_IMAGES="${PIPELINE_MIN_IMAGES:-10}"
 export PIPELINE_BACKEND="${PIPELINE_BACKEND:-akdeniz_latenight}"
 export STREAM_DOC_TYPE="${STREAM_DOC_TYPE:-computus_medieval_latin}"
-export STREAM_PROVIDER="${STREAM_PROVIDER:-gemini}"
+export STREAM_PROVIDER="${STREAM_PROVIDER:-anthropic}"
 export STREAM_BATCH_SIZE="${STREAM_BATCH_SIZE:-4}"
 export STREAM_IDLE_LIMIT="${STREAM_IDLE_LIMIT:-30}"
 export PIPELINE_POLL_SEC="${PIPELINE_POLL_SEC:-300}"
@@ -67,6 +67,18 @@ for cand in "$TSHELL/.venv-lineation" "$HOME/.venv-lineation" "$HOME/.venv-krake
   if [[ -x "$cand/bin/python" ]]; then VENV="$cand"; break; fi
 done
 [[ -n "$VENV" ]] || VENV="$HOME/.venv-kraken"
+
+EXPAND_ROOT=""
+for cand in "$HOME/Projects/expand-diplomatic" /mnt/constantinople/seth/Projects/expand-diplomatic; do
+  if [[ -f "$cand/expand_diplomatic/expander.py" ]]; then EXPAND_ROOT="$cand"; break; fi
+done
+[[ -n "$EXPAND_ROOT" ]] || EXPAND_ROOT="$HOME/Projects/expand-diplomatic"
+
+STYLO_ROOT=""
+for cand in /mnt/constantinople/seth/Projects/stylometry-r "$HOME/Projects/stylometry-r"; do
+  if [[ -d "$cand/scripts" ]]; then STYLO_ROOT="$cand"; break; fi
+done
+[[ -n "$STYLO_ROOT" ]] || STYLO_ROOT="$HOME/Projects/stylometry-r"
 
 LATE_NIGHT_START=__LATE_NIGHT_START__
 LATE_NIGHT_END=__LATE_NIGHT_END__
@@ -144,7 +156,7 @@ count_active_watchers() {
 start_watcher_akdeniz() {
   local job="$1" id pid
   id=$(basename "$job")
-  mkdir -p "$job"/{logs,status,scripts,01_pages_2500,03_artifacts_2500,transcription_batches}
+  mkdir -p "$job"/{logs,status,scripts,01_pages_2500,03_artifacts_2500,transcription_batches,04_expanded,05_stylo}
   cp -f "$SCRIPTS/remote_stream_watch_transcribe.py" "$job/scripts/" 2>/dev/null || true
   local py="$VENV/bin/python"
   [[ -x "$py" ]] || py=$(command -v python3)
@@ -152,17 +164,35 @@ start_watcher_akdeniz() {
     STREAM_JOB_DIR="$job" \
     STREAM_DOC_TYPE="$DOC_TYPE" \
     STREAM_PROVIDER="$PROVIDER" \
+    STREAM_LLM_MODE=correct \
+    STREAM_MODEL=claude-haiku-4-5-20251001 \
+    STREAM_HTR_COMBINATION=kraken_htr \
     STREAM_BATCH_SIZE="$BATCH_SIZE" \
     STREAM_IDLE_LIMIT="$IDLE_LIMIT" \
+    STREAM_EXPAND=1 \
     STREAM_TRANSCRIPTION_SHELL_ROOT="$TSHELL" \
     STREAM_TRANSCRIPTION_SHELL_VENV="$VENV" \
+    STREAM_STYLO_REF="$STYLO_ROOT/output/de_luce_r_rescore/reference_set_medieval_mixed" \
+    STREAM_STYLO_RUNNER="$STYLO_ROOT/scripts/run_stylo_target.R" \
+    STREAM_STYLO_OUT="$job/05_stylo" \
+    EXPAND_DIPLOMATIC_ENABLED=1 \
+    TRANSCRIBER_SHELL_EXPAND_DIPLOMATIC=1 \
+    EXPAND_DIPLOMATIC_BACKEND=anthropic \
+    EXPAND_DIPLOMATIC_MODEL=claude-haiku-4-5-20251001 \
+    EXPAND_DIPLOMATIC_ROOT="$EXPAND_ROOT" \
+    EXPAND_DIPLOMATIC_WHOLE_DOC=1 \
     TRANSCRIBER_SHELL_AUTO_EFFICIENCY=1 \
+    TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM=1 \
+    TRANSCRIBER_SHELL_HTR_PARALLEL=0 \
+    TRANSCRIBER_SHELL_HTR_COMBINATION=kraken_htr \
+    TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH="${TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH:-$HOME/src/gm-htr-r7-full_best.mlmodel}" \
+    TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH="${TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH:-$HOME/src/gm-seg.mlmodel}" \
     "$py" "$job/scripts/remote_stream_watch_transcribe.py" \
     >> "$job/logs/watch_transcribe.nohup.log" 2>&1 &
   pid=$!
   echo $pid > "$job/status/watch_transcribe.pid"
   date -Iseconds > "$STATE/${id}.started"
-  log "STARTED_WATCHER id=$id pid=$pid backend=akdeniz images=$(image_count "$job") yaml=$(yaml_count "$job")"
+  log "STARTED_WATCHER id=$id pid=$pid backend=akdeniz htr=highest llm=correct expand=anthropic stylo=$job/05_stylo images=$(image_count "$job") yaml=$(yaml_count "$job")"
 }
 
 mark_bridges_ready() {
@@ -182,7 +212,25 @@ while true; do
     id=$(basename "$job")
     n=$(image_count "$job")
     [[ "$n" -ge "$MIN_IMAGES" ]] || continue
+    # Skip clat_N_slug when clat_N already has enough images (duplicate job dir).
+    case "$id" in
+      clat_[0-9]*_*)
+        short="${id%%_*}"
+        # id is clat_472_fribourg_... so short=clat if we use %%_*. Need clat_472.
+        short=$(printf '%s\n' "$id" | sed -n 's/^\(clat_[0-9][0-9]*\)_.*/\1/p')
+        if [[ -n "$short" && -d "$JOBS/$short" ]]; then
+          sn=$(image_count "$JOBS/$short")
+          if [[ "$sn" -ge "$MIN_IMAGES" ]]; then
+            continue
+          fi
+        fi
+        ;;
+    esac
     acquire_running "$job" && continue
+    if [[ -f "$job/status/pipeline.DONE" ]]; then
+      touch "$STATE/${id}.done" 2>/dev/null || true
+      continue
+    fi
     if watcher_running "$job"; then continue; fi
     y=$(yaml_count "$job")
     if [[ "$y" -gt 0 && "$n" -gt 0 ]] && (( y * 10 >= n * 9 )); then
@@ -201,7 +249,8 @@ while true; do
     active=$(count_active_watchers)
     if [[ "$active" -ge "$MAX_CONCURRENT" ]]; then
       log "THROTTLE active=$active max=$MAX_CONCURRENT ($id waiting)"
-      break
+      # Keep scanning so ready_unstarted stays accurate; do not start more.
+      continue
     fi
     if [[ "$PIPELINE_BACKEND" == "bridges" ]]; then
       [[ -f "$STATE/${id}.bridges_queued" ]] || { mark_bridges_ready "$job"; started=$((started+1)); }
@@ -248,9 +297,18 @@ ssh -n "$REMOTE" "
   chmod +x '$QUEUE_DIR/run_pipeline_supervisor.sh'
   chmod +x '$QUEUE_DIR/scripts'/remote_stream_* 2>/dev/null || true
 
-  pkill -f 'run_pipeline_supervisor.sh' 2>/dev/null || true
+  # Kill prior supervisor by pidfile only (pkill -f matches this SSH cmdline).
+  if [[ -f '$QUEUE_DIR/pipeline_supervisor.pid' ]]; then
+    old=\$(cat '$QUEUE_DIR/pipeline_supervisor.pid' 2>/dev/null || true)
+    if [[ -n \"\$old\" ]] && kill -0 \"\$old\" 2>/dev/null; then
+      kill \"\$old\" 2>/dev/null || true
+      sleep 1
+      kill -9 \"\$old\" 2>/dev/null || true
+    fi
+  fi
   sleep 1
   setsid nohup bash '$QUEUE_DIR/run_pipeline_supervisor.sh' >> '$QUEUE_DIR/logs/pipeline_supervisor.nohup.log' 2>&1 < /dev/null &
+  echo \$! > '$QUEUE_DIR/pipeline_supervisor.pid'
   sleep 3
   echo SUPERVISOR_PID=\$(cat '$QUEUE_DIR/pipeline_supervisor.pid' 2>/dev/null || echo '?')
   tail -12 '$QUEUE_DIR/logs/pipeline_supervisor.log' 2>/dev/null || tail -12 '$QUEUE_DIR/logs/pipeline_supervisor.nohup.log'

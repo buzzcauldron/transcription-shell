@@ -16,6 +16,14 @@ def test_print_doc_type_prefers_tesseract() -> None:
     assert prefer_tesseract_ocr(spec) is True
 
 
+def test_early_modern_latin_print_prefers_tesseract() -> None:
+    spec = load_doc_type("early_modern_latin")
+    assert prefer_tesseract_ocr(spec) is True
+    settings, _ = apply_doc_type("early_modern_latin", Settings(), None)
+    assert settings.tesseract_enabled is True
+    assert settings.htr_combination == "tesseract_htr"
+
+
 def test_manuscript_doc_type_uses_kraken_htr() -> None:
     spec = load_doc_type("nineteenth_century_english_copperplate")
     assert prefer_tesseract_ocr(spec) is False

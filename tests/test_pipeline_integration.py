@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -44,7 +44,7 @@ def test_run_pipeline_skip_gm_success_with_mocks(
         prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
         provider="anthropic",
     )
-    settings = Settings(artifacts_dir=tmp_artifacts)
+    settings = Settings(artifacts_dir=tmp_artifacts, require_htr_before_llm=False)
 
     with (
         patch(
@@ -136,7 +136,7 @@ def test_run_pipeline_timeout_error_includes_anthropic_timeout_hint(
         prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
         provider="anthropic",
     )
-    settings = Settings(artifacts_dir=tmp_artifacts)
+    settings = Settings(artifacts_dir=tmp_artifacts, require_htr_before_llm=False)
 
     with patch(
         "transcriber_shell.pipeline.run.run_transcribe",
@@ -168,7 +168,7 @@ def test_run_pipeline_httpx_timeout_includes_network_hint(
         prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
         provider="openai",
     )
-    settings = Settings(artifacts_dir=tmp_artifacts)
+    settings = Settings(artifacts_dir=tmp_artifacts, require_htr_before_llm=False)
 
     with patch(
         "transcriber_shell.pipeline.run.run_transcribe",
@@ -204,7 +204,7 @@ def test_run_pipeline_skip_lines_xml_validation_bypasses_malformed_xml(
         prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
         provider="anthropic",
     )
-    settings = Settings(artifacts_dir=tmp_artifacts)
+    settings = Settings(artifacts_dir=tmp_artifacts, require_htr_before_llm=False)
 
     res_fail = run_pipeline(
         job,
@@ -270,7 +270,47 @@ def test_run_pipeline_lineation_failure_errors_when_continue_disabled(
     assert res.transcription_yaml_path is None
 
 
-def test_run_pipeline_lineation_failure_continues_when_continue_enabled(
+def test_run_pipeline_lineation_failure_blocks_llm_when_require_htr(
+    tmp_path: Path, tmp_artifacts: Path,
+) -> None:
+    """continue_on_lineation_failure without lines cannot satisfy HTR→LLM."""
+    image = tmp_path / "page.jpg"
+    image.write_bytes(b"\xff\xd8\xff")
+    job = TranscribeJob(
+        job_id="t_line_cont_block",
+        image_path=image,
+        prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
+        provider="anthropic",
+    )
+    settings = Settings(
+        artifacts_dir=tmp_artifacts,
+        continue_on_lineation_failure=True,
+        require_htr_before_llm=True,
+    )
+    mock_tx = MagicMock(side_effect=AssertionError("LLM must not run without HTR"))
+
+    with (
+        patch(
+            "transcriber_shell.pipeline.run.fetch_lines_xml",
+            side_effect=GlyphMachinaError("simulated GM failure"),
+        ) as mock_fetch,
+        patch("transcriber_shell.pipeline.run.run_transcribe", mock_tx),
+    ):
+        res = run_pipeline(
+            job,
+            skip_gm=False,
+            settings=settings,
+            lineation_backend="glyph_machina",
+        )
+
+    mock_fetch.assert_called_once()
+    mock_tx.assert_not_called()
+    assert res.transcription_yaml_path is None
+    assert any("HTR→LLM required" in e for e in res.errors)
+    assert any("Continuing without lines XML" in w for w in res.warnings)
+
+
+def test_run_pipeline_lineation_failure_continues_when_require_htr_opt_out(
     tmp_path: Path, tmp_artifacts: Path,
 ) -> None:
     image = tmp_path / "page.jpg"
@@ -281,7 +321,11 @@ def test_run_pipeline_lineation_failure_continues_when_continue_enabled(
         prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
         provider="anthropic",
     )
-    settings = Settings(artifacts_dir=tmp_artifacts, continue_on_lineation_failure=True)
+    settings = Settings(
+        artifacts_dir=tmp_artifacts,
+        continue_on_lineation_failure=True,
+        require_htr_before_llm=False,
+    )
 
     with (
         patch(
@@ -370,10 +414,10 @@ def test_run_pipeline_htr_sequential_runs_before_llm_and_appends_hint(
     assert kr.text == "luna\nsol"
 
 
-def test_run_pipeline_htr_shell_skips_htr_with_warning(
+def test_run_pipeline_htr_shell_blocked_when_require_htr(
     tmp_path: Path, tmp_artifacts: Path
 ) -> None:
-    """shell = original transcriber-shell LLM path only; HTR skipped with a warning if tasks exist."""
+    """shell = LLM-only; default require_htr_before_llm refuses the LLM call."""
     lines = tmp_path / "lines.xml"
     lines.write_text(MINIMAL_LINES_XML, encoding="utf-8")
     image = tmp_path / "page.jpg"
@@ -385,7 +429,54 @@ def test_run_pipeline_htr_shell_skips_htr_with_warning(
         prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1", "targetLanguage": "lat-Latn"},
         provider="anthropic",
     )
-    settings = Settings(artifacts_dir=tmp_artifacts, htr_combination="shell")
+    settings = Settings(
+        artifacts_dir=tmp_artifacts,
+        htr_combination="shell",
+        require_htr_before_llm=True,
+    )
+
+    fake_tasks = {
+        "kraken-htr": lambda: (_ for _ in ()).throw(AssertionError("HTR must not run")),
+    }
+    mock_tx = MagicMock(side_effect=AssertionError("LLM must not run without HTR"))
+
+    with (
+        patch("transcriber_shell.htr.parallel.build_htr_tasks", return_value=fake_tasks),
+        patch("transcriber_shell.pipeline.run.run_transcribe", mock_tx),
+    ):
+        res = run_pipeline(
+            job,
+            skip_gm=True,
+            lines_xml_path=lines,
+            require_text_line=True,
+            settings=settings,
+        )
+
+    assert res.transcription_yaml_path is None
+    assert any("require_htr_before_llm" in e or "HTR→LLM required" in e for e in res.errors)
+    mock_tx.assert_not_called()
+
+
+def test_run_pipeline_htr_shell_opt_out_warns(
+    tmp_path: Path, tmp_artifacts: Path
+) -> None:
+    """Opt-out: require_htr_before_llm=False restores legacy shell (LLM only) + warning."""
+    lines = tmp_path / "lines.xml"
+    lines.write_text(MINIMAL_LINES_XML, encoding="utf-8")
+    image = tmp_path / "page.jpg"
+    image.write_bytes(b"\xff\xd8\xff")
+
+    job = TranscribeJob(
+        job_id="t_shell_opt",
+        image_path=image,
+        prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1", "targetLanguage": "lat-Latn"},
+        provider="anthropic",
+    )
+    settings = Settings(
+        artifacts_dir=tmp_artifacts,
+        htr_combination="shell",
+        require_htr_before_llm=False,
+    )
 
     fake_tasks = {
         "kraken-htr": lambda: (_ for _ in ()).throw(AssertionError("HTR must not run")),

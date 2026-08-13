@@ -6,15 +6,27 @@ from pathlib import Path
 import pytest
 
 from transcriber_shell.pipeline.batch import (
+    _batch_worker_count,
     discover_images,
     resolve_lines_xml_for_image,
     sanitize_job_id,
 )
+from transcriber_shell.config import Settings
 
 
 def test_sanitize_job_id():
     assert sanitize_job_id("foo bar") == "foo_bar"
     assert sanitize_job_id("a" * 200) == "a" * 120
+
+
+def test_shared_document_job_forces_serial_pages() -> None:
+    settings = Settings(batch_parallel_pages=8)
+    assert _batch_worker_count(settings, 12, "shared-document") == 1
+
+
+def test_independent_page_jobs_keep_configured_parallelism() -> None:
+    settings = Settings(batch_parallel_pages=8)
+    assert _batch_worker_count(settings, 12, None) == 8
 
 
 def test_discover_images_empty_dir():

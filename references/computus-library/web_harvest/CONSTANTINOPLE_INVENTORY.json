@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-08-11T00:35:40.188289+00:00",
+  "constantinople_root": "/mnt/constantinople/seth",
+  "paths": {
+    "harvest_root": "/mnt/constantinople/seth/latin-ms-workspace/computus_web_harvest",
+    "jobs_root": "/mnt/constantinople/seth/latin-ms-workspace/jobs",
+    "transcription_shell": "/mnt/constantinople/seth/Projects/transcription-shell",
+    "scripts_computus": "/mnt/constantinople/seth/Projects/transcription-shell/scripts/computus",
+    "web_harvest_in_repo": "/mnt/constantinople/seth/Projects/transcription-shell/references/computus-library/web_harvest"
+  },
+  "sizes_bytes": {
+    "harvest_root": 14970699,
+    "registry": 6653349,
+    "reports": 574513,
+    "queues": 248198,
+    "repo_web_harvest": 13092447,
+    "scripts_computus": 270132
+  },
+  "counts": {
+    "job_dirs": 332,
+    "registry_jsonl_lines": {
+      "union_registry.jsonl": 752,
+      "union_registry_discovered.jsonl": 752,
+      "union_registry_validated.jsonl": 752,
+      "union_registry_with_downloads.jsonl": 752
+    },
+    "queue_lines": {
+      "acquire_queue.jsonl": 311,
+      "needs_review_acquire_queue.jsonl": 172
+    },
+    "report_files": [
+      "COVERAGE_REPORT.md",
+      "NEEDS_REVIEW.md",
+      "REPOSITORY_SAMPLES.md",
+      "access_blocked.json",
+      "by_institution.json",
+      "cohort_crosswalk.json",
+      "confirmed.json",
+      "coverage.json",
+      "downloaded.json",
+      "needs_review.json",
+      "needs_review.tsv",
+      "no_url.json",
+      "repository_samples.json",
+      "unavailable.json",
+      "url_failed.json"
+    ]
+  },
+  "notes": [
+    "Manuscript images live under jobs_root (large); harvest_root holds registry/queues/reports/logs only.",
+    "home/seth/latin-ms-workspace is a symlink to constantinople latin-ms-workspace."
+  ]
+}

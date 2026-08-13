@@ -149,6 +149,47 @@ def _htr_results_to_line_hint(htr_results: dict[str, Any]) -> str | None:
     )
 
 
+def _has_usable_htr_draft(htr_results: dict[str, Any] | None) -> bool:
+    """True when at least one HTR backend returned non-empty text."""
+    from transcriber_shell.htr.base import HtrResult
+
+    if not htr_results:
+        return False
+    for res in htr_results.values():
+        if isinstance(res, HtrResult) and res.text.strip():
+            return True
+    return False
+
+
+def _refuse_llm_without_htr(
+    job: TranscribeJob,
+    s: Settings,
+    *,
+    lines_out: Path | None,
+    text_line_count: int,
+    htr_results: dict[str, Any],
+    errors: list[str],
+    warnings: list[str],
+    timings: list[tuple[str, float]],
+    reason: str,
+) -> PipelineResult:
+    errors.append(
+        f"HTR→LLM required: refusing LLM without a usable HTR draft ({reason}). "
+        "Configure a Kraken/GM/TrOCR model (htr_combination=kraken_htr|gm_htr|…), "
+        "or set TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM=0 only for deliberate LLM-only experiments."
+    )
+    return PipelineResult(
+        job.job_id,
+        lines_out,
+        None,
+        text_line_count,
+        errors=errors,
+        warnings=warnings,
+        htr_results=dict(htr_results or {}),
+        timings=timings,
+    )
+
+
 def _collect_htr_parallel(
     htr_future: Future | None,
     htr_executor: ThreadPoolExecutor | None,
@@ -311,14 +352,25 @@ def _do_htr(
     early: dict[str, Any] = {}
 
     if plan.kind == HtrPlanKind.NONE:
-        if htr_tasks and (s.htr_combination or "").strip().lower() in ("shell", "off", "none", "llm_only"):
-            warnings.append(
+        combo = (s.htr_combination or "").strip().lower()
+        if combo in ("shell", "off", "none", "llm_only"):
+            msg = (
                 "HTR backends are configured (Glyph Machina and/or Zenodo paths) but "
                 f"htr_combination={s.htr_combination!r} runs the original shell (LLM) only; HTR was skipped."
+            )
+            if getattr(s, "require_htr_before_llm", True) and (s.llm_mode or "full").lower() != "off":
+                errors.append(msg + " LLM blocked (require_htr_before_llm).")
+            elif htr_tasks:
+                warnings.append(msg)
+        elif getattr(s, "require_htr_before_llm", True) and (s.llm_mode or "full").lower() != "off":
+            errors.append(
+                "HTR→LLM required: no HTR backend tasks available for "
+                f"htr_combination={s.htr_combination!r}. Configure model paths or change combination."
             )
         return early, None, None, None
 
     if plan.kind == HtrPlanKind.WITH_LLM_PARALLEL and plan.tasks:
+        # Parallel-with-LLM is only reachable when require_htr_before_llm is false.
         _log("htr: starting (parallel with LLM)…")
         executor = ThreadPoolExecutor(max_workers=1)
         future = executor.submit(run_htr_parallel, plan.tasks)
@@ -557,18 +609,64 @@ def run_pipeline(
     htr_future: Future | None = None
     htr_executor: ThreadPoolExecutor | None = None
     htr_results_early: dict[str, Any] = {}
+    require_htr = bool(getattr(s, "require_htr_before_llm", True))
+    llm_on = (s.llm_mode or "full").lower() != "off"
+
     if lines_out is not None and not s.xml_only:
         htr_results_early, htr_future, htr_executor, short_circuit = _do_htr(
             job, s, lines_out, errors, warnings, timings, text_line_count, _log,
         )
         if short_circuit is not None:
             return short_circuit
+        if errors:
+            return PipelineResult(
+                job.job_id,
+                lines_out,
+                None,
+                text_line_count,
+                errors=errors,
+                warnings=warnings,
+                htr_results=dict(htr_results_early or {}),
+                timings=timings,
+            )
+    elif require_htr and llm_on and not s.xml_only:
+        return _refuse_llm_without_htr(
+            job,
+            s,
+            lines_out=lines_out,
+            text_line_count=text_line_count,
+            htr_results={},
+            errors=errors,
+            warnings=warnings,
+            timings=timings,
+            reason="no lines XML — HTR cannot run (lineation failed or was skipped)",
+        )
 
     # llm_mode=off short-circuits to the same htr_only output path when drafts exist.
     if (s.llm_mode or "full").lower() == "off" and htr_results_early:
         return _htr_only_short_circuit(
             job, s, lines_out, text_line_count, htr_results_early, errors, warnings, timings,
         )
+
+    if require_htr and llm_on and not _has_usable_htr_draft(htr_results_early):
+        # Drain a parallel future if somehow still pending (opt-out path only).
+        if htr_future is not None:
+            htr_results_early = _finalize_htr_results(
+                htr_results_early, htr_future, htr_executor, warnings
+            )
+            _append_htr_hint(job, htr_results_early)
+        if not _has_usable_htr_draft(htr_results_early):
+            return _refuse_llm_without_htr(
+                job,
+                s,
+                lines_out=lines_out,
+                text_line_count=text_line_count,
+                htr_results=htr_results_early,
+                errors=errors,
+                warnings=warnings,
+                timings=timings,
+                reason="HTR produced no non-empty draft text",
+            )
 
     # ── LLM ───────────────────────────────────────────────────────────────
     _log(f"llm: starting ({job.provider}/{job.model_override or 'default'})…")

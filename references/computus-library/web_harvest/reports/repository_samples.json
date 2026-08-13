@@ -1,0 +1,398 @@
+{
+  "generated_at": "2026-08-11T00:27:57.580146+00:00",
+  "n_hosts_in_queues": 37,
+  "n_samples": 24,
+  "samples_ok": 22,
+  "samples_fail": 2,
+  "hosts_without_download": 22,
+  "samples": [
+    {
+      "host": "archive.org",
+      "job_id": "clat_21",
+      "url": "https://archive.org/details/11198319bsb",
+      "shelfmark": "Augsburg, Staats- und Stadtbibliothek, folio 8",
+      "n_images": 97,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": true,
+      "ok": true
+    },
+    {
+      "host": "archive.org",
+      "job_id": "clat_25",
+      "url": "https://archive.org/details/walterscollectio00walt_0",
+      "shelfmark": "Baltimore, Walters Art Gallery, W 73",
+      "n_images": 27,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": true,
+      "ok": true
+    },
+    {
+      "host": "gallica.bnf.fr",
+      "job_id": "bnf_lat_2796_cod",
+      "url": "https://gallica.bnf.fr/ark:/12148/btv1b10073557z",
+      "shelfmark": "Paris, Bibliothèque nationale de France lat. 2796",
+      "n_images": 153,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 144,
+        "disorder_pairs": 6,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "gallica.bnf.fr",
+      "job_id": "bnf_lat_4860_cod",
+      "url": "https://gallica.bnf.fr/ark:/12148/btv1b10721203n/f4.item.r=4860",
+      "shelfmark": "Paris, Bibliothèque Nationale de France, Lat. 4860",
+      "n_images": 182,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 173,
+        "disorder_pairs": 9,
+        "ok": false
+      },
+      "has_meta": false,
+      "ok": false
+    },
+    {
+      "host": "www.e-codices.unifr.ch",
+      "job_id": "clat_30",
+      "url": "https://www.e-codices.unifr.ch/metadata/iiif/ubb-F-III-0008/manifest.json",
+      "shelfmark": "Basel, Universitätsbibliothek, F III 8 (F 3 8)",
+      "n_images": 543,
+      "page_estimate": 543,
+      "page_count_agrees": true,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": true,
+      "ok": true
+    },
+    {
+      "host": "www.e-codices.unifr.ch",
+      "job_id": "clat_31",
+      "url": "https://www.e-codices.unifr.ch/metadata/iiif/ubb-F-III-0015a/manifest.json",
+      "shelfmark": "Basel, Universitätsbibliothek, F III 15a (F 3 15a)",
+      "n_images": 77,
+      "page_estimate": 77,
+      "page_count_agrees": true,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": true,
+      "ok": true
+    },
+    {
+      "host": "e-codices.unifr.ch",
+      "job_id": "sb_248_cod",
+      "url": "https://e-codices.unifr.ch/en/list/one/csg/0248",
+      "shelfmark": "St. Gall, Stiftsbibliothek, 248",
+      "n_images": 243,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 234,
+        "disorder_pairs": 1,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "e-codices.unifr.ch",
+      "job_id": "sb_250_cod",
+      "url": "https://e-codices.unifr.ch/en/list/one/csg/0250",
+      "shelfmark": "St. Gall, Stiftsbibliothek, 250",
+      "n_images": 651,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 650,
+        "disorder_pairs": 1,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "bvmm.irht.cnrs.fr",
+      "job_id": "clat_561",
+      "url": "https://bvmm.irht.cnrs.fr/iiif/1058/manifest",
+      "shelfmark": "Angers, Bibliothèque Municipale, 91 (83)",
+      "n_images": 294,
+      "page_estimate": 294,
+      "page_count_agrees": true,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": true,
+      "ok": true
+    },
+    {
+      "host": "bvmm.irht.cnrs.fr",
+      "job_id": "clat_20",
+      "url": "https://bvmm.irht.cnrs.fr/iiif/4663/manifest",
+      "shelfmark": "Angers, Bibliothèque Municipale, 476 (460)",
+      "n_images": 73,
+      "page_estimate": 73,
+      "page_count_agrees": true,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": true,
+      "ok": true
+    },
+    {
+      "host": "digital.dombibliothek-koeln.de",
+      "job_id": "db_103_cod",
+      "url": "https://digital.dombibliothek-koeln.de/hs/i3f/v20/224557/manifest",
+      "shelfmark": "Cologne, Dombibliothek, 103",
+      "n_images": 393,
+      "page_estimate": 393,
+      "page_count_agrees": true,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "portail.biblissima.fr",
+      "job_id": "bsb_clm_4382",
+      "url": "https://portail.biblissima.fr/en/ark:/43093/mdata166e92dad13763d2916b7ff5457a682d1dd281e8",
+      "shelfmark": "Munich, Bayerische Staatsbibliothek Clm 4382",
+      "n_images": 504,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 504,
+        "disorder_pairs": 0,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "portail.biblissima.fr",
+      "job_id": "bsb_clm_4376",
+      "url": "https://portail.biblissima.fr/en/ark:/43093/mdatacb4524e5c5e9966832f245e76e8535e86a2408df",
+      "shelfmark": "Munich, Bayerische Staatsbibliothek Clm 4376",
+      "n_images": 568,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 568,
+        "disorder_pairs": 0,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "www.digitale-sammlungen.de",
+      "job_id": "clat_27",
+      "url": "https://www.digitale-sammlungen.de/en/view/bsb00140761",
+      "shelfmark": "Bamberg, Staatsbibliothek, 55",
+      "n_images": 90,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": true,
+      "ok": true
+    },
+    {
+      "host": "www.digitale-sammlungen.de",
+      "job_id": "clat_28",
+      "url": "https://www.digitale-sammlungen.de/en/view/bsb00140768",
+      "shelfmark": "Bamberg, Staatsbibliothek, 3",
+      "n_images": 113,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": true,
+      "ok": true
+    },
+    {
+      "host": "searcharchives.bl.uk",
+      "job_id": "bl_harley_531",
+      "url": "https://searcharchives.bl.uk/?f%5Bproject_collections_ssim%5D%5B%5D=Harley+Collection&f%5Burl_non_blank_si%5D%5B%5D=Yes+%28unavailable%29&page=5&per_page=50",
+      "shelfmark": "London, British Library Harley MS 531",
+      "n_images": 676,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 676,
+        "disorder_pairs": 0,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "searcharchives.bl.uk",
+      "job_id": "bl_cotton_vitellius_a_xii",
+      "url": "https://searcharchives.bl.uk/catalog/040-001102958",
+      "shelfmark": "London, British Library Cotton Vitellius A XII",
+      "n_images": 399,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 189,
+        "disorder_pairs": 0,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "www.e-codices.ch",
+      "job_id": "basel_ubb_f_vii_12",
+      "url": "https://www.e-codices.ch/en/list/one/ubb/F-VII-0012",
+      "shelfmark": "Basel, Universitätsbibliothek F VII 12",
+      "n_images": 474,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 8,
+        "disorder_pairs": 0,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "www.e-codices.ch",
+      "job_id": "basel_ubb_an_iv_18",
+      "url": "https://www.e-codices.ch/en/list/one/ubb/AN-IV-0018",
+      "shelfmark": "Basel, Universitätsbibliothek AN IV 18",
+      "n_images": 118,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 8,
+        "disorder_pairs": 0,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "brema.suub.uni-bremen.de",
+      "job_id": "submsc_0046_cod",
+      "url": "https://brema.suub.uni-bremen.de/i3f/v20/2642263/manifest",
+      "shelfmark": "Bremen, Staats- und Universitätsbibliothek, msc 0046",
+      "n_images": 118,
+      "page_estimate": 118,
+      "page_count_agrees": true,
+      "order": {
+        "checked": false,
+        "reason": "insufficient_numeric_stems"
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "wellcomecollection.org",
+      "job_id": "wellcome_computistical_miscellany",
+      "url": "https://wellcomecollection.org/works/aeb73uat",
+      "shelfmark": "Wellcome Collection, Computistical miscellany",
+      "n_images": 58,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 58,
+        "disorder_pairs": 0,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "archives.bodleian.ox.ac.uk",
+      "job_id": "bodleian_ms_bodl_309",
+      "url": "https://archives.bodleian.ox.ac.uk/repositories/2/archival_objects/202157",
+      "shelfmark": "Oxford, Bodleian Library MS Bodl. 309",
+      "n_images": 360,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 146,
+        "disorder_pairs": 73,
+        "ok": false
+      },
+      "has_meta": false,
+      "ok": false
+    },
+    {
+      "host": "computus.huma-num.fr",
+      "job_id": "sb_251_1",
+      "url": "https://computus.huma-num.fr/mss/SB_251_1",
+      "shelfmark": "St. Gall, Stiftsbibliothek 251, codicological unit 1",
+      "n_images": 198,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 194,
+        "disorder_pairs": 1,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    },
+    {
+      "host": "cudl.lib.cam.ac.uk",
+      "job_id": "cambridge_cudl_ff_1_27",
+      "url": "https://cudl.lib.cam.ac.uk/view/MS-FF-00001-00027",
+      "shelfmark": "Cambridge University Library MS Ff.1.27",
+      "n_images": 691,
+      "page_estimate": null,
+      "page_count_agrees": null,
+      "order": {
+        "checked": true,
+        "n_numeric": 691,
+        "disorder_pairs": 0,
+        "ok": true
+      },
+      "has_meta": false,
+      "ok": true
+    }
+  ]
+}

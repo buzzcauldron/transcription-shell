@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-08-10T22:59:13.324947+00:00",
+  "n_records": 752,
+  "by_status": {
+    "not_digitized_unknown": 193,
+    "confirmed": 311,
+    "needs_review": 184,
+    "url_failed": 58,
+    "access_blocked": 5,
+    "local": 1
+  },
+  "discover": true
+}

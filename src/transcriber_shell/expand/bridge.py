@@ -63,14 +63,22 @@ def load_expand_examples(settings: Settings) -> list[dict[str, str]]:
 
 
 def _expand_kwargs(settings: Settings, examples: list[dict[str, str]]) -> dict[str, Any]:
-    api_key = settings.google_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get(
-        "GOOGLE_API_KEY"
-    )
+    backend = (settings.expand_diplomatic_backend or "gemini").strip().lower()
+    if backend == "anthropic":
+        api_key = settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")
+        model = settings.expand_diplomatic_model
+        if not model or model.startswith("gemini"):
+            model = os.environ.get("ANTHROPIC_MODEL") or "claude-haiku-4-5-20251001"
+    else:
+        api_key = settings.google_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get(
+            "GOOGLE_API_KEY"
+        )
+        model = settings.expand_diplomatic_model
     return {
         "examples": examples,
-        "model": settings.expand_diplomatic_model,
+        "model": model,
         "api_key": api_key,
-        "backend": settings.expand_diplomatic_backend,
+        "backend": backend,
         "modality": settings.expand_diplomatic_modality,
         "passes": settings.expand_diplomatic_passes,
         "dry_run": settings.expand_diplomatic_dry_run,
