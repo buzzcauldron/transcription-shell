@@ -4,7 +4,7 @@
 **Version 0.1.0** · Python 3.11+ — canonical metadata in [`pyproject.toml`](pyproject.toml). After a pull or version bump, run `python scripts/sync_repo_docs.py`.
 <!-- transcriber-shell-sync:end:pyproject.version -->
 
-Sibling package **[dendro-shell](dendro-shell/)** — path-first tree-ring tracing, hard-image presets, chronology export, and in-app U-Net training. See [`dendro-shell/README.md`](dendro-shell/README.md).
+**[dendro-shell](https://github.com/buzzcauldron/dendro)** — path-first tree-ring tracing (standalone repo; see also [`dendro-shell/README.md`](dendro-shell/README.md) for the move note).
 
 **Python 3.11+** package **`transcriber-shell`** (`transcriber_shell`), built with **[Hatchling](https://hatch.pypa.io/)** from [`pyproject.toml`](pyproject.toml). It installs from a **git checkout** — see [Quick start](#quick-start) for the fast path, or [Installation](#installation) / [PACKAGING.md](PACKAGING.md) for installer scripts, manual venv, and Docker.
 
