@@ -40,7 +40,13 @@ finetune:
   - ${HOME}/Projects/historical ocr/models/lat_pre1800.traineddata
   - ${HOME}/Projects/historical-ocr/models/lat_pre1800.traineddata
   - ${HISTORICAL_OCR_ROOT}/models/lat_pre1800.traineddata
-  - ${HISTORICAL_OCR_ROOT}/models/histnews.traineddata
-  - ${LATIN_MS_WORKSPACE}/models/lat_pre1800.traineddata
   - ${TRANSCRIBER_SHELL_ROOT}/models/lat_pre1800.traineddata
   - ${TRANSCRIBER_SHELL_ROOT}/models/tessdata/lat_pre1800.traineddata
+  - ${LATIN_MS_WORKSPACE}/models/lat_pre1800.traineddata
+  # histnews fallback (Bridges historical-ocr) until lat_pre1800 exports
+  - ${HOME}/Projects/historical ocr/models/histnews.traineddata
+  - ${HOME}/Projects/historical-ocr/models/histnews.traineddata
+  - ${HISTORICAL_OCR_ROOT}/models/histnews.traineddata
+  - /ocean/projects/hum260002p/sstrickland/historical-ocr/models/histnews.traineddata
+  - ${TRANSCRIBER_SHELL_ROOT}/models/histnews.traineddata
+  - ${TRANSCRIBER_SHELL_ROOT}/models/tessdata/histnews.traineddata

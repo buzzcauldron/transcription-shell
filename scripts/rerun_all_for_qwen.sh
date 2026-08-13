@@ -47,11 +47,10 @@ correct_and_translate() {
     local outdir="$JOBS/$job/03_artifacts_2500"
     [ -d "$imgdir" ] || { log "SKIP (no images): $job"; return; }
     log "CORRECT $job ($(ls $imgdir/*.jpg 2>/dev/null | wc -l) pages)"
-    $TS batch \
+    TRANSCRIBER_SHELL_ARTIFACTS_DIR="$outdir" $TS batch \
         --provider "$PROVIDER" --model "$MODEL" \
         --llm-mode correct \
         --no-skip-successful \
-        --output "$outdir" \
         "$imgdir" \
         2>&1 | tee "$LOGS/correct_${job}.log"
     log "DONE correct $job — now translating"
@@ -67,13 +66,12 @@ new_computus() {
     [ -z "$imgdir" ] || [ "$count" -lt 10 ] && { log "SKIP (too few images): $name"; return; }
     local outdir="$COMPUTUS/$name/03_artifacts"
     log "NEW COMPUTUS $name ($count images)"
-    $TS batch \
+    TRANSCRIBER_SHELL_ARTIFACTS_DIR="$outdir" $TS batch \
         --doc-type computus_medieval_latin \
         --provider "$PROVIDER" --model "$MODEL" \
         --llm-mode correct \
         --translate \
         --skip-successful \
-        --output "$outdir" \
         "$imgdir" \
         2>&1 | tee "$LOGS/new_${name}.log"
     log "DONE $name"

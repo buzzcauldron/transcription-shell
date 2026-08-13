@@ -2,6 +2,11 @@
 # Download all open-license HTR training corpora for medieval Latin HTR.
 # Run on the CMU training server (needs git, curl, python3, unzip).
 #
+# Greek (ancient + Byzantine) is a separate script so packs are not mixed into
+# Latin-only filters:
+#   ./scripts/download_greek_htr_corpora.sh
+#   docs/greek-htr-training-data.md
+#
 # Usage:
 #   CMU_HOST=seth@akdeniz.lan.cmu.edu  ./download_htr_corpora.sh   # run locally (rsync to CMU)
 #   ./download_htr_corpora.sh                                        # run directly on CMU

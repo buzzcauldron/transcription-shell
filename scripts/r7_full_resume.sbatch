@@ -13,11 +13,18 @@ SRC=/ocean/projects/hum260002p/sstrickland/transcriber-shell/src
 GT="$SRC/latin-corpus-gt"
 OUT="$SRC/gm-htr-r7-full"
 
-source "$SRC/../kraken-venv/bin/activate"
+cd "$SRC"
+module load anaconda3 2>/dev/null || true
+bash "$SRC/scripts/bridges_fix_kraken_numpy.sh" 2>/dev/null || true
+# shellcheck disable=SC1091
+source "$SRC/scripts/bridges_kraken_activate.sh"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-CKPT=$(ls -t "$OUT"/checkpoint_*.ckpt 2>/dev/null | head -1 || true)
+# Prefer numbered checkpoints; abort.ckpt is often newest by mtime but not a good resume.
+CKPT=$(ls -t "$OUT"/checkpoint_[0-9]*.ckpt 2>/dev/null | head -1 || true)
+[[ -n "$CKPT" ]] || CKPT=$(ls -t "$OUT"/checkpoint_*.ckpt 2>/dev/null | head -1 || true)
 [[ -n "$CKPT" ]] || { echo "No checkpoint in $OUT"; exit 1; }
+echo "[r7] resume=$CKPT"
 
 ketos -d cuda:0 --workers 5 --precision bf16-mixed train \
   --resume "$CKPT" --resize union -f page \

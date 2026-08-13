@@ -18,8 +18,11 @@ All models are Kraken VGSL `.mlmodel` files trained on **akdeniz** (RTX 4090). T
 | `gm-htr-computus_best` | **Caroline minuscule computus & astronomy, 6th–11th c.** | `gm-htr-r2_best` | c1 | 185,307 / 9,753 | **0.9434 (≈5.7 %)** | 0.759 (≈24.1 %) |
 | `gm-htr-r5-best` | **Broad Carolingian/medieval Latin** (caroline, proto-/pre-gothic, insular) | `gm-htr-r2_best` | 5 | 290,414 / 15,285 | 0.9289 → 0.932* (≈6.8 %) | 0.737 → 0.748* | 
 | `gm-hf-htr_best` | Hugging Face transfer-learned base (seed for r2) | — | hf | — | — | — |
+| `gm-htr-greek-minuscule_best` | **Byzantine Greek minuscule** (Athos, EPARCHOS, Palatine, HPGTR) | PTA `greek_minuscule_s9-12_NFC` | Bridges | ~480 / ~50 pages | TBD | TBD |
 
 \* `gm-htr-r5-best.mlmodel` is the **epoch-22** checkpoint exported on 2026-06-02 (val 0.9289). Training was later **resumed and is ongoing** on akdeniz; the live best checkpoint is **epoch 39, val 0.9320** (`gm-htr-r5/checkpoint_39-0.9320.ckpt`). Re-export and refresh this table when the run early-stops.
+
+**Greek:** submit with [`scripts/submit_bridges_greek_minuscule.sh`](../scripts/submit_bridges_greek_minuscule.sh); data/docs in [`greek-htr-training-data.md`](greek-htr-training-data.md). Do not mix Greek pages into Latin r6–r8 manifests.
 
 **Which HTR model when:** use `gm-htr-computus_best` for computus / Caroline-minuscule pages (it beats r2 by **+10.2 pp** char accuracy there); use `gm-htr-r5-best` for diverse or non-computus Latin; `gm-htr-r2_best` remains the general medieval/early-modern default and the base both specialists were fine-tuned from.
 
@@ -47,11 +50,13 @@ Each document type ([`scripts/latin_ms/document_types/*.yaml`](../scripts/latin_
 
 ## Training corpora
 
-HTR/seg models are trained from **PageXML** corpora (page image + `*.xml` line baselines + transcriptions). Download and citations: [`scripts/download_htr_corpora.sh`](../scripts/download_htr_corpora.sh) and [`scripts/htr_corpora.bib`](../scripts/htr_corpora.bib).
+HTR/seg models are trained from **PageXML** corpora (page image + `*.xml` line baselines + transcriptions). Download and citations: [`scripts/download_htr_corpora.sh`](../scripts/download_htr_corpora.sh) (Latin) and [`scripts/htr_corpora.bib`](../scripts/htr_corpora.bib).
 
-Corpora used across rounds include: **CATMuS-Medieval**, **TRIDIS**, **HIMANIS**, **CREMMA** (medieval / medieval-lat / early-modern), **Königsfelden charters**, **caroline-minuscule**, **carolingian-latin-2025 / -vienna**, **ANR-ENDP**, **Eutyches**, **Boccace**, **HTRomance** (French/Italian/Latin/Spanish), **iForal**, **ONB Cod. 940**, **Paris Bible**, **OCR-D GT**, and **transcriboQuest-2024**.
+Corpora used across Latin rounds include: **CATMuS-Medieval**, **TRIDIS**, **HIMANIS**, **CREMMA** (medieval / medieval-lat / early-modern), **Königsfelden charters**, **caroline-minuscule**, **carolingian-latin-2025 / -vienna**, **ANR-ENDP**, **Eutyches**, **Boccace**, **HTRomance** (French/Italian/Latin/Spanish), **iForal**, **ONB Cod. 940**, **Paris Bible**, **OCR-D GT**, and **transcriboQuest-2024**.
 
-Only PageXML pairs enter the manifests. Line-image+text datasets (e.g. **bullinger-htr**) and non-transcription datasets (e.g. the **MPS** handwriting-*dating* set) are **not** used by this pipeline.
+**Greek (ancient + Byzantine)** is a separate download/registry so papyri and minuscule packs are not filtered out of Latin-only trees: [`docs/greek-htr-training-data.md`](greek-htr-training-data.md), [`scripts/download_greek_htr_corpora.sh`](../scripts/download_greek_htr_corpora.sh), [`scripts/greek_htr_corpus_registry.yaml`](../scripts/greek_htr_corpus_registry.yaml). Seed packs include **Zenon papyri**, **TranscriboQuest 2025 Ancient Greek**, **EPARCHOS**, **Stavronikita** Athos collections, **Palatine Anthology (CPgr23)**, optional **HPGTR** / **LJS380** (NC), and annotation-only **Vat. gr. 2228 / Phil. gr. 130**. Train Greek models on their own alphabet; do not dump Greek pages into Latin round manifests without a multi-script plan.
+
+Only PageXML pairs enter the manifests. Line-image+text datasets (e.g. **bullinger-htr**) and non-transcription datasets (e.g. the **MPS** handwriting-*dating* set) are **not** used by this pipeline unless converted first.
 
 ## Dependencies
 

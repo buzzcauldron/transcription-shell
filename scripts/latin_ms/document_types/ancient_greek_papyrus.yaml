@@ -1,0 +1,28 @@
+# Document type: ancient Greek papyri (Hellenistic–Roman Egypt)
+# Cursive majuscule / informal book hands on papyrus; polytonic Greek (grc).
+name: ancient_greek_papyrus
+language: grc-Grek
+era: classical_hellenistic
+era_range: "-400-300"
+script: greek_papyrus
+
+llm:
+  primary: claude-sonnet-4
+  fallback: gemini-2.5-pro
+
+htr:
+  # Placeholder until a Greek papyrus HTR model is trained from zenon + TQ2025.
+  # Prefer fine-tuning from PTA greek minuscule only as a weak seed (domain mismatch).
+  model: greek-papyrus-todo
+  path: "${HOME}/src/greek-papyrus_best.mlmodel"
+
+segmentation:
+  model: kraken-merged-seg_best
+
+prompt: prompt_ancient_greek.yaml
+
+notes: >
+  Ground truth packs: zenon-papyri (Zenodo 6565706), ancient-greek-transcriboquest-2025
+  (Zenodo 17062972). See docs/greek-htr-training-data.md.
+  Expect damaged fibers, interlinear corrections, documentary formulae (dating,
+  parties) alongside literary fragments (Homer, drama, medical).
