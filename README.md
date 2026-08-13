@@ -2,12 +2,13 @@
 
 Path-first tree-ring tracing for difficult cores and discs: hard-image preprocess presets, interactive measure/review UI, chronology exports (`.rwl` / `.pos` / JSON), and **in-app U-Net training**.
 
+> Formerly developed as a sibling package inside [transcription-shell](https://github.com/buzzcauldron/transcription-shell); now a standalone repository.
+
 Inspired by [TRAS](https://github.com/hmarichal93/tras), [TRG-ImageProcessing](https://github.com/Gregor-Mendel-Institute/TRG-ImageProcessing), and [MtreeRing](https://github.com/ropensci/MtreeRing) — not a GPL fork. Preprocess and review patterns follow transcription-shell / historical OCR habits (named presets, path-neighborhood enhancement, human-in-the-loop correction).
 
 ## Install
 
 ```bash
-cd dendro-shell
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[ui,train,dev]"
