@@ -27,7 +27,8 @@ export PIPELINE_MAX_CONCURRENT="${PIPELINE_MAX_CONCURRENT:-1}"
 export PIPELINE_MIN_IMAGES="${PIPELINE_MIN_IMAGES:-10}"
 export PIPELINE_BACKEND="${PIPELINE_BACKEND:-akdeniz_latenight}"
 export STREAM_DOC_TYPE="${STREAM_DOC_TYPE:-computus_medieval_latin}"
-export STREAM_PROVIDER="${STREAM_PROVIDER:-anthropic}"
+export STREAM_PROVIDER="${STREAM_PROVIDER:-gemini}"
+export STREAM_MODEL="${STREAM_MODEL:-gemini-2.5-flash}"
 export STREAM_BATCH_SIZE="${STREAM_BATCH_SIZE:-4}"
 export STREAM_IDLE_LIMIT="${STREAM_IDLE_LIMIT:-30}"
 export PIPELINE_POLL_SEC="${PIPELINE_POLL_SEC:-300}"
@@ -47,7 +48,7 @@ tshell = os.environ["TSHELL_REMOTE"]
 cfg = {k: os.environ[k] for k in [
     "LATE_NIGHT_START", "LATE_NIGHT_END", "PIPELINE_MAX_CONCURRENT", "PIPELINE_MIN_IMAGES",
     "PIPELINE_BACKEND", "STREAM_DOC_TYPE", "STREAM_PROVIDER", "STREAM_BATCH_SIZE",
-    "STREAM_IDLE_LIMIT", "PIPELINE_POLL_SEC",
+    "STREAM_IDLE_LIMIT", "PIPELINE_POLL_SEC", "STREAM_MODEL",
 ]}
 
 script = r'''#!/usr/bin/env bash
@@ -164,9 +165,9 @@ start_watcher_akdeniz() {
     STREAM_JOB_DIR="$job" \
     STREAM_DOC_TYPE="$DOC_TYPE" \
     STREAM_PROVIDER="$PROVIDER" \
-    STREAM_LLM_MODE=correct \
-    STREAM_MODEL=claude-haiku-4-5-20251001 \
-    STREAM_HTR_COMBINATION=kraken_htr \
+    STREAM_LLM_MODE="${STREAM_LLM_MODE:-correct}" \
+    STREAM_MODEL="${STREAM_MODEL:-__STREAM_MODEL__}" \
+    STREAM_HTR_COMBINATION="${STREAM_HTR_COMBINATION:-kraken_htr}" \
     STREAM_BATCH_SIZE="$BATCH_SIZE" \
     STREAM_IDLE_LIMIT="$IDLE_LIMIT" \
     STREAM_EXPAND=1 \
@@ -177,14 +178,15 @@ start_watcher_akdeniz() {
     STREAM_STYLO_OUT="$job/05_stylo" \
     EXPAND_DIPLOMATIC_ENABLED=1 \
     TRANSCRIBER_SHELL_EXPAND_DIPLOMATIC=1 \
-    EXPAND_DIPLOMATIC_BACKEND=anthropic \
-    EXPAND_DIPLOMATIC_MODEL=claude-haiku-4-5-20251001 \
+    EXPAND_DIPLOMATIC_BACKEND="${EXPAND_DIPLOMATIC_BACKEND:-groq}" \
+    EXPAND_DIPLOMATIC_MODEL="${EXPAND_DIPLOMATIC_MODEL:-llama-3.3-70b-versatile}" \
     EXPAND_DIPLOMATIC_ROOT="$EXPAND_ROOT" \
     EXPAND_DIPLOMATIC_WHOLE_DOC=1 \
     TRANSCRIBER_SHELL_AUTO_EFFICIENCY=1 \
     TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM=1 \
+    TRANSCRIBER_SHELL_OLLAMA_KEY_WALL_FALLBACK=0 \
     TRANSCRIBER_SHELL_HTR_PARALLEL=0 \
-    TRANSCRIBER_SHELL_HTR_COMBINATION=kraken_htr \
+    TRANSCRIBER_SHELL_HTR_COMBINATION="${STREAM_HTR_COMBINATION:-kraken_htr}" \
     TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH="${TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH:-$HOME/src/gm-htr-r7-full_best.mlmodel}" \
     TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH="${TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH:-$HOME/src/gm-seg.mlmodel}" \
     "$py" "$job/scripts/remote_stream_watch_transcribe.py" \
@@ -192,7 +194,7 @@ start_watcher_akdeniz() {
   pid=$!
   echo $pid > "$job/status/watch_transcribe.pid"
   date -Iseconds > "$STATE/${id}.started"
-  log "STARTED_WATCHER id=$id pid=$pid backend=akdeniz htr=highest llm=correct expand=anthropic stylo=$job/05_stylo images=$(image_count "$job") yaml=$(yaml_count "$job")"
+  log "STARTED_WATCHER id=$id pid=$pid backend=akdeniz htr=kraken_htr_only llm=off expand=deferred stylo=$job/05_stylo images=$(image_count "$job") yaml=$(yaml_count "$job")"
 }
 
 mark_bridges_ready() {
@@ -276,6 +278,7 @@ repl = {
     "__PIPELINE_BACKEND__": cfg["PIPELINE_BACKEND"],
     "__STREAM_DOC_TYPE__": cfg["STREAM_DOC_TYPE"],
     "__STREAM_PROVIDER__": cfg["STREAM_PROVIDER"],
+    "__STREAM_MODEL__": cfg.get("STREAM_MODEL") or "gemini-2.5-flash",
     "__STREAM_BATCH_SIZE__": cfg["STREAM_BATCH_SIZE"],
     "__STREAM_IDLE_LIMIT__": cfg["STREAM_IDLE_LIMIT"],
     "__PIPELINE_POLL_SEC__": cfg["PIPELINE_POLL_SEC"],

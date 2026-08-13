@@ -52,15 +52,15 @@ fi
     | sed 's/_latin\.txt$//'
 } > "$PRIORITY"
 
-echo "[$(date -Iseconds)] expand start backend=anthropic jobs=$JOBS parallel=${EXPAND_PARALLEL_FILES:-2}"
+echo "[$(date -Iseconds)] expand start backend=${EXPAND_DIPLOMATIC_BACKEND:-gemini} jobs=$JOBS parallel=${EXPAND_PARALLEL_FILES:-2}"
 "$PY" "$TSHELL/scripts/computus/batch_expand_unexpanded.py" \
   --jobs-root "$JOBS" \
   --tshell-src "$TSHELL/src" \
   --expand-root "$EXPAND_ROOT" \
   --priority-file "$PRIORITY" \
-  --backend anthropic \
+  --backend "${EXPAND_DIPLOMATIC_BACKEND:-gemini}" \
   --parallel-files "${EXPAND_PARALLEL_FILES:-2}" \
-  --model "${EXPAND_DIPLOMATIC_MODEL:-claude-haiku-4-5-20251001}" \
+  --model "${EXPAND_DIPLOMATIC_MODEL:-gemini-2.5-flash}" \
   --modality "${EXPAND_DIPLOMATIC_MODALITY:-full}" \
   --passes "${EXPAND_DIPLOMATIC_PASSES:-1}" \
   --whole-doc \

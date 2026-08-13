@@ -23,6 +23,7 @@ from transcriber_shell.mask_lineation import MaskLineationError, fetch_lines_xml
 from transcriber_shell.llm.transcribe import run_transcribe, strip_yaml_fence, TranscribeResult
 from transcriber_shell.llm.validate_output import (
     has_correct_mode_text,
+    is_htr_only_transcript,
     normalize_transcription_yaml_data,
     validate_transcript_file,
 )
@@ -290,28 +291,47 @@ def _htr_only_short_circuit(
     warnings: list[str],
     timings: list[tuple[str, float]],
 ) -> PipelineResult:
-    """Write raw HTR text as the final output and skip the LLM step entirely."""
+    """Write on-machine Kraken HTR as YAML and skip the LLM step."""
     from transcriber_shell.htr.base import HtrResult as _HtrResult
-    parts = [
-        res.text.strip()
-        for res in htr_results.values()
-        if isinstance(res, _HtrResult) and res.text.strip()
-    ]
-    if not parts:
+
+    lines: list[str] = []
+    backend = "kraken-htr"
+    for res in htr_results.values():
+        if not isinstance(res, _HtrResult) or not res.text.strip():
+            continue
+        backend = res.backend or backend
+        lines.extend(ln.strip() for ln in res.text.splitlines() if ln.strip())
+    if not lines:
         errors.append("htr_only: HTR returned no text.")
         return PipelineResult(
             job.job_id, lines_out, None, text_line_count,
             errors=errors, warnings=warnings, htr_results=htr_results, timings=timings,
         )
-    raw_htr = "\n\n".join(parts)
+    raw_htr = "\n".join(lines)
+    payload = {
+        "transcriptionOutput": {
+            "metadata": {
+                "modelId": backend,
+                "notes": "htr_only: on-machine Kraken; not protocol-compliant (no LLM correct)",
+            },
+            "segments": [{"text": ln, "position": "main"} for ln in lines],
+        }
+    }
     out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
     out_yaml.parent.mkdir(parents=True, exist_ok=True)
-    out_yaml.write_text(raw_htr, encoding="utf-8")
+    out_yaml.write_text(yaml.safe_dump(payload, allow_unicode=True, sort_keys=False), encoding="utf-8")
     try:
-        out_yaml.with_suffix(".txt").write_text(raw_htr, encoding="utf-8")
+        out_yaml.with_suffix(".txt").write_text(raw_htr + "\n", encoding="utf-8")
     except OSError:
         pass
-    warnings.append("htr_only: output is raw HTR text, not protocol-compliant YAML.")
+    if (s.llm_mode or "full").strip().lower() != "off":
+        try:
+            (out_yaml.parent / ".needs_llm").write_text(
+                "htr_only: LLM cleanup not applied\n", encoding="utf-8"
+            )
+        except OSError:
+            pass
+    warnings.append("htr_only: on-machine HTR YAML (no LLM correct).")
     return PipelineResult(
         job.job_id, lines_out, out_yaml, text_line_count,
         errors=errors, warnings=warnings, htr_results=htr_results, timings=timings,
@@ -675,11 +695,20 @@ def run_pipeline(
     try:
         tx = run_transcribe(job, settings=s)
     except (LLMProviderError, TimeoutError, OSError, httpx.TimeoutException, Exception) as e:
+        htr = _finalize_htr_results(htr_results_early, htr_future, htr_executor, warnings)
+        if _has_usable_htr_draft(htr):
+            warnings.append(
+                "LLM cleanup failed; kept on-machine HTR. " + _format_llm_error(job, e)
+            )
+            _log("llm: failed — saved Kraken HTR (cleanup deferred)")
+            return _htr_only_short_circuit(
+                job, s, lines_out, text_line_count, htr, [], warnings, timings,
+            )
         errors.append(_format_llm_error(job, e))
         return PipelineResult(
             job.job_id, lines_out, None, text_line_count,
             errors=errors, warnings=warnings,
-            htr_results=_finalize_htr_results(htr_results_early, htr_future, htr_executor, warnings),
+            htr_results=htr,
             timings=timings,
         )
     if isinstance(tx, TranscribeResult):

@@ -14,6 +14,7 @@ import yaml
 from transcriber_shell.config import Settings
 from transcriber_shell.llm.validate_output import (
     has_correct_mode_text,
+    is_htr_only_transcript,
     load_transcription_root,
     load_yaml_or_json_path,
     validate_transcript_file,
@@ -429,9 +430,11 @@ def has_successful_transcription(
     if not p.is_file() or p.stat().st_size == 0:
         return False
     ok, _errs, _warns = validate_transcript_file(p, settings=s)
-    if ok:
+    if ok or has_correct_mode_text(p):
+        if (s.llm_mode or "full").strip().lower() != "off" and is_htr_only_transcript(p):
+            return False
         return True
-    return has_correct_mode_text(p)
+    return False
 
 
 def write_batch_report(path: Path, rows: list[dict[str, Any]]) -> None:

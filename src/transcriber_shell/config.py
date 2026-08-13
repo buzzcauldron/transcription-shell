@@ -95,6 +95,19 @@ class Settings(BaseSettings):
         ),
         description="HTTP timeout (seconds) for Ollama /api/chat; local vision models are often slow on CPU.",
     )
+    ollama_key_wall_fallback: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_OLLAMA_KEY_WALL_FALLBACK",
+            "OLLAMA_KEY_WALL_FALLBACK",
+        ),
+        description=(
+            "If true, a cloud-provider key/quota wall may fall back to local "
+            "ollama/qwen2.5vl:32b. Default false: that model steals the GPU from "
+            "on-machine Kraken HTR. Opt in only for deliberate LLM-only runs "
+            "(also requires require_htr_before_llm=false)."
+        ),
+    )
 
     anthropic_timeout_seconds: float = Field(
         default=600.0,

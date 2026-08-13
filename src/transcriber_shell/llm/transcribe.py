@@ -36,6 +36,17 @@ def _is_key_wall(exc: BaseException) -> bool:
     return any(p in msg for p in _KEY_WALL_PHRASES)
 
 
+def _should_ollama_key_wall_fallback(settings: Settings) -> bool:
+    """Local Qwen VL fallback is opt-in and never used when HTR must precede LLM.
+
+    Harvest / ``llm_mode=correct`` keeps the Kraken draft on quota errors instead
+    of loading qwen2.5vl:32b onto the same GPU as r7.
+    """
+    if getattr(settings, "require_htr_before_llm", True):
+        return False
+    return bool(getattr(settings, "ollama_key_wall_fallback", False))
+
+
 class TranscribeResult(NamedTuple):
     """LLM response text and optional token usage (provider-dependent)."""
 
@@ -140,7 +151,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
                 settings=s,
             )
         except (LLMProviderError, RuntimeError) as exc:
-            if _is_key_wall(exc):
+            if _is_key_wall(exc) and _should_ollama_key_wall_fallback(s):
                 return _ollama_qwen_fallback()
             raise
     if provider == "openai":
@@ -154,7 +165,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
                 settings=s,
             )
         except (LLMProviderError, RuntimeError) as exc:
-            if _is_key_wall(exc):
+            if _is_key_wall(exc) and _should_ollama_key_wall_fallback(s):
                 return _ollama_qwen_fallback()
             raise
     if provider == "gemini":
@@ -168,7 +179,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
                 settings=s,
             )
         except (LLMProviderError, RuntimeError) as exc:
-            if _is_key_wall(exc):
+            if _is_key_wall(exc) and _should_ollama_key_wall_fallback(s):
                 return _ollama_qwen_fallback()
             raise
     if provider == "ollama":

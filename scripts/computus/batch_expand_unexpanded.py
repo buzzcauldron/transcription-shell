@@ -73,6 +73,17 @@ def yaml_has_text(path: Path) -> bool:
     return bool(raw.strip()) and ("text:" in raw or "Unicode" in raw)
 
 
+def yaml_ready_for_expand(path: Path) -> bool:
+    """Skip HTR-only drafts; expand-diplomatic expects LLM-cleaned diplomatic YAML."""
+    if (path.parent / ".needs_llm").is_file():
+        return False
+    try:
+        head = path.read_text(encoding="utf-8", errors="replace")[:4000]
+    except OSError:
+        return False
+    return "htr_only" not in head
+
+
 def expand_skip_path(yaml_path: Path) -> Path:
     return yaml_path.parent / ".expand_skip"
 
@@ -148,7 +159,7 @@ def main() -> int:
     ap.add_argument("--limit-jobs", type=int, default=0)
     ap.add_argument("--limit-pages", type=int, default=0)
     ap.add_argument("--parallel-files", type=int, default=2)
-    ap.add_argument("--backend", default="anthropic", choices=("anthropic", "gemini"))
+    ap.add_argument("--backend", default="gemini", choices=("anthropic", "gemini", "groq"))
     ap.add_argument("--model", default="claude-haiku-4-5-20251001")
     ap.add_argument("--modality", default="full")
     ap.add_argument("--passes", type=int, default=1)
@@ -169,6 +180,15 @@ def main() -> int:
         ).strip()
         if not api_key:
             print("ANTHROPIC_API_KEY missing", file=sys.stderr)
+            return 2
+    elif args.backend == "groq":
+        api_key = (
+            os.environ.get("GROQ_API_KEY")
+            or os.environ.get("TRANSCRIBER_SHELL_GROQ_API_KEY")
+            or ""
+        ).strip()
+        if not api_key:
+            print("GROQ_API_KEY missing", file=sys.stderr)
             return 2
     else:
         api_key = (
@@ -250,6 +270,9 @@ def main() -> int:
                 continue
             if not yaml_has_text(yf):
                 status["empty"] += 1
+                continue
+            if not yaml_ready_for_expand(yf):
+                status["skip"] += 1
                 continue
             tei_path = tei_dir / f"{stem}_tei.xml"
             try:

@@ -33,7 +33,7 @@ MAX_LONG_EDGE = int(os.environ.get("STREAM_MAX_LONG_EDGE", "2500"))
 BATCH_SIZE = int(os.environ.get("STREAM_BATCH_SIZE", "8"))
 IDLE_LIMIT = int(os.environ.get("STREAM_IDLE_LIMIT", "30"))
 DOC_TYPE = os.environ.get("STREAM_DOC_TYPE", "computus_medieval_latin")
-PROVIDER = os.environ.get("STREAM_PROVIDER", "anthropic")
+PROVIDER = os.environ.get("STREAM_PROVIDER", "gemini")
 # Minimum LLM: correct = HTR draft primary + short text-only fix (~20x cheaper than full).
 LLM_MODE = os.environ.get("STREAM_LLM_MODE", "correct").strip() or "correct"
 MODEL = os.environ.get("STREAM_MODEL", "").strip()
@@ -66,7 +66,7 @@ EXPAND_ENABLED = os.environ.get("STREAM_EXPAND", "1").strip().lower() not in (
     "no",
     "off",
 )
-EXPAND_BACKEND = os.environ.get("EXPAND_DIPLOMATIC_BACKEND", "anthropic").strip() or "anthropic"
+EXPAND_BACKEND = os.environ.get("EXPAND_DIPLOMATIC_BACKEND", "gemini").strip() or "gemini"
 EXPAND_MODEL = os.environ.get(
     "EXPAND_DIPLOMATIC_MODEL",
     "claude-haiku-4-5-20251001" if EXPAND_BACKEND == "anthropic" else "gemini-2.5-flash",
@@ -177,17 +177,36 @@ def stage_new() -> int:
     return count
 
 
-def valid_yaml(stem: str) -> bool:
-    if (ART / stem / f"{stem}_transcription.yaml").exists():
-        return True
+def _yaml_path_for_stem(stem: str) -> Path | None:
+    p = ART / stem / f"{stem}_transcription.yaml"
+    if p.is_file():
+        return p
     sanitized = re.sub(r"[^a-zA-Z0-9._-]", "_", stem)
     if sanitized != stem:
-        sanitized_dir = ART / sanitized
-        if (sanitized_dir / f"{stem}_transcription.yaml").exists():
-            return True
-        if (sanitized_dir / f"{sanitized}_transcription.yaml").exists():
-            return True
-    return False
+        for cand in (
+            ART / sanitized / f"{stem}_transcription.yaml",
+            ART / sanitized / f"{sanitized}_transcription.yaml",
+        ):
+            if cand.is_file():
+                return cand
+    return None
+
+
+def _is_htr_only_yaml(path: Path) -> bool:
+    try:
+        return "htr_only" in path.read_text(encoding="utf-8", errors="replace")[:4000]
+    except OSError:
+        return False
+
+
+def valid_yaml(stem: str) -> bool:
+    """True when this page already has LLM-cleaned YAML (or HTR-only if llm_mode=off)."""
+    path = _yaml_path_for_stem(stem)
+    if path is None:
+        return False
+    if (LLM_MODE or "").strip().lower() == "off":
+        return True
+    return not _is_htr_only_yaml(path)
 
 
 def _mark(stem: str, kind: str, reason: str) -> None:
@@ -222,6 +241,8 @@ def pending_images() -> list[Path]:
         if (ART / img.stem / ".failed").exists():
             continue
         if (ART / img.stem / ".skipped").exists():
+            continue
+        if (ART / img.stem / ".needs_llm").exists():
             continue
         reason = is_non_text_page(img)
         if reason:
@@ -291,6 +312,7 @@ def run_batch(imgs: list[Path], idx: int) -> None:
         f"export PYTHONPATH='{TSHELL_ROOT}/src' && "
         f"export TRANSCRIBER_SHELL_ARTIFACTS_DIR='{ART}' && "
         f"export TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM=1 && "
+        f"export TRANSCRIBER_SHELL_OLLAMA_KEY_WALL_FALLBACK=0 && "
         f"export TRANSCRIBER_SHELL_HTR_PARALLEL=0 && "
         f"{htr_export}"
         f"{htr_model_export}"
@@ -328,7 +350,18 @@ def run_batch(imgs: list[Path], idx: int) -> None:
 
 
 def finish_manuscript() -> None:
-    """Expand leftover YAML, extract expanded text, run stylo for this job."""
+    """After pages are exhausted: expand leftover YAML, extract, stylo.
+
+    On-machine HTR (llm_mode=off) writes ``status/htr.DONE`` and does **not**
+    mark ``pipeline.DONE``, so LLM-correct can run later without a stylo sliver.
+    """
+    if (LLM_MODE or "").strip().lower() == "off" or not EXPAND_ENABLED:
+        marker_name = "htr.DONE" if (LLM_MODE or "").strip().lower() == "off" else "transcribe.DONE"
+        marker = JOB / "status" / marker_name
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n", encoding="utf-8")
+        log(f"watch_transcribe complete ({marker_name}); expand/stylo deferred")
+        return
     log("finish_manuscript: expand → extract → stylo")
     py = str(TSHELL_VENV / "bin" / "python") if (TSHELL_VENV / "bin" / "python").is_file() else "python3"
     if EXPAND_ENABLED and EXPAND_PY.is_file():

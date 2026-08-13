@@ -74,3 +74,30 @@ def test_normalize_protocol_and_modality_fixes() -> None:
     assert root["protocolVersion"] == "1.1.0"
     assert root["metadata"]["protocolVersion"] == "1.1.0"
     assert root["metadata"]["englishHandwritingModality"] is None
+
+
+def test_is_htr_only_transcript(tmp_path) -> None:
+    from pathlib import Path
+
+    from transcriber_shell.llm.validate_output import is_htr_only_transcript
+
+    p = tmp_path / "p.yaml"
+    p.write_text(
+        "transcriptionOutput:\n"
+        "  metadata:\n"
+        "    notes: 'htr_only: on-machine Kraken'\n"
+        "  segments:\n"
+        "    - text: foo\n",
+        encoding="utf-8",
+    )
+    assert is_htr_only_transcript(p) is True
+    q = tmp_path / "q.yaml"
+    q.write_text(
+        "transcriptionOutput:\n"
+        "  metadata:\n"
+        "    notes: llm correct\n"
+        "  segments:\n"
+        "    - text: foo\n",
+        encoding="utf-8",
+    )
+    assert is_htr_only_transcript(q) is False

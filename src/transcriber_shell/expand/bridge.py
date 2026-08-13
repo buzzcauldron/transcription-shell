@@ -69,6 +69,13 @@ def _expand_kwargs(settings: Settings, examples: list[dict[str, str]]) -> dict[s
         model = settings.expand_diplomatic_model
         if not model or model.startswith("gemini"):
             model = os.environ.get("ANTHROPIC_MODEL") or "claude-haiku-4-5-20251001"
+    elif backend == "groq":
+        api_key = os.environ.get("GROQ_API_KEY") or os.environ.get(
+            "TRANSCRIBER_SHELL_GROQ_API_KEY"
+        )
+        model = settings.expand_diplomatic_model
+        if not model or model.startswith("gemini") or model.startswith("claude"):
+            model = os.environ.get("GROQ_MODEL") or "llama-3.3-70b-versatile"
     else:
         api_key = settings.google_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get(
             "GOOGLE_API_KEY"

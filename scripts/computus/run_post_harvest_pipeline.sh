@@ -29,9 +29,9 @@ MIN_IMAGES="${PIPELINE_MIN_IMAGES:-10}"
 POLL_SEC="${PIPELINE_POLL_SEC:-300}"
 STYLO_EVERY_TICKS="${STYLO_EVERY_TICKS:-6}"
 DOC_TYPE="${STREAM_DOC_TYPE:-computus_medieval_latin}"
-PROVIDER="${STREAM_PROVIDER:-anthropic}"
+PROVIDER="${STREAM_PROVIDER:-gemini}"
 LLM_MODE="${STREAM_LLM_MODE:-correct}"
-# Always HTR then LLM then expand then stylo — never shell / llm_only.
+# On-machine Kraken HTR (no cloud LLM). Expand/stylo stay on the expand walker.
 HTR_COMBINATION="${STREAM_HTR_COMBINATION:-kraken_htr}"
 BATCH_SIZE="${STREAM_BATCH_SIZE:-4}"
 IDLE_LIMIT="${STREAM_IDLE_LIMIT:-30}"
@@ -209,7 +209,7 @@ start_watcher() {
     STREAM_DOC_TYPE="$DOC_TYPE" \
     STREAM_PROVIDER="$PROVIDER" \
     STREAM_LLM_MODE="$LLM_MODE" \
-    STREAM_MODEL="${STREAM_MODEL:-claude-haiku-4-5-20251001}" \
+    STREAM_MODEL="${STREAM_MODEL:-gemini-2.5-flash}" \
     STREAM_HTR_COMBINATION="$HTR_COMBINATION" \
     STREAM_BATCH_SIZE="$BATCH_SIZE" \
     STREAM_IDLE_LIMIT="$IDLE_LIMIT" \
@@ -222,12 +222,13 @@ start_watcher() {
     STREAM_STYLO_OUT="$job/05_stylo" \
     EXPAND_DIPLOMATIC_ENABLED=1 \
     TRANSCRIBER_SHELL_EXPAND_DIPLOMATIC=1 \
-    EXPAND_DIPLOMATIC_BACKEND=anthropic \
-    EXPAND_DIPLOMATIC_MODEL=claude-haiku-4-5-20251001 \
+    EXPAND_DIPLOMATIC_BACKEND="${EXPAND_DIPLOMATIC_BACKEND:-groq}" \
+    EXPAND_DIPLOMATIC_MODEL="${EXPAND_DIPLOMATIC_MODEL:-llama-3.3-70b-versatile}" \
     EXPAND_DIPLOMATIC_ROOT="$EXPAND_ROOT" \
     EXPAND_DIPLOMATIC_WHOLE_DOC=1 \
     TRANSCRIBER_SHELL_AUTO_EFFICIENCY=1 \
     TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM=1 \
+    TRANSCRIBER_SHELL_OLLAMA_KEY_WALL_FALLBACK=0 \
     TRANSCRIBER_SHELL_HTR_PARALLEL=0 \
     TRANSCRIBER_SHELL_HTR_COMBINATION="$HTR_COMBINATION" \
     TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH="${TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH:-$HOME/src/gm-htr-r7-full_best.mlmodel}" \
@@ -237,7 +238,7 @@ start_watcher() {
   pid=$!
   echo $pid > "$job/status/watch_transcribe.pid"
   date -Iseconds > "$STATE_DIR/${id}.started"
-  log "STARTED_HTR id=$id pid=$pid doc_type=$DOC_TYPE llm_mode=$LLM_MODE htr=$HTR_COMBINATION expand=anthropic stylo=$job/05_stylo"
+  log "STARTED_HTR id=$id pid=$pid doc_type=$DOC_TYPE llm_mode=$LLM_MODE htr=$HTR_COMBINATION expand=deferred stylo=$job/05_stylo"
 }
 
 # Print ready job_ids (not doneish, enough images)

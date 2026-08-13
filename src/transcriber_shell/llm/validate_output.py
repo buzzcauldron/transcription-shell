@@ -411,6 +411,21 @@ def validate_transcript_file(
     return validate_transcription_output(root)
 
 
+def is_htr_only_transcript(path: Path) -> bool:
+    """True when YAML was written from on-machine HTR with no LLM cleanup."""
+    try:
+        data = load_yaml_or_json_path(path)
+        root = load_transcription_root(data)
+        if not isinstance(root, dict):
+            return False
+        meta = root.get("metadata")
+        if not isinstance(meta, dict):
+            return False
+        return "htr_only" in str(meta.get("notes") or "")
+    except Exception:
+        return False
+
+
 def has_correct_mode_text(path: Path) -> bool:
     """Lenient check for llm_mode=correct output: just needs segments with text."""
     try:

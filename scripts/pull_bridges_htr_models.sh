@@ -17,6 +17,7 @@ MODELS=(
   gm-htr-r7-full_best.mlmodel
   gm-htr-r8-gothic-bible_best.mlmodel
   gm-htr-greek-minuscule_best.mlmodel
+  gm-seg.mlmodel
 )
 
 for m in "${MODELS[@]}"; do

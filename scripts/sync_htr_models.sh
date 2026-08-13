@@ -35,6 +35,7 @@ MODELS=(
   gm-htr-r7-full_best.mlmodel
   gm-htr-r8-gothic-bible_best.mlmodel
   gm-htr-greek-minuscule_best.mlmodel
+  gm-seg.mlmodel
 )
 
 pull_from_bridges() {
@@ -55,7 +56,7 @@ push_to_akdeniz() {
   done
   echo "[sync-htr] akdeniz latin_documents:"
   ssh -o BatchMode=yes "$AKDENIZ_HOST" \
-    "ls -lah ${AKDENIZ_DESTS[0]}/gm-htr*.mlmodel* 2>/dev/null || true"
+    "ls -lah ${AKDENIZ_DESTS[0]}/gm-htr*.mlmodel* ${AKDENIZ_DESTS[0]}/gm-seg.mlmodel || true"
 }
 
 push_to_bridges() {
@@ -68,8 +69,9 @@ push_to_bridges() {
       "$LOCAL/$m" "${BRIDGES_HOST}:${BRIDGES_DIR}/"
   done
   echo "[sync-htr] bridges models:"
+  # bridges2-dtn is a restricted rsync/scp shell — no redirects or `||`.
   ssh -o BatchMode=yes "$BRIDGES_HOST" \
-    "ls -lah ${BRIDGES_DIR}/gm-htr*.mlmodel* 2>/dev/null || true"
+    ls -lah "${BRIDGES_DIR}/gm-htr-r7-full_best.mlmodel" "${BRIDGES_DIR}/gm-seg.mlmodel"
 }
 
 cmd="${1:-sync-all}"
