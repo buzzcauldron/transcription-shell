@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # After web harvest: per manuscript, every time:
-#   highest HTR → LLM cleanup → expand-diplomatic → stylo
+#   highest HTR → LLM autocorrect (skipped only on rate-limit caps) → expand-diplomatic rules → stylo
 #
 # Stages:
 #   1. (optional) wait for first per-manuscript acquire.DONE (default)
@@ -31,7 +31,11 @@ STYLO_EVERY_TICKS="${STYLO_EVERY_TICKS:-6}"
 DOC_TYPE="${STREAM_DOC_TYPE:-computus_medieval_latin}"
 PROVIDER="${STREAM_PROVIDER:-gemini}"
 LLM_MODE="${STREAM_LLM_MODE:-correct}"
-# On-machine Kraken HTR (no cloud LLM). Expand/stylo stay on the expand walker.
+case "$LLM_MODE" in
+  off|correct) ;;
+  *) echo "coerce STREAM_LLM_MODE=$LLM_MODE → correct (autocorrect only)" >&2; LLM_MODE=correct ;;
+esac
+# On-machine Kraken HTR. LLM, if any, is HTR autocorrect only. Expand is rules.
 HTR_COMBINATION="${STREAM_HTR_COMBINATION:-kraken_htr}"
 BATCH_SIZE="${STREAM_BATCH_SIZE:-4}"
 IDLE_LIMIT="${STREAM_IDLE_LIMIT:-30}"
@@ -107,6 +111,13 @@ REG="$HARVEST_ROOT/registry/union_registry_discovered.jsonl"
 [[ -f "$REG" ]] || REG="$ROOT/references/computus-library/web_harvest/union_registry.jsonl"
 
 mkdir -p "$STATE_DIR" "$LOG_DIR" "$HARVEST_ROOT/queues" "$CORPUS_OUT"
+
+LOCK="$HARVEST_ROOT/htr_supervisor.lock"
+exec 9>"$LOCK"
+if ! flock -n 9; then
+  echo "[post-harvest $(date -Iseconds)] another HTR supervisor holds $LOCK — exiting"
+  exit 0
+fi
 
 log() { echo "[post-harvest $(date -Iseconds)] $*"; }
 
@@ -189,7 +200,10 @@ alive_pid() {
   [[ -f "$f" ]] || return 1
   p=$(tr -d '[:space:]' < "$f" 2>/dev/null || true)
   [[ -n "$p" ]] || return 1
-  kill -0 "$p" 2>/dev/null
+  kill -0 "$p" 2>/dev/null || return 1
+  if [[ -r "/proc/$p/cmdline" ]]; then
+    tr '\0' ' ' < "/proc/$p/cmdline" | grep -q watch_transcribe
+  fi
 }
 
 watcher_running() { alive_pid "$1/status/watch_transcribe.pid"; }
@@ -199,6 +213,7 @@ start_watcher() {
   id=$(basename "$job")
   mkdir -p "$job"/{logs,status,scripts,01_pages_2500,03_artifacts_2500,transcription_batches,04_expanded,05_stylo}
   cp -f "$TSHELL/scripts/remote_stream_watch_transcribe.py" "$job/scripts/" 2>/dev/null || true
+  cp -f "$TSHELL/scripts/computus/htr_watch_policy.py" "$job/scripts/" 2>/dev/null || true
   _combo_lc=$(printf '%s' "$HTR_COMBINATION" | tr '[:upper:]' '[:lower:]')
   case "$_combo_lc" in
     shell|off|none|llm_only)
@@ -211,20 +226,20 @@ start_watcher() {
     STREAM_DOC_TYPE="$DOC_TYPE" \
     STREAM_PROVIDER="$PROVIDER" \
     STREAM_LLM_MODE="$LLM_MODE" \
-    STREAM_MODEL="${STREAM_MODEL:-gemini-2.5-flash}" \
+    STREAM_MODEL="${STREAM_MODEL:-}" \
     STREAM_HTR_COMBINATION="$HTR_COMBINATION" \
     STREAM_BATCH_SIZE="$BATCH_SIZE" \
     STREAM_IDLE_LIMIT="$IDLE_LIMIT" \
     STREAM_CONTINUE_ON_LINEATION_FAILURE=0 \
-    STREAM_EXPAND=1 \
+    STREAM_EXPAND=0 \
     STREAM_TRANSCRIPTION_SHELL_ROOT="$TSHELL" \
     STREAM_TRANSCRIPTION_SHELL_VENV="$VENV" \
     STREAM_STYLO_REF="$STYLO_ROOT/output/de_luce_r_rescore/reference_set_medieval_mixed" \
     STREAM_STYLO_RUNNER="$STYLO_ROOT/scripts/run_stylo_target.R" \
     STREAM_STYLO_OUT="$job/05_stylo" \
-    EXPAND_DIPLOMATIC_ENABLED=1 \
-    TRANSCRIBER_SHELL_EXPAND_DIPLOMATIC=1 \
-    EXPAND_DIPLOMATIC_BACKEND="${EXPAND_DIPLOMATIC_BACKEND:-rules}" \
+    EXPAND_DIPLOMATIC_ENABLED=0 \
+    TRANSCRIBER_SHELL_EXPAND_DIPLOMATIC=0 \
+    EXPAND_DIPLOMATIC_BACKEND=rules \
     EXPAND_DIPLOMATIC_MODEL="${EXPAND_DIPLOMATIC_MODEL:-}" \
     EXPAND_DIPLOMATIC_ROOT="$EXPAND_ROOT" \
     EXPAND_DIPLOMATIC_WHOLE_DOC=1 \
@@ -232,6 +247,7 @@ start_watcher() {
     TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM=1 \
     TRANSCRIBER_SHELL_OLLAMA_KEY_WALL_FALLBACK=0 \
     TRANSCRIBER_SHELL_HTR_PARALLEL=0 \
+    TRANSCRIBER_SHELL_LLM_MODE="$LLM_MODE" \
     TRANSCRIBER_SHELL_HTR_COMBINATION="$HTR_COMBINATION" \
     TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH="${TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH:-$HOME/src/gm-htr-r7-full_best.mlmodel}" \
     TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH="${TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH:-$HOME/src/gm-seg.mlmodel}" \
@@ -262,20 +278,12 @@ PY
 }
 
 count_active() {
-  local n=0 jid
-  while IFS= read -r jid; do
-    [[ -z "$jid" ]] && continue
-    watcher_running "$JOBS_ROOT/$jid" && n=$((n+1))
-  done < <(pending_job_ids; true)
-  # also count any doneish? no only pending. Count all jobs in queue that have watcher
-  n=0
-  if [[ -f "$QUEUE" ]]; then
-    while IFS= read -r line; do
-      jid=$("$PY" -c "import json,sys; print(json.loads(sys.argv[1]).get('job_id',''))" "$line" 2>/dev/null || true)
-      [[ -n "$jid" ]] || continue
-      watcher_running "$JOBS_ROOT/$jid" && n=$((n+1))
-    done < "$QUEUE"
-  fi
+  local n=0 job
+  shopt -s nullglob
+  for job in "$JOBS_ROOT"/*/status/watch_transcribe.pid; do
+    watcher_running "$(dirname "$(dirname "$job")")" && n=$((n+1))
+  done
+  shopt -u nullglob
   echo "$n"
 }
 
@@ -323,18 +331,16 @@ while true; do
     [[ -z "$jid" ]] && continue
     pending=$((pending+1))
     job="$JOBS_ROOT/$jid"
-    if [[ -f "$job/status/pipeline.DONE" ]]; then
-      touch "$STATE_DIR/${jid}.done" 2>/dev/null || true
+    if [[ -f "$job/status/skip_print_dump" ]]; then
+      continue
+    fi
+    if [[ -f "$job/status/htr.INCOMPLETE" ]]; then
       continue
     fi
     watcher_running "$job" && continue
-    if [[ -f "$STATE_DIR/${jid}.done" ]]; then
-      continue
-    fi
-    active=$(count_active)
-    if [[ "$active" -ge "$MAX_CONCURRENT" ]]; then
-      log "THROTTLE active=$active max=$MAX_CONCURRENT ($jid waiting)"
-      continue
+    if [[ "$(count_active)" -ge "$MAX_CONCURRENT" ]]; then
+      log "THROTTLE active>=$MAX_CONCURRENT ($jid waiting)"
+      break
     fi
     start_watcher "$job"
     started=$((started+1))

@@ -2,7 +2,8 @@
 """Watch a streaming manuscript acquisition and transcribe pages as they arrive.
 
 Per manuscript, every time:
-  lineation → highest HTR checkpoint → LLM cleanup → expand-diplomatic → stylo
+  lineation → highest HTR checkpoint → LLM autocorrect (correct; skipped only on rate-limit caps)
+  → expand-diplomatic rules (never an LLM) → stylo
 
 Never LLM-only. Blank/endleaf/cover images are skipped before HTR (not failed).
 When pages are exhausted and acquire is idle, expand any remaining YAML, extract
@@ -35,7 +36,6 @@ BATCH_SIZE = int(os.environ.get("STREAM_BATCH_SIZE", "8"))
 IDLE_LIMIT = int(os.environ.get("STREAM_IDLE_LIMIT", "30"))
 DOC_TYPE = os.environ.get("STREAM_DOC_TYPE", "computus_medieval_latin")
 PROVIDER = os.environ.get("STREAM_PROVIDER", "gemini")
-# Minimum LLM: correct = HTR draft primary + short text-only fix (~20x cheaper than full).
 LLM_MODE = os.environ.get("STREAM_LLM_MODE", "correct").strip() or "correct"
 MODEL = os.environ.get("STREAM_MODEL", "").strip()
 # Never LLM-only: default to Kraken HTR before LLM (override only with an HTR combo).
@@ -52,6 +52,52 @@ CONTINUE_ON_LINEATION_FAILURE = os.environ.get(
 TSHELL_ROOT = Path(
     os.environ.get("STREAM_TRANSCRIPTION_SHELL_ROOT", "~/Projects/transcription-shell")
 ).expanduser()
+_POLICY_DIR = TSHELL_ROOT / "scripts" / "computus"
+if _POLICY_DIR.is_dir():
+    sys.path.insert(0, str(_POLICY_DIR))
+try:
+    from htr_watch_policy import (
+        coerce_expand_backend,
+        coerce_llm_mode,
+        coverage_ok,
+        is_llm_cap_error,
+        is_retryable_htr_error,
+        looks_like_print_dump,
+        yaml_is_htr_only,
+    )
+except ImportError:  # copied watcher without policy module
+    def coverage_ok(n_yaml, n_skipped, n_pages, ratio=0.9):  # type: ignore[misc]
+        return n_pages > 0 and (n_yaml + n_skipped) * 10 >= n_pages * 9
+
+    def is_retryable_htr_error(log_text):  # type: ignore[misc]
+        t = log_text or ""
+        return (
+            "Kraken model not found" in t
+            or "Cannot reach Ollama" in t
+            or "LLM transcription failed" in t
+        )
+
+    def looks_like_print_dump(job_id, image_names=None):  # type: ignore[misc]
+        return False
+
+    def coerce_llm_mode(mode):  # type: ignore[misc]
+        s = (mode or "correct").strip().lower() or "correct"
+        return s if s in ("off", "correct") else "correct"
+
+    def coerce_expand_backend(_backend):  # type: ignore[misc]
+        return "rules"
+
+    def is_llm_cap_error(log_text):  # type: ignore[misc]
+        t = log_text or ""
+        return "429" in t or "RESOURCE_EXHAUSTED" in t or "tokens per day" in t.lower()
+
+    def yaml_is_htr_only(path):  # type: ignore[misc]
+        try:
+            return "htr_only" in path.read_text(encoding="utf-8", errors="replace")[:2500]
+        except OSError:
+            return False
+
+LLM_MODE = coerce_llm_mode(LLM_MODE)
 TSHELL_VENV = Path(
     os.environ.get(
         "STREAM_TRANSCRIPTION_SHELL_VENV",
@@ -67,17 +113,10 @@ EXPAND_ENABLED = os.environ.get("STREAM_EXPAND", "1").strip().lower() not in (
     "no",
     "off",
 )
-EXPAND_BACKEND = os.environ.get("EXPAND_DIPLOMATIC_BACKEND", "rules").strip() or "rules"
-EXPAND_MODEL = os.environ.get(
-    "EXPAND_DIPLOMATIC_MODEL",
-    "claude-haiku-4-5-20251001"
-    if EXPAND_BACKEND == "anthropic"
-    else "llama-3.3-70b-versatile"
-    if EXPAND_BACKEND == "groq"
-    else "gemini-2.5-flash"
-    if EXPAND_BACKEND == "gemini"
-    else "",
+EXPAND_BACKEND = coerce_expand_backend(
+    os.environ.get("EXPAND_DIPLOMATIC_BACKEND", "rules")
 )
+EXPAND_MODEL = os.environ.get("EXPAND_DIPLOMATIC_MODEL", "").strip()
 STYLO_REF = Path(
     os.environ.get(
         "STREAM_STYLO_REF",
@@ -209,21 +248,9 @@ def _yaml_path_for_stem(stem: str) -> Path | None:
     return None
 
 
-def _is_htr_only_yaml(path: Path) -> bool:
-    try:
-        return "htr_only" in path.read_text(encoding="utf-8", errors="replace")[:4000]
-    except OSError:
-        return False
-
-
 def valid_yaml(stem: str) -> bool:
-    """True when this page already has LLM-cleaned YAML (or HTR-only if llm_mode=off)."""
-    path = _yaml_path_for_stem(stem)
-    if path is None:
-        return False
-    if (LLM_MODE or "").strip().lower() == "off":
-        return True
-    return not _is_htr_only_yaml(path)
+    """True when this page already has transcription YAML (HTR or LLM)."""
+    return _yaml_path_for_stem(stem) is not None
 
 
 def _mark(stem: str, kind: str, reason: str) -> None:
@@ -250,16 +277,34 @@ def is_non_text_page(img: Path) -> str | None:
     return None
 
 
+def _page_complete_for_mode(stem: str) -> bool:
+    """HTR YAML is enough after a cap or in llm_mode=off; otherwise need autocorrect."""
+    yp = _yaml_path_for_stem(stem)
+    cap = (JOB / "status" / "llm.CAP").is_file()
+    mode = coerce_llm_mode(LLM_MODE)
+    if mode == "off" or cap:
+        return yp is not None
+    if yp is None:
+        return False
+    if yaml_is_htr_only(yp):
+        return False
+    needs_path = ART / stem / ".needs_llm"
+    if needs_path.exists():
+        try:
+            needs_path.unlink()
+        except OSError:
+            pass
+    return True
+
+
 def pending_images() -> list[Path]:
     imgs: list[Path] = []
     for img in sorted(PAGES.glob("*.jpg")):
-        if valid_yaml(img.stem):
+        if _page_complete_for_mode(img.stem):
             continue
         if (ART / img.stem / ".failed").exists():
             continue
         if (ART / img.stem / ".skipped").exists():
-            continue
-        if (ART / img.stem / ".needs_llm").exists():
             continue
         reason = is_non_text_page(img)
         if reason:
@@ -319,6 +364,21 @@ def run_batch(imgs: list[Path], idx: int) -> None:
         if SKIP_LINES_XML_VALIDATION
         else ""
     )
+    cap_marker = JOB / "status" / "llm.CAP"
+    cap_skip_export = (
+        "export TRANSCRIBER_SHELL_LLM_SKIP_ON_CAP=1 && "
+        if cap_marker.is_file()
+        else ""
+    )
+    scrub_mac_paths = ""
+    if sys.platform != "darwin":
+        scrub_mac_paths = (
+            "for _v in TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH KRAKEN_MODEL_PATH "
+            "TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH KRAKEN_HTR_MODEL_PATH; do "
+            'eval "_val=\\${$_v-}" ; '
+            'case "$_val" in */Users/*) unset "$_v" ;; esac ; '
+            "done && "
+        )
     model_flag = f" --model '{MODEL}'" if MODEL else ""
     llm_mode_flag = f" --llm-mode '{LLM_MODE}'" if LLM_MODE else ""
     continue_flag = "--continue-on-lineation-failure " if CONTINUE_ON_LINEATION_FAILURE else ""
@@ -326,16 +386,21 @@ def run_batch(imgs: list[Path], idx: int) -> None:
         f"cd '{TSHELL_ROOT}' && "
         f"source '{TSHELL_VENV}/bin/activate' && "
         f"set -a && [ -f '{TSHELL_ROOT}/.env' ] && . '{TSHELL_ROOT}/.env'; set +a && "
+        f"{scrub_mac_paths}"
         f"export PYTHONPATH='{TSHELL_ROOT}/src' && "
+        f"export STREAM_JOB_DIR='{JOB}' && "
+        f"export TRANSCRIBER_SHELL_JOB_DIR='{JOB}' && "
         f"export TRANSCRIBER_SHELL_ARTIFACTS_DIR='{ART}' && "
         f"export TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM=1 && "
         f"export TRANSCRIBER_SHELL_OLLAMA_KEY_WALL_FALLBACK=0 && "
         f"export TRANSCRIBER_SHELL_HTR_PARALLEL=0 && "
+        f"export TRANSCRIBER_SHELL_LLM_MODE='{LLM_MODE}' && "
         f"{htr_export}"
         f"{htr_model_export}"
         f"{seg_export}"
         f"{expand_export}"
         f"{skip_xml_export}"
+        f"{cap_skip_export}"
         f"transcriber-shell batch '{batch_dir}' "
         f"--doc-type '{DOC_TYPE}' "
         f"--provider '{PROVIDER}' "
@@ -350,8 +415,19 @@ def run_batch(imgs: list[Path], idx: int) -> None:
     with log_file.open("w", encoding="utf-8") as f:
         result = subprocess.run(["bash", "-lc", cmd], stdout=f, stderr=subprocess.STDOUT)
     log(f"DONE batch {idx} exit={result.returncode}")
+    log_txt = log_file.read_text(encoding="utf-8", errors="replace") if log_file.is_file() else ""
+    if is_llm_cap_error(log_txt):
+        log(f"LLM_CAP batch {idx} — keeping HTR, skipping autocorrect for the rest of this job")
+        marker = JOB / "status" / "llm.CAP"
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n", encoding="utf-8")
+        return
     if result.returncode != 0:
-        log_txt = log_file.read_text(encoding="utf-8", errors="replace") if log_file.is_file() else ""
+        if is_retryable_htr_error(log_txt):
+            log(f"RETRYABLE batch {idx} (not marking .failed)")
+            if "Kraken model not found" in log_txt:
+                raise SystemExit(2)
+            return
         for img in imgs:
             if valid_yaml(img.stem):
                 continue
@@ -371,7 +447,24 @@ def finish_manuscript() -> None:
 
     On-machine HTR (llm_mode=off) writes ``status/htr.DONE`` and does **not**
     mark ``pipeline.DONE``, so LLM-correct can run later without a stylo sliver.
+    Never stamp DONE when YAML+skip coverage is below 90% — failed batches are
+    not completions.
     """
+    n_yaml = len(list(ART.rglob("*_transcription.yaml")))
+    n_skipped = len(list(ART.rglob(".skipped")))
+    n_pages = len(list(PAGES.glob("*.jpg")))
+    if not coverage_ok(n_yaml, n_skipped, n_pages):
+        marker = JOB / "status" / "htr.INCOMPLETE"
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(
+            f"{time.strftime('%Y-%m-%dT%H:%M:%S%z')} yaml={n_yaml} skipped={n_skipped} pages={n_pages}\n",
+            encoding="utf-8",
+        )
+        log(
+            f"INCOMPLETE yaml={n_yaml} skipped={n_skipped} pages={n_pages} "
+            "— not stamping pipeline.DONE/htr.DONE"
+        )
+        return
     if (LLM_MODE or "").strip().lower() == "off" or not EXPAND_ENABLED:
         marker_name = "htr.DONE" if (LLM_MODE or "").strip().lower() == "off" else "transcribe.DONE"
         marker = JOB / "status" / marker_name
@@ -436,6 +529,15 @@ def finish_manuscript() -> None:
 def main() -> None:
     ART.mkdir(parents=True, exist_ok=True)
     BATCHES.mkdir(parents=True, exist_ok=True)
+    names = [p.name for p in list(PAGES.glob("*.jpg"))[:30]]
+    if len(names) < 5:
+        names.extend(p.name for p in list(SRC.rglob("*.jpg"))[:30])
+    if looks_like_print_dump(JOB.name, names):
+        skip = JOB / "status" / "skip_print_dump"
+        skip.parent.mkdir(parents=True, exist_ok=True)
+        skip.write_text("print dump (Google Books / notices-et-extraits); refusing HTR\n")
+        log("REFUSE print-dump acquire — not manuscript HTR")
+        raise SystemExit(0)
     htr_model = resolve_highest_htr_model()
     seg_model = resolve_seg_model()
     log("watch_transcribe start")
@@ -444,6 +546,9 @@ def main() -> None:
         f"seg_model={seg_model or '(doc-type/registry)'} "
         f"llm_mode={LLM_MODE} expand={EXPAND_ENABLED}/{EXPAND_BACKEND} stylo_out={STYLO_OUT}"
     )
+    if not htr_model or not seg_model:
+        log(f"REFUSE missing kraken checkpoints htr={htr_model!r} seg={seg_model!r}")
+        raise SystemExit(2)
     idle = 0
     batch_idx = 1
     while True:

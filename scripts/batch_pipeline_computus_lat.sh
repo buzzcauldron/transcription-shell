@@ -28,6 +28,11 @@ export PIPELINE_MIN_IMAGES="${PIPELINE_MIN_IMAGES:-10}"
 export PIPELINE_BACKEND="${PIPELINE_BACKEND:-akdeniz_latenight}"
 export STREAM_DOC_TYPE="${STREAM_DOC_TYPE:-computus_medieval_latin}"
 export STREAM_PROVIDER="${STREAM_PROVIDER:-gemini}"
+export STREAM_LLM_MODE="${STREAM_LLM_MODE:-correct}"
+case "$STREAM_LLM_MODE" in
+  off|correct) ;;
+  *) echo "coerce STREAM_LLM_MODE=$STREAM_LLM_MODE → correct (autocorrect only)" >&2; export STREAM_LLM_MODE=correct ;;
+esac
 export STREAM_MODEL="${STREAM_MODEL:-gemini-2.5-flash}"
 export STREAM_BATCH_SIZE="${STREAM_BATCH_SIZE:-4}"
 export STREAM_IDLE_LIMIT="${STREAM_IDLE_LIMIT:-30}"
@@ -178,7 +183,7 @@ start_watcher_akdeniz() {
     STREAM_STYLO_OUT="$job/05_stylo" \
     EXPAND_DIPLOMATIC_ENABLED=1 \
     TRANSCRIBER_SHELL_EXPAND_DIPLOMATIC=1 \
-    EXPAND_DIPLOMATIC_BACKEND="${EXPAND_DIPLOMATIC_BACKEND:-rules}" \
+    EXPAND_DIPLOMATIC_BACKEND=rules \
     EXPAND_DIPLOMATIC_MODEL="${EXPAND_DIPLOMATIC_MODEL:-}" \
     EXPAND_DIPLOMATIC_ROOT="$EXPAND_ROOT" \
     EXPAND_DIPLOMATIC_WHOLE_DOC=1 \
@@ -186,6 +191,7 @@ start_watcher_akdeniz() {
     TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM=1 \
     TRANSCRIBER_SHELL_OLLAMA_KEY_WALL_FALLBACK=0 \
     TRANSCRIBER_SHELL_HTR_PARALLEL=0 \
+    TRANSCRIBER_SHELL_LLM_MODE="${STREAM_LLM_MODE:-correct}" \
     TRANSCRIBER_SHELL_HTR_COMBINATION="${STREAM_HTR_COMBINATION:-kraken_htr}" \
     TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH="${TRANSCRIBER_SHELL_KRAKEN_HTR_MODEL_PATH:-$HOME/src/gm-htr-r7-full_best.mlmodel}" \
     TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH="${TRANSCRIBER_SHELL_KRAKEN_MODEL_PATH:-$HOME/src/gm-seg.mlmodel}" \
@@ -229,10 +235,7 @@ while true; do
         ;;
     esac
     acquire_running "$job" && continue
-    if [[ -f "$job/status/pipeline.DONE" ]]; then
-      touch "$STATE/${id}.done" 2>/dev/null || true
-      continue
-    fi
+    if [[ -f "$job/status/skip_print_dump" ]]; then continue; fi
     if watcher_running "$job"; then continue; fi
     y=$(yaml_count "$job")
     if [[ "$y" -gt 0 && "$n" -gt 0 ]] && (( y * 10 >= n * 9 )); then

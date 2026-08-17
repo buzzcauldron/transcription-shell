@@ -92,6 +92,7 @@ date -Iseconds > "$JOB/status/htr_bridges.STARTED"
 
 cd "$SRC"
 export PYTHONPATH="$SRC${PYTHONPATH:+:$PYTHONPATH}"
+set +e
 python3 - <<PY 2>&1 | tee -a "$JOB/logs/bridges_htr.log"
 import sys
 from transcriber_shell.cli import main
@@ -110,8 +111,15 @@ sys.argv = [
 ]
 main()
 PY
+rc=${PIPESTATUS[0]}
+set -e
 
 yaml_n=$(find "$ART" -name '*_transcription.yaml' 2>/dev/null | wc -l | tr -d ' ')
-echo "yaml_pages=$yaml_n"
-date -Iseconds > "$JOB/status/htr_bridges.DONE"
-echo "DONE $JOB_ID yaml=$yaml_n"
+echo "yaml_pages=$yaml_n batch_exit=$rc"
+if [[ "$yaml_n" -gt 0 ]]; then
+  date -Iseconds > "$JOB/status/htr_bridges.DONE"
+  echo "DONE $JOB_ID yaml=$yaml_n"
+else
+  echo "INCOMPLETE $JOB_ID yaml=0 batch_exit=$rc" >&2
+  exit "${rc:-1}"
+fi

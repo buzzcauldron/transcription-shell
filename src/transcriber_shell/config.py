@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -1084,6 +1085,17 @@ class Settings(BaseSettings):
         if s not in allowed:
             raise ValueError(f"llm_mode must be one of {sorted(allowed)}; got {s!r}")
         return s
+
+    @field_validator("kraken_model_path", "kraken_htr_model_path", mode="before")
+    @classmethod
+    def _drop_foreign_os_model_path(cls, v: object) -> object:
+        """Ignore Mac /Users/ checkpoints leaked into Linux .env files."""
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return None
+        text = str(v).replace("\\", "/")
+        if sys.platform != "darwin" and "/Users/" in text:
+            return None
+        return v
 
     def resolved_protocol_root(self, package_root: Path | None = None) -> Path:
         if self.protocol_root is not None:

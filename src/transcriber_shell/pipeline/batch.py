@@ -12,6 +12,7 @@ from typing import Any
 import yaml
 
 from transcriber_shell.config import Settings
+from transcriber_shell.llm.errors import llm_cap_tripped
 from transcriber_shell.llm.validate_output import (
     has_correct_mode_text,
     is_htr_only_transcript,
@@ -430,11 +431,12 @@ def has_successful_transcription(
     if not p.is_file() or p.stat().st_size == 0:
         return False
     ok, _errs, _warns = validate_transcript_file(p, settings=s)
-    if ok or has_correct_mode_text(p):
-        if (s.llm_mode or "full").strip().lower() != "off" and is_htr_only_transcript(p):
-            return False
-        return True
-    return False
+    if not (ok or has_correct_mode_text(p)):
+        return False
+    mode = (s.llm_mode or "full").strip().lower()
+    if mode == "correct" and is_htr_only_transcript(p) and not llm_cap_tripped():
+        return False
+    return True
 
 
 def write_batch_report(path: Path, rows: list[dict[str, Any]]) -> None:

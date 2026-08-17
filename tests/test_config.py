@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -73,3 +74,13 @@ def test_lines_xml_xsd_expands_tilde_from_env():
 def test_xml_require_text_line_can_be_false():
     s = Settings(xml_require_text_line=False)
     assert s.xml_require_text_line is False
+
+
+def test_linux_drops_mac_kraken_paths():
+    with patch.object(sys, "platform", "linux"):
+        s = Settings(
+            kraken_model_path="/Users/halxiii/src/latin_documents/kraken-merged-seg.mlmodel_best.mlmodel",
+            kraken_htr_model_path="/Users/halxiii/src/gm-htr-r7-full_best.mlmodel",
+        )
+    assert s.kraken_model_path is None
+    assert s.kraken_htr_model_path is None

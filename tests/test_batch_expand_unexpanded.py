@@ -22,7 +22,8 @@ def test_rules_backend_expands_htr_only(tmp_path: Path) -> None:
     )
     (tmp_path / ".needs_llm").write_text("htr_only\n", encoding="utf-8")
     assert MODULE.yaml_ready_for_expand(yaml_path, backend="rules") is True
-    assert MODULE.yaml_ready_for_expand(yaml_path, backend="groq") is False
+    assert MODULE.yaml_ready_for_expand(yaml_path, backend="groq") is True
+    assert MODULE.yaml_ready_for_expand(yaml_path, backend="local") is True
     assert MODULE.yaml_ready_for_expand(yaml_path, backend="gemini") is False
 
 

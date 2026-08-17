@@ -62,6 +62,39 @@ def test_gemini_cycles_model_on_429(monkeypatch) -> None:
     assert "gemini-2.0-flash" in calls
 
 
+def test_gemini_correct_mode_does_not_cycle_on_429(monkeypatch) -> None:
+    gemini_adapter._reset_gemini_cycle_for_tests()
+    monkeypatch.setenv("GEMINI_MODEL_CYCLE", "gemini-2.5-flash,gemini-2.0-flash")
+    calls: list[str] = []
+    FakeClient = _fake_client_factory(calls, "gemini-2.5-flash")
+    _stub_provider_adapters()
+    with (
+        patch("google.genai.Client", FakeClient),
+        patch("google.genai.types", MagicMock()),
+        patch(
+            "transcriber_shell.protocol_paths.ensure_prompt_builder_on_path",
+            lambda *_a, **_k: None,
+        ),
+    ):
+        try:
+            gemini_adapter.transcribe_gemini(
+                image_path=None,
+                system="s",
+                user_text="u",
+                model="gemini-2.5-flash",
+                settings=Settings(
+                    google_api_key="x",
+                    gemini_model="gemini-2.5-flash",
+                    llm_mode="correct",
+                ),
+            )
+        except RuntimeError as exc:
+            assert "429" in str(exc)
+        else:
+            raise AssertionError("correct mode should raise on 429 instead of cycling")
+    assert calls == ["gemini-2.5-flash"]
+
+
 def test_gemini_remembers_exhausted_model(monkeypatch) -> None:
     gemini_adapter._reset_gemini_cycle_for_tests()
     monkeypatch.setenv("GEMINI_MODEL_CYCLE", "gemini-2.5-flash,gemini-2.0-flash")

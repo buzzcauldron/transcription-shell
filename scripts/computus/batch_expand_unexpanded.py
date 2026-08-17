@@ -2,7 +2,8 @@
 """Resume-safe expand-diplomatic over latin-ms-workspace jobs.
 
 Converts *_transcription.yaml → TEI, expands pages that lack 04_expanded/*.txt,
-writes expanded XML + plain text. Unparseable YAML is marked `.expand_skip`
+writes expanded XML + plain text. Backend is expand-diplomatic ``rules`` only
+(LLM is HTR autocorrect, not expand). Unparseable YAML is marked `.expand_skip`
 and counted as skip (not fail). Priority job ids first.
 """
 from __future__ import annotations
@@ -73,16 +74,22 @@ def yaml_has_text(path: Path) -> bool:
     return bool(raw.strip()) and ("text:" in raw or "Unicode" in raw)
 
 
-LLM_EXPAND_BACKENDS = frozenset({"anthropic", "gemini", "groq", "local"})
+# Paid cloud expand still waits for LLM-correct. Groq/Ollama expand diplomatic
+# HTR in place (no autocorrect).
+FREE_EXPAND_BACKENDS = frozenset({"groq", "local"})
+PAID_EXPAND_BACKENDS = frozenset({"anthropic", "gemini"})
 
 
 def yaml_ready_for_expand(path: Path, *, backend: str = "rules") -> bool:
-    """Rules expand runs on diplomatic HTR before LLM cleanup.
+    """Whether this YAML may be expanded with ``backend``.
 
-    LLM backends still skip HTR-only drafts and ``.needs_llm`` markers.
+    ``rules``, ``groq``, and ``local`` run on diplomatic HTR (``htr_only``).
+    Gemini/Anthropic still skip HTR-only drafts and ``.needs_llm`` markers.
     """
     be = (backend or "rules").strip().lower()
-    if be not in LLM_EXPAND_BACKENDS:
+    if be in ("rules",) or be in FREE_EXPAND_BACKENDS:
+        return True
+    if be not in PAID_EXPAND_BACKENDS:
         return True
     if (path.parent / ".needs_llm").is_file():
         return False
@@ -185,13 +192,42 @@ def main() -> int:
         default="rules",
         choices=("rules", "anthropic", "gemini", "groq", "local"),
     )
-    ap.add_argument("--model", default="claude-haiku-4-5-20251001")
+    ap.add_argument(
+        "--model",
+        default="",
+        help="Backend model id. Empty: llama-3.3-70b-versatile (groq), llama3.2 (local).",
+    )
     ap.add_argument("--modality", default="full")
     ap.add_argument("--passes", type=int, default=1)
     ap.add_argument("--whole-doc", action="store_true", default=True)
     ap.add_argument("--no-whole-doc", action="store_false", dest="whole_doc")
     ap.add_argument("--status-json", type=Path, default=None)
     args = ap.parse_args()
+    if not (args.model or "").strip():
+        args.model = {
+            "groq": "llama-3.3-70b-versatile",
+            "local": "llama3.2",
+            "gemini": "gemini-2.5-flash",
+            "anthropic": "claude-haiku-4-5-20251001",
+        }.get(args.backend, "")
+
+    paid_ok = os.environ.get("EXPAND_ALLOW_PAID", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if args.backend in FREE_EXPAND_BACKENDS | PAID_EXPAND_BACKENDS:
+        print(
+            f"backend={args.backend} is LLM; expand is rules-only (LLM is HTR autocorrect only)",
+            file=sys.stderr,
+        )
+        return 2
+    if args.backend in PAID_EXPAND_BACKENDS and not paid_ok:
+        print(
+            f"backend={args.backend} is paid; use rules, or set EXPAND_ALLOW_PAID=1",
+            file=sys.stderr,
+        )
+        return 2
 
     yaml_to_tei = _load_yaml_to_tei(args.tshell_src)
     expand_xml, extract_text_lines, load_examples = _load_expand(args.expand_root)

@@ -31,11 +31,18 @@ export STYLO_MAX_SLICES="${STYLO_MAX_SLICES:-120}"
 mkdir -p "$LOG_DIR" "$BATCH_EXPANDED" "$PILOT_TEXT"
 
 BACKEND="${EXPAND_DIPLOMATIC_BACKEND:-rules}"
-if [[ "$BACKEND" != "rules" && "$BACKEND" != "local" ]]; then
-  if [[ ! -f "$EXPAND_ROOT/.env" && ! -f "$TSHELL/.env" ]]; then
-    echo "missing expand/tshell .env (need API key for backend=$BACKEND)" >&2
-    exit 2
-  fi
+EXPAND_ONLY=false
+SKIP_HIST_CORE="${SKIP_HIST_CORE:-0}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --expand-only) EXPAND_ONLY=true; SKIP_HIST_CORE=1; shift ;;
+    --backend) BACKEND="$2"; shift 2 ;;
+    *) echo "Unknown: $1" >&2; exit 2 ;;
+  esac
+done
+if [[ "$BACKEND" != "rules" ]]; then
+  echo "refusing LLM expand backend=$BACKEND (expand-diplomatic rules only)" >&2
+  exit 2
 fi
 set -a
 # shellcheck disable=SC1091
@@ -77,6 +84,12 @@ echo "[$(date -Iseconds)] expand start backend=${BACKEND} jobs=$JOBS parallel=${
   --no-whole-doc \
   --status-json "$STATUS_JSON"
 
+if [[ "$EXPAND_ONLY" == true ]]; then
+  echo "[$(date -Iseconds)] expand-only: skip extract/stylo/CORE"
+  echo "  expand status: $STATUS_JSON"
+  exit 0
+fi
+
 echo "[$(date -Iseconds)] extract expanded texts"
 while IFS= read -r slug || [[ -n "${slug:-}" ]]; do
   [[ -z "$slug" ]] && continue
@@ -112,9 +125,13 @@ for job in sb_732_cod sb_878_cod sb_913_cod; do
   [[ -f "$src" ]] && cp -f "$src" "$PILOT_TEXT/${job}_latin.txt"
 done
 
+if [[ "${SKIP_HIST_CORE:-0}" == "1" ]]; then
+  echo "[$(date -Iseconds)] SKIP_HIST_CORE=1 — not re-locking CORE"
+else
 echo "[$(date -Iseconds)] stylo historical core → $HIST_OUT"
 cd "$STYLO"
 bash scripts/develop_historical_core.sh
+fi
 
 echo "[$(date -Iseconds)] stylo clat pilot"
 bash scripts/run_clat_stylo_pilot.sh || echo "[pilot] returned non-zero" >&2

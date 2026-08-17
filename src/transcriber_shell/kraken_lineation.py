@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
+import sys
 import tempfile
 import warnings
 from pathlib import Path
@@ -189,6 +190,10 @@ def fetch_lines_xml_kraken(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     model_path = s.kraken_model_path.expanduser().resolve()
+    if sys.platform != "darwin" and "/Users/" in str(model_path):
+        raise KrakenLineationError(
+            f"refusing Mac Kraken path on {sys.platform}: {model_path}"
+        )
     if not model_path.is_file():
         raise KrakenLineationError(f"Kraken model not found: {model_path}")
 

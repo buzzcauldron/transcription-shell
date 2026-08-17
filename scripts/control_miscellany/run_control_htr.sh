@@ -15,6 +15,10 @@ PY="${PYTHON:-python3}"
 
 export STREAM_DOC_TYPE="${STREAM_DOC_TYPE:-medieval_latin_miscellany}"
 export STREAM_LLM_MODE="${STREAM_LLM_MODE:-off}"
+case "$STREAM_LLM_MODE" in
+  off|correct) ;;
+  *) echo "coerce STREAM_LLM_MODE=$STREAM_LLM_MODE → correct (autocorrect only)" >&2; export STREAM_LLM_MODE=correct ;;
+esac
 export STREAM_HTR_COMBINATION="${STREAM_HTR_COMBINATION:-kraken_htr}"
 export STREAM_PROVIDER="${STREAM_PROVIDER:-gemini}"
 MAX_CONCURRENT="${PIPELINE_MAX_CONCURRENT:-1}"

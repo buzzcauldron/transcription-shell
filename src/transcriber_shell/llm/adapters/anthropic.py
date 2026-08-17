@@ -225,6 +225,10 @@ def transcribe_anthropic(
         except anthropic.APIConnectionError as e:
             raise LLMProviderError(_format_anthropic_error(e)) from e
         except anthropic.APIStatusError as e:
+            from transcriber_shell.llm.errors import skip_retries_on_llm_cap
+
+            if skip_retries_on_llm_cap(s, e):
+                raise LLMProviderError(_format_anthropic_error(e)) from e
             if _is_retryable(e) and attempt + 1 < max_attempts:
                 _sleep_backoff(attempt)
                 continue

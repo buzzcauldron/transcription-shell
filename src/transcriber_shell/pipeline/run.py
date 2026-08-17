@@ -18,7 +18,12 @@ import yaml
 from transcriber_shell.config import LineationBackend, Settings
 from transcriber_shell.glyph_machina.workflow import GlyphMachinaError, fetch_lines_xml
 from transcriber_shell.kraken_lineation import KrakenLineationError, fetch_lines_xml_kraken
-from transcriber_shell.llm.errors import LLMProviderError
+from transcriber_shell.llm.errors import (
+    LLMProviderError,
+    is_llm_cap_error,
+    llm_cap_tripped,
+    trip_llm_cap,
+)
 from transcriber_shell.mask_lineation import MaskLineationError, fetch_lines_xml_mask
 from transcriber_shell.llm.transcribe import run_transcribe, strip_yaml_fence, TranscribeResult
 from transcriber_shell.llm.validate_output import (
@@ -290,6 +295,8 @@ def _htr_only_short_circuit(
     errors: list[str],
     warnings: list[str],
     timings: list[tuple[str, float]],
+    *,
+    mark_needs_llm: bool = True,
 ) -> PipelineResult:
     """Write on-machine Kraken HTR as YAML and skip the LLM step."""
     from transcriber_shell.htr.base import HtrResult as _HtrResult
@@ -324,7 +331,7 @@ def _htr_only_short_circuit(
         out_yaml.with_suffix(".txt").write_text(raw_htr + "\n", encoding="utf-8")
     except OSError:
         pass
-    if (s.llm_mode or "full").strip().lower() != "off":
+    if (s.llm_mode or "full").strip().lower() != "off" and mark_needs_llm:
         try:
             (out_yaml.parent / ".needs_llm").write_text(
                 "htr_only: LLM cleanup not applied\n", encoding="utf-8"
@@ -365,6 +372,44 @@ def _append_htr_hint(job: TranscribeJob, htr_results: dict[str, Any]) -> None:
         job.line_hint = f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
 
 
+def _htr_results_from_yaml(path: Path) -> dict[str, Any]:
+    """Rebuild HTR drafts from an existing ``htr_only`` YAML so Kraken is not re-run."""
+    from transcriber_shell.htr.base import HtrResult
+    from transcriber_shell.llm.validate_output import load_transcription_root, load_yaml_or_json_path
+
+    try:
+        data = load_yaml_or_json_path(path)
+        root = load_transcription_root(data) or {}
+    except Exception:
+        return {}
+    lines: list[str] = []
+    for seg in root.get("segments") or []:
+        if not isinstance(seg, dict):
+            continue
+        text = str(seg.get("text") or seg.get("diplomaticText") or "").strip()
+        if text:
+            lines.append(text)
+    if not lines:
+        return {}
+    joined = "\n".join(lines)
+    return {
+        "cached-htr": HtrResult(
+            text=joined,
+            backend="cached-htr",
+            line_count=len(lines),
+        )
+    }
+
+
+def _clear_needs_llm_marker(out_yaml: Path) -> None:
+    marker = out_yaml.parent / ".needs_llm"
+    try:
+        if marker.is_file():
+            marker.unlink()
+    except OSError:
+        pass
+
+
 def _do_htr(
     job: TranscribeJob,
     s: Settings,
@@ -381,6 +426,20 @@ def _do_htr(
     ``short_circuit`` is a complete ``PipelineResult`` only when the plan is ``HTR_ONLY``
     (or HTR errored under that plan) — the caller must return it immediately and skip the LLM.
     """
+    existing = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
+    if (
+        (s.llm_mode or "full").strip().lower() == "correct"
+        and not llm_cap_tripped()
+        and existing.is_file()
+        and is_htr_only_transcript(existing)
+    ):
+        reused = _htr_results_from_yaml(existing)
+        if _has_usable_htr_draft(reused):
+            warnings.append("Reused on-machine HTR YAML for LLM autocorrect.")
+            _log("htr: reused existing htr_only YAML (LLM autocorrect pass)")
+            _append_htr_hint(job, reused)
+            return reused, None, None, None
+
     from transcriber_shell.htr.detect import detect_scripts
     from transcriber_shell.htr.parallel import build_htr_tasks, run_htr_ordered, run_htr_parallel
     from transcriber_shell.htr.selector import HtrPlanKind, plan_htr_execution
@@ -709,6 +768,15 @@ def run_pipeline(
             )
 
     # ── LLM ───────────────────────────────────────────────────────────────
+    if (s.llm_mode or "full").strip().lower() == "correct" and llm_cap_tripped():
+        htr = _finalize_htr_results(htr_results_early, htr_future, htr_executor, warnings)
+        warnings.append("LLM autocorrect skipped (rate limit / quota); kept on-machine HTR.")
+        _log("llm: cap already hit — skipped autocorrect, kept Kraken HTR")
+        return _htr_only_short_circuit(
+            job, s, lines_out, text_line_count, htr, [], warnings, timings,
+            mark_needs_llm=False,
+        )
+
     _log(f"llm: starting ({job.provider}/{job.model_override or 'default'})…")
     llm_usage: dict[str, int] | None = None
     t_llm = time.perf_counter()
@@ -720,9 +788,14 @@ def run_pipeline(
             warnings.append(
                 "LLM cleanup failed; kept on-machine HTR. " + _format_llm_error(job, e)
             )
-            _log("llm: failed — saved Kraken HTR (cleanup deferred)")
+            if is_llm_cap_error(e):
+                trip_llm_cap()
+                _log("llm: cap — kept Kraken HTR, skipping autocorrect on remaining pages")
+            else:
+                _log("llm: failed — saved Kraken HTR (cleanup deferred)")
             return _htr_only_short_circuit(
                 job, s, lines_out, text_line_count, htr, [], warnings, timings,
+                mark_needs_llm=not is_llm_cap_error(e),
             )
         errors.append(_format_llm_error(job, e))
         return PipelineResult(
@@ -757,6 +830,7 @@ def run_pipeline(
                 _meta["modelId"] = _actual_model
                 _meta["timestamp"] = datetime.now(timezone.utc).isoformat()
             out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            _clear_needs_llm_marker(out_yaml)
             out_txt = transcription_txt_path(s.artifacts_dir, job.job_id, job.image_path)
             try:
                 out_txt.write_text(_extract_plain_text(data), encoding="utf-8")

@@ -275,6 +275,9 @@ def apply_machine_efficiency(
         f"tuned {sorted((rec.get('updates') or {}).keys())}"
     )
     updates = {k: v for k, v in (rec.get("updates") or {}).items() if k in _EFFICIENCY_KEYS}
+    if (settings.llm_mode or "").strip().lower() == "off":
+        updates.pop("llm_mode", None)
+        messages.append("auto-efficiency: keeping llm_mode=off (harvest HTR)")
     return settings.model_copy(update=updates), p, messages
 
 

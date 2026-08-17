@@ -166,6 +166,10 @@ def transcribe_gemini(
             return TranscribeResult(text, usage)
         except Exception as exc:
             last_err = exc
+            from transcriber_shell.llm.errors import skip_retries_on_llm_cap
+
+            if skip_retries_on_llm_cap(s, exc):
+                raise
             if _is_cycleable_error(exc):
                 _mark_skip(model_id)
                 print(

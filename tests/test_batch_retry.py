@@ -25,6 +25,44 @@ def test_has_successful_transcription_true_when_yaml_validates(tmp_path: Path) -
         assert has_successful_transcription("job1", img, settings=s) is True
 
 
+def test_htr_only_yaml_counts_as_success_after_llm_cap(tmp_path: Path) -> None:
+    art = tmp_path / "artifacts"
+    img = tmp_path / "p.jpg"
+    img.write_bytes(b"\xff\xd8\xff")
+    p = art / "p" / "p_transcription.yaml"
+    p.parent.mkdir(parents=True)
+    p.write_text(
+        "transcriptionOutput:\n"
+        "  metadata:\n"
+        "    notes: 'htr_only: on-machine Kraken; not protocol-compliant (no LLM correct)'\n"
+        "  segments:\n"
+        "    - { text: anno domini }\n",
+        encoding="utf-8",
+    )
+    s = Settings(artifacts_dir=art, llm_mode="correct")
+    with patch("transcriber_shell.pipeline.batch.llm_cap_tripped", return_value=True):
+        assert has_successful_transcription("p", img, settings=s) is True
+
+
+def test_htr_only_yaml_is_not_success_when_correct_mode_uncapped(tmp_path: Path) -> None:
+    art = tmp_path / "artifacts"
+    img = tmp_path / "p.jpg"
+    img.write_bytes(b"\xff\xd8\xff")
+    p = art / "p" / "p_transcription.yaml"
+    p.parent.mkdir(parents=True)
+    p.write_text(
+        "transcriptionOutput:\n"
+        "  metadata:\n"
+        "    notes: 'htr_only: on-machine Kraken; not protocol-compliant (no LLM correct)'\n"
+        "  segments:\n"
+        "    - { text: anno domini }\n",
+        encoding="utf-8",
+    )
+    s = Settings(artifacts_dir=art, llm_mode="correct")
+    with patch("transcriber_shell.pipeline.batch.llm_cap_tripped", return_value=False):
+        assert has_successful_transcription("p", img, settings=s) is False
+
+
 def test_run_batch_skip_successful_skips_existing_job(tmp_path: Path) -> None:
     art = tmp_path / "artifacts"
     img = tmp_path / "ok.jpg"

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -19,6 +20,12 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from manuscript_done import DONE_NAME, acquire_running, is_done  # noqa: E402
+from htr_watch_policy import (  # noqa: E402
+    coerce_llm_mode,
+    job_is_htr_queue_doneish,
+    looks_like_print_dump,
+    sample_image_names,
+)
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".jp2", ".webp"}
 
@@ -124,6 +131,13 @@ def main() -> int:
             continue
         if (job / "status" / "print_ocr_bridges.CLAIMED").is_file():
             continue
+        if (job / "status" / "skip_print_dump").is_file():
+            continue
+        if looks_like_print_dump(jid, sample_image_names(job)):
+            skip = job / "status" / "skip_print_dump"
+            skip.parent.mkdir(parents=True, exist_ok=True)
+            skip.write_text("print dump (Google Books / notices-et-extraits)\n")
+            continue
         nimg = count_images(job)
         if nimg < args.min_images:
             continue
@@ -143,7 +157,8 @@ def main() -> int:
         if args.exclude_counterpoints and role == "counterpoint":
             continue
         ny = count_yaml(job)
-        doneish = ny > 0 and nimg > 0 and ny * 10 >= nimg * 9
+        llm_mode = coerce_llm_mode(os.environ.get("STREAM_LLM_MODE"))
+        doneish = job_is_htr_queue_doneish(job, llm_mode=llm_mode)
         reason = "acquire_done" if done_ms else "images_ready_idle"
         out_rows.append(
             {
