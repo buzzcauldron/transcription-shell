@@ -81,8 +81,26 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
     norm_mode = str(cfg.get("normalizationMode") or "").strip().lower()
     lang_hint = str(cfg.get("language") or cfg.get("script") or "").strip() or None
 
+    # Diff-based correction: ask for changed lines only. Requires the raw draft,
+    # which line_hint cannot supply (it is truncated and protocol-framed).
+    # Signalled to the caller via job.prompt_cfg so run_pipeline knows to merge
+    # rather than treat the response as a transcript.
+    if (
+        s.correct_mode_diff
+        and should_use_short_correct(s.llm_mode or "full", job.line_hint)
+        and job.htr_draft_raw
+    ):
+        from transcriber_shell.llm.correct_diff import build_diff_prompts
+
+        system, user_text, draft_lines = build_diff_prompts(
+            draft=job.htr_draft_raw,
+            normalization_mode=norm_mode or "diplomatic",
+            language_hint=lang_hint,
+        )
+        cfg["_diff_draft_lines"] = draft_lines
+        job.prompt_cfg["_diff_draft_lines"] = draft_lines
     # Phase 3: short correct prompt — draft-primary, skip full protocol zones.
-    if should_use_short_correct(s.llm_mode or "full", job.line_hint):
+    elif should_use_short_correct(s.llm_mode or "full", job.line_hint):
         system, user_text = build_correct_prompts(
             line_hint=job.line_hint or "",
             normalization_mode=norm_mode or "diplomatic",

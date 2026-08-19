@@ -133,6 +133,31 @@ def _htr_results_to_line_hint(htr_results: dict[str, Any]) -> str | None:
     """Turn HTR backend output into an optional LLM hint (truncated)."""
     from transcriber_shell.htr.base import HtrResult
 
+    # ONE DRAFT, NOT ALL OF THEM.
+    #
+    # Every backend's draft used to go into the prompt at cap=6000 chars each, so
+    # running Glyph Machina AND Kraken doubled the draft payload to ~3,000 input
+    # tokens per page before anything else. Correct mode needs the BEST draft, not
+    # a chorus: the model is being asked to fix recognition errors, and a second
+    # noisy draft adds tokens without adding information it can act on.
+    #
+    # Ranked by confidence when the backend reports one, else by line count as a
+    # proxy for coverage. Failures are still surfaced so a silently dead backend
+    # does not look like a clean run.
+    _CONF_RANK = {"high": 3, "medium": 2, "low": 1}
+
+    def _score(r: object) -> tuple[int, int]:
+        if not isinstance(r, HtrResult):
+            return (-1, -1)
+        return (_CONF_RANK.get(str(r.confidence or "").lower(), 0), int(r.line_count or 0))
+
+    usable = {n: r for n, r in htr_results.items()
+              if isinstance(r, HtrResult) and r.text.strip()}
+    if len(usable) > 1:
+        best = max(usable, key=lambda n: _score(usable[n]))
+        htr_results = {best: usable[best],
+                       **{n: r for n, r in htr_results.items() if isinstance(r, Exception)}}
+
     parts: list[str] = []
     for name, res in htr_results.items():
         if isinstance(res, Exception):
@@ -365,11 +390,28 @@ def _htr_only_short_circuit(
     )
 
 
+def _best_htr_draft(htr_results: dict[str, Any]) -> str | None:
+    """Raw text of the highest-confidence HTR draft, or None."""
+    from transcriber_shell.htr.base import HtrResult
+
+    best, best_score = None, (-1, -1)
+    rank = {"high": 3, "medium": 2, "low": 1}
+    for res in (htr_results or {}).values():
+        if not isinstance(res, HtrResult) or not res.text.strip():
+            continue
+        score = (rank.get(str(res.confidence or "").lower(), 0), int(res.line_count or 0))
+        if score > best_score:
+            best, best_score = res.text.strip(), score
+    return best
+
+
 def _append_htr_hint(job: TranscribeJob, htr_results: dict[str, Any]) -> None:
     """Append HTR drafts to ``job.line_hint`` when results are available."""
     hint_extra = _htr_results_to_line_hint(htr_results)
     if hint_extra:
         job.line_hint = f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
+    # Kept separately and untruncated for diff-based correction.
+    job.htr_draft_raw = _best_htr_draft(htr_results)
 
 
 def _htr_results_from_yaml(path: Path) -> dict[str, Any]:
@@ -811,6 +853,64 @@ def run_pipeline(
     _llm_s = time.perf_counter() - t_llm
     timings.append(("llm", _llm_s))
     _log(f"llm: done ({_llm_s:.1f}s)")
+
+    # DIFF-BASED CORRECTION: the response is a list of changed lines, not a page.
+    # Merge it into the draft locally. Falls back to normal transcript handling if
+    # the model ignored the format, so enabling the flag cannot blank a page.
+    draft_lines = job.prompt_cfg.pop("_diff_draft_lines", None)
+    if draft_lines:
+        from transcriber_shell.llm.correct_diff import (
+            apply_corrections,
+            corrections_to_transcript,
+            parse_corrections,
+        )
+
+        corrections = parse_corrections(raw)
+        if corrections is None:
+            warnings.append(
+                "correct_mode_diff: model did not return a corrections document; "
+                "treating the response as a full transcript instead."
+            )
+        else:
+            merged, out_of_range = apply_corrections(draft_lines, corrections)
+            if out_of_range:
+                warnings.append(
+                    "correct_mode_diff: ignored out-of-range line number(s) "
+                    f"{out_of_range} — the model referenced lines the draft does not have."
+                )
+            _log(
+                f"correct(diff): {len(corrections)} of {len(draft_lines)} lines changed"
+            )
+            model_id = job.model_override or s.resolved_model(job.provider)
+            data = corrections_to_transcript(
+                merged,
+                normalization_mode=str(job.prompt_cfg.get("normalizationMode") or "diplomatic"),
+                model_id=model_id,
+            )
+            meta = data["transcriptionOutput"]["metadata"]
+            meta["timestamp"] = datetime.now(timezone.utc).isoformat()
+            meta["correctionMode"] = "diff"
+            meta["linesChanged"] = len(corrections)
+            meta["linesTotal"] = len(draft_lines)
+            out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
+            out_yaml.parent.mkdir(parents=True, exist_ok=True)
+            out_yaml.write_text(
+                yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8"
+            )
+            try:
+                transcription_txt_path(
+                    s.artifacts_dir, job.job_id, job.image_path
+                ).write_text(_extract_plain_text(data), encoding="utf-8")
+            except OSError:
+                pass
+            return PipelineResult(
+                job.job_id, lines_out, out_yaml, text_line_count,
+                errors=errors, warnings=warnings, llm_usage=llm_usage,
+                htr_results=_finalize_htr_results(
+                    htr_results_early, htr_future, htr_executor, warnings
+                ),
+                timings=timings,
+            )
 
     raw = strip_yaml_fence(raw)
     raw = _repair_yaml_uncertain_tokens(raw)

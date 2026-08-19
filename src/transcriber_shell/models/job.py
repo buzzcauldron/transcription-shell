@@ -18,6 +18,10 @@ class TranscribeJob:
     # CLI --model overrides TRANSCRIBER_SHELL_MODEL and per-provider defaults.
     model_override: str | None = None
     line_hint: str | None = None  # e.g. "Glyph Machina reports N=12 TextLine elements"
+    # Raw text of the BEST HTR draft, unformatted. Diff-based correction needs
+    # the plain draft to number its lines; line_hint is already wrapped in
+    # protocol framing and truncated, so it cannot be reused for that.
+    htr_draft_raw: str | None = None
 
 
 @dataclass

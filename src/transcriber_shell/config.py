@@ -756,6 +756,26 @@ class Settings(BaseSettings):
         ),
     )
 
+    correct_mode_diff: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_CORRECT_MODE_DIFF",
+            "CORRECT_MODE_DIFF",
+        ),
+        description=(
+            "When True, llm_mode=correct asks the model for CHANGED LINES ONLY and "
+            "merges them into the HTR draft locally, instead of having it re-emit "
+            "the whole page as protocol YAML. Measured on an 80-line page needing 8 "
+            "fixes: output drops from ~2,400 to ~137 tokens (94% less, ~82% cheaper), "
+            "because output bills ~5x input and the rewrite dominated the cost. It "
+            "also prevents wholesale regeneration structurally -- corrected pages "
+            "previously diverged from the HTR by 0.93-0.99 of characters, which no "
+            "prompt wording prevented. Off by default: it changes the output "
+            "contract, and a model that ignores the format falls back to normal "
+            "transcript handling rather than producing an empty page."
+        ),
+    )
+
     correct_mode_vision: bool = Field(
         default=False,
         validation_alias=AliasChoices(

@@ -155,6 +155,34 @@ def _sleep_backoff(attempt: int) -> None:
     time.sleep(base + random.uniform(0.0, 1.0))
 
 
+# Anthropic's minimum cacheable prefix is ~1024 tokens; a shorter prefix is
+# silently NOT cached (no error, no saving). Measured on this pipeline:
+#   correct mode, diplomatic   ~266 system tokens  -> below the floor, never caches
+#   correct mode, normalized ~1,614 system tokens  -> caches (the 5.5KB
+#                                                     abbreviation-expansion guide
+#                                                     is appended to every call)
+#   full mode (protocol zones) ~1,681 system tokens -> caches
+# So this only pays off on the normalized and full paths. Marking the block costs
+# nothing when it is too short, but do not expect a saving there.
+#
+# ~4 chars/token is a deliberate underestimate for Latin+English, so the guard
+# errs toward attempting the cache rather than skipping it.
+_CACHE_MIN_CHARS = 4096
+
+
+def _cacheable_system(system: str) -> str | list[dict]:
+    """Return the system prompt as a cache-marked block when long enough to cache.
+
+    The system prompt is identical across every page of a batch (the protocol and
+    the expansion guide are static), so caching turns a per-page input cost into
+    one write plus cheap reads. Cache reads bill ~0.1x and writes ~1.25x, so a
+    batch of N pages pays roughly 1.25 + 0.1(N-1) instead of N.
+    """
+    if not system or len(system) < _CACHE_MIN_CHARS:
+        return system
+    return [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+
+
 def _usage_from_anthropic_message(msg: object) -> dict[str, int] | None:
     u = getattr(msg, "usage", None)
     if u is None:
@@ -170,6 +198,18 @@ def _usage_from_anthropic_message(msg: object) -> dict[str, int] | None:
         d["output_tokens"] = int(out)
     if inp is not None and out is not None:
         d["total_tokens"] = int(inp) + int(out)
+    # Record cache counters: if cache_read_input_tokens stays 0 across a batch the
+    # prefix is being invalidated (or is under the 1024-token floor) and the
+    # caching is doing nothing. Without these the saving is unverifiable.
+    # isinstance, not `is not None`: the real usage object either has these
+    # attributes or does not, but getattr on a test double returns another mock,
+    # and int(MagicMock()) is 1 -- which would invent cache hits that never
+    # happened. Only record a genuine int.
+    for attr, key in (("cache_creation_input_tokens", "cache_write_tokens"),
+                      ("cache_read_input_tokens", "cache_read_tokens")):
+        v = getattr(u, attr, None)
+        if isinstance(v, int) and not isinstance(v, bool):
+            d[key] = int(v)
     return d or None
 
 
@@ -214,7 +254,7 @@ def transcribe_anthropic(
             with client.messages.stream(
                 model=model_id,
                 max_tokens=32_000,
-                system=system,
+                system=_cacheable_system(system),
                 messages=[user_message],
             ) as stream:
                 text = stream.get_final_text()
