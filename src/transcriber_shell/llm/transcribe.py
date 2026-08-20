@@ -92,8 +92,47 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
     ):
         from transcriber_shell.llm.correct_diff import build_diff_prompts
 
+        # ORDERING RULE: expand before correcting. See correct_pre_expand.
+        draft_for_llm = job.htr_draft_raw
+        if s.correct_mode_require_expand:
+            from transcriber_shell.llm.correct_pre_expand import (
+                ExpansionUnavailable,
+                expand_draft_lines,
+            )
+
+            raw_lines = [l.strip() for l in job.htr_draft_raw.splitlines() if l.strip()]
+            try:
+                expanded, n_exp = expand_draft_lines(raw_lines, s)
+            except ExpansionUnavailable as exc:
+                # Skipping is the correct failure mode: correcting a raw
+                # diplomatic draft is exactly what the rule forbids, and doing it
+                # silently would reintroduce the model-expands-unbidden behaviour.
+                raise LLMProviderError(
+                    f"correct mode requires an expanded draft: {exc}"
+                ) from exc
+            draft_for_llm = "\n".join(expanded)
+            job.prompt_cfg["_expand_lines_changed"] = n_exp
+
+        # Rules-only boundary repair, after expansion so the lexicon sees
+        # letters rather than abbreviation glyphs. Absorbs the missing-space
+        # edits that dominated the LLM's diff; see correct_mode_word_split.
+        if s.correct_mode_word_split:
+            from transcriber_shell.repair.word_split import (
+                load_default_lexicon,
+                repair_lines,
+            )
+
+            lex = load_default_lexicon()
+            if lex is not None:
+                split_lines, n_lines, n_tok = repair_lines(
+                    draft_for_llm.splitlines(), lex
+                )
+                draft_for_llm = "\n".join(split_lines)
+                job.prompt_cfg["_word_split_lines_changed"] = n_lines
+                job.prompt_cfg["_word_split_tokens"] = n_tok
+
         system, user_text, draft_lines = build_diff_prompts(
-            draft=job.htr_draft_raw,
+            draft=draft_for_llm,
             normalization_mode=norm_mode or "diplomatic",
             language_hint=lang_hint,
         )

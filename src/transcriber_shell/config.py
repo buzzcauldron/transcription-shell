@@ -756,6 +756,52 @@ class Settings(BaseSettings):
         ),
     )
 
+    correct_mode_require_expand: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_CORRECT_MODE_REQUIRE_EXPAND",
+            "CORRECT_MODE_REQUIRE_EXPAND",
+        ),
+        description=(
+            "ORDERING RULE: llm_mode=correct runs only on an expand-diplomatic'd "
+            "draft, never on raw diplomatic HTR. Measured on 20 raw pages, a model "
+            "told to preserve ink forms expanded them anyway (sp̃s->spēs, "
+            "uiuunt->vivunt, adiuuar&->adiuvare) and changed 73.9% of lines at "
+            "2,427 output tokens/page -- no cheaper than the whole-page rewrite. "
+            "Asking a model not to expand fights the task; expand-diplomatic does "
+            "it deterministically with its rules backend, leaving the LLM only the "
+            "recognition errors rules cannot fix. When the expander is unavailable "
+            "correction is SKIPPED rather than run on raw text, since running it "
+            "raw is what this rule forbids. Set False only for a deliberate "
+            "experiment."
+        ),
+    )
+
+    correct_mode_word_split: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_CORRECT_MODE_WORD_SPLIT",
+            "CORRECT_MODE_WORD_SPLIT",
+        ),
+        description=(
+            "Run rules-only word-boundary repair on the draft after "
+            "expand-diplomatic and before the LLM. Much of what the LLM rewrote on "
+            "20 validation pages was not recognition but missing spaces -- "
+            "INNOMINE->IN NOMINE, adopus->ad opus, Ethoc->Et hoc, Undefit->Unde "
+            "Fit -- which is dictionary segmentation, not language understanding, "
+            "so a DP search over a Latin frequency lexicon does it for zero tokens "
+            "and no network call. Measured corpus-wide: raw HTR function-word rate "
+            "18.41%->19.41%, about 7% of the 14.25-point gap to printed editions "
+            "(32.66%). On edition text it is deliberately almost inert -- 0.025% of "
+            "tokens touched, function-word rate +0.04 -- which is what makes it "
+            "safe to run on reference and target text alike. Ordering matters: it "
+            "runs AFTER expansion, because expansion turns abbreviation glyphs into "
+            "letters the lexicon can match. Costs nothing when the lexicon is "
+            "absent; the draft passes through unchanged. NOTE this does not replace "
+            "the LLM pass -- 7% of the gap is a cheap down payment, not the fix."
+        ),
+    )
+
     correct_mode_diff: bool = Field(
         default=False,
         validation_alias=AliasChoices(
