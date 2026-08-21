@@ -145,6 +145,15 @@ def normalize_lines(
     out: list[str] = [""] * len(lines)
     todo = [(i, ln.strip()) for i, ln in enumerate(lines) if (ln or "").strip()]
 
+    # LENGTH BUCKETING. Generation is autoregressive over BYTES and runs to the
+    # batch's token budget, which _budget() derives from the LONGEST member. Mixed
+    # lengths therefore make every short segment pay the longest one's decode
+    # steps, and padding wastes the rest. Sorting by length before batching makes
+    # each batch nearly uniform, so the budget is tight for everyone in it.
+    # Original positions are carried through and restored by index, so output
+    # order is unaffected.
+    todo.sort(key=lambda p: len(p[1]))
+
     for start in range(0, len(todo), max(1, batch_size)):
         chunk = todo[start : start + max(1, batch_size)]
         texts = [_prepare_input(t) for _i, t in chunk]

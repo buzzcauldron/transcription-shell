@@ -97,9 +97,33 @@ def test_normalize_lines_empty_input_makes_no_calls() -> None:
 
 
 def test_normalize_lines_falls_back_to_input_on_empty_output() -> None:
-    """An empty generation must not silently delete the line."""
-    triple = _fake_model(["", "ok"])
-    with patch.object(N, "_load_model", return_value=triple):
+    """An empty generation must not silently delete the line.
+
+    The fake decoder is keyed on the INPUT rather than on position, because
+    normalize_lines buckets by length before batching; a positional fake would
+    assert against whatever order the bucketing happened to produce instead of
+    against the fallback behaviour under test.
+    """
+    replies = {"keepme": "", "other": "ok"}
+
+    tokenizer, model, device = _fake_model(["placeholder"])
+    seen: list[list[str]] = []
+
+    def _tok(texts, **_kw):
+        seen.append(list(texts) if isinstance(texts, list) else [texts])
+        enc = MagicMock()
+        enc.to.return_value = enc
+        enc.keys.return_value = ["input_ids"]
+        enc.__iter__ = lambda self: iter(["input_ids"])
+        enc.__getitem__ = lambda self, k: "TENSOR"
+        return enc
+
+    tokenizer.side_effect = _tok
+    tokenizer.batch_decode.side_effect = lambda *_a, **_k: [
+        replies[t] for t in seen[-1]
+    ]
+
+    with patch.object(N, "_load_model", return_value=(tokenizer, model, device)):
         out = N.normalize_lines(["keepme", "other"])
     assert out == ["keepme", "ok"]
 
