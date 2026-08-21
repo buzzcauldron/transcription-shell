@@ -240,3 +240,69 @@ def test_guarded_normalize_falls_back_per_segment() -> None:
     assert "Πολισμ" not in out
     assert segs[0] in out          # bad segment fell back to its input
     assert "secundum dictum est." in out  # good segment kept its normalization
+
+
+# ── OOM resilience ───────────────────────────────────────────────────────────
+#
+# Attention memory grows with batch x seqlen^2, so the longest bucket peaks well
+# above the average. A run at batch 256 died with CUDA OOM 5,624 chunks into a
+# 25,883-chunk corpus. Halving only the failing batch beats choosing a timid
+# batch for every bucket.
+
+
+def test_oom_halves_batch_and_completes() -> None:
+    import torch
+
+    triple = _fake_model(["x"])
+    tokenizer, model, device = triple
+    calls: list[int] = []
+    sizes: list[int] = []
+
+    def _tok(texts, **_kw):
+        sizes.append(len(texts))
+        enc = MagicMock()
+        enc.to.return_value = enc
+        enc.keys.return_value = ["input_ids"]
+        enc.__iter__ = lambda self: iter(["input_ids"])
+        enc.__getitem__ = lambda self, k: "TENSOR"
+        return enc
+
+    tokenizer.side_effect = _tok
+
+    def _gen(**_kw):
+        calls.append(sizes[-1])
+        # Fail on the first, full-size batch; succeed once it has been halved.
+        if sizes[-1] >= 8:
+            raise torch.OutOfMemoryError("simulated")
+        return [[0]] * sizes[-1]
+
+    model.generate.side_effect = _gen
+    tokenizer.batch_decode.side_effect = lambda *_a, **_k: ["out"] * sizes[-1]
+
+    with patch.object(N, "_load_model", return_value=triple):
+        with pytest.warns(UserWarning, match="halving batch"):
+            res = N.normalize_lines([f"line{i}" for i in range(8)], batch_size=8)
+
+    assert res == ["out"] * 8
+    assert max(calls) >= 8 and min(calls) < 8  # tried big, fell back smaller
+
+
+def test_oom_on_single_segment_keeps_source() -> None:
+    """Unsplittable batch must keep the input, not drop the line."""
+    import torch
+
+    triple = _fake_model(["x"])
+    tokenizer, model, _d = triple
+    tokenizer.side_effect = lambda texts, **_k: MagicMock(
+        to=MagicMock(return_value=MagicMock(
+            keys=MagicMock(return_value=["input_ids"]),
+            __iter__=lambda self: iter(["input_ids"]),
+            __getitem__=lambda self, k: "TENSOR",
+        ))
+    )
+    model.generate.side_effect = torch.OutOfMemoryError("always")
+
+    with patch.object(N, "_load_model", return_value=triple):
+        with pytest.warns(UserWarning):
+            res = N.normalize_lines(["only-line"], batch_size=1)
+    assert res == ["only-line"]

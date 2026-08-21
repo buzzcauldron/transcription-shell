@@ -154,8 +154,8 @@ def normalize_lines(
     # order is unaffected.
     todo.sort(key=lambda p: len(p[1]))
 
-    for start in range(0, len(todo), max(1, batch_size)):
-        chunk = todo[start : start + max(1, batch_size)]
+    def _run(chunk: list[tuple[int, str]], bs_note: int) -> None:
+        """Normalize one batch, writing results into ``out`` by index."""
         texts = [_prepare_input(t) for _i, t in chunk]
         budget = _budget(texts, max_new_tokens)
         inputs = tokenizer(
@@ -176,6 +176,40 @@ def normalize_lines(
             # line silently would corrupt the line-index alignment that the
             # PageXML and stylometry paths depend on.
             out[idx] = gen if gen else original
+
+    # OOM-ADAPTIVE BATCHING. Attention memory grows with batch x seqlen^2, and the
+    # longest bucket therefore peaks far above the average -- a run at batch 256
+    # died with CUDA OOM 5,624 chunks into a 25,883-chunk corpus, on a GPU shared
+    # with other work. Rather than pick a timid batch for every bucket to suit the
+    # worst one, halve and retry only the batch that actually failed. Progress
+    # already written to `out` is untouched, so a split costs nothing but time.
+    step = max(1, batch_size)
+    start = 0
+    while start < len(todo):
+        chunk = todo[start : start + step]
+        try:
+            _run(chunk, step)
+            start += len(chunk)
+        except torch.OutOfMemoryError:
+            torch.cuda.empty_cache() if torch.cuda.is_available() else None
+            if len(chunk) == 1:
+                # A single segment cannot be split further; skip it rather than
+                # abandoning the corpus, and keep the source text for that line.
+                idx, original = chunk[0]
+                out[idx] = original
+                warnings.warn(
+                    "[transcriber-shell] ByT5 OOM on a single segment "
+                    f"({len(original)} chars); keeping it unnormalized.",
+                    stacklevel=2,
+                )
+                start += 1
+                continue
+            step = max(1, len(chunk) // 2)
+            warnings.warn(
+                f"[transcriber-shell] ByT5 CUDA OOM; halving batch to {step} "
+                "and retrying this batch.",
+                stacklevel=2,
+            )
 
     return out
 
