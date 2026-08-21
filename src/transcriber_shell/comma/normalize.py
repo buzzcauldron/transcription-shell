@@ -9,10 +9,27 @@ layers. This is *not* diplomatic transcription — it may over-normalize punctua
 
 from __future__ import annotations
 
+import re
 import unicodedata
+import warnings
 from functools import lru_cache
 
 DEFAULT_MODEL = "comma-project/normalization-byt5-small"
+
+# ByT5 is a BYTE-level model: one token per UTF-8 byte, not per word-piece. So
+# `max_length` and `max_new_tokens` are byte budgets, and a 400-word manuscript
+# chunk (~2,500 bytes) blows straight through the old fixed 256-token output cap.
+# Measured before this was fixed: feeding manifest chunks in whole returned
+# output capped at exactly 256 characters for 200/200 chunks -- a silent 90% loss
+# that looked like success because the surviving text was correctly normalized.
+#
+# The model was trained on single manuscript LINES, so the fix is to feed it
+# line-sized segments rather than to raise the cap and hope.
+MAX_INPUT_BYTES = 512
+# Headroom over the input: normalization expands abbreviations (ñ -> non,
+# dñi -> domini), so the output is routinely longer than the input.
+OUTPUT_BYTE_HEADROOM = 2.0
+MIN_OUTPUT_TOKENS = 64
 
 
 def _prepare_input(text: str) -> str:
@@ -45,28 +62,54 @@ def _load_model(model_id: str):
     return tokenizer, model, device
 
 
+def _budget(texts: list[str], max_new_tokens: int | None) -> int:
+    """Output byte budget for a batch, derived from its longest input.
+
+    A fixed budget is what caused the silent 90% truncation; scale it instead.
+    """
+    if max_new_tokens is not None:
+        return max_new_tokens
+    longest = max((len(t.encode("utf-8")) for t in texts), default=0)
+    return max(MIN_OUTPUT_TOKENS, int(longest * OUTPUT_BYTE_HEADROOM) + 16)
+
+
 def normalize_medieval_text(
     text: str,
     *,
     model_id: str = DEFAULT_MODEL,
-    max_new_tokens: int = 256,
+    max_new_tokens: int | None = None,
 ) -> str:
-    """Normalize one line of Latin or Old French HTR output."""
+    """Normalize one LINE of Latin or Old French HTR output.
+
+    One line. Passing a whole page or a multi-hundred-word chunk silently loses
+    most of it -- see MAX_INPUT_BYTES. Use :func:`normalize_long_text` for
+    anything longer than a line.
+    """
     import torch
     raw = (text or "").strip()
     if not raw:
         return ""
     tokenizer, model, device = _load_model(model_id)
+    n_bytes = len(_prepare_input(raw).encode("utf-8"))
+    if n_bytes > MAX_INPUT_BYTES:
+        warnings.warn(
+            f"[transcriber-shell] ByT5 input is {n_bytes} bytes, over the "
+            f"{MAX_INPUT_BYTES}-byte limit; it will be TRUNCATED. ByT5 is "
+            "byte-level and line-trained -- use normalize_long_text() to segment "
+            "longer text instead of losing the tail.",
+            stacklevel=2,
+        )
+    budget = _budget([raw], max_new_tokens)
     inputs = tokenizer(
         _prepare_input(raw),
         return_tensors="pt",
         truncation=True,
-        max_length=512,
+        max_length=MAX_INPUT_BYTES,
     ).to(device)
     with torch.no_grad():
         output_ids = model.generate(
             **inputs,
-            max_new_tokens=max_new_tokens,
+            max_new_tokens=budget,
             do_sample=False,
         )
     generated = tokenizer.decode(output_ids[0], skip_special_tokens=True)
@@ -77,7 +120,7 @@ def normalize_lines(
     lines: list[str],
     *,
     model_id: str = DEFAULT_MODEL,
-    max_new_tokens: int = 256,
+    max_new_tokens: int | None = None,
     batch_size: int = 16,
 ) -> list[str]:
     """Batch-normalize multiple lines through one ``generate()`` call per batch.
@@ -104,16 +147,18 @@ def normalize_lines(
 
     for start in range(0, len(todo), max(1, batch_size)):
         chunk = todo[start : start + max(1, batch_size)]
+        texts = [_prepare_input(t) for _i, t in chunk]
+        budget = _budget(texts, max_new_tokens)
         inputs = tokenizer(
-            [_prepare_input(t) for _i, t in chunk],
+            texts,
             return_tensors="pt",
             truncation=True,
-            max_length=512,
+            max_length=MAX_INPUT_BYTES,
             padding=True,
         ).to(device)
         with torch.no_grad():
             output_ids = model.generate(
-                **inputs, max_new_tokens=max_new_tokens, do_sample=False
+                **inputs, max_new_tokens=budget, do_sample=False
             )
         decoded = tokenizer.batch_decode(output_ids, skip_special_tokens=True)
         for (idx, original), gen in zip(chunk, decoded):
@@ -124,3 +169,153 @@ def normalize_lines(
             out[idx] = gen if gen else original
 
     return out
+
+
+# ── Long text ─────────────────────────────────────────────────────────────────
+
+# Segment target in bytes. Comfortably under MAX_INPUT_BYTES so the doubled
+# output budget also stays in range, and close to the manuscript-line lengths the
+# model was trained on.
+SEGMENT_BYTES = 220
+
+_SENT_SPLIT = re.compile(r"(?<=[.;:?!])\s+")
+
+
+def segment_for_byt5(text: str, *, target_bytes: int = SEGMENT_BYTES) -> list[str]:
+    """Split text into ByT5-sized pieces, preferring sentence then word breaks.
+
+    Needed because ByT5 is byte-level and line-trained: handed a 400-word chunk
+    it returned a correctly-normalized *first fragment* and dropped the rest, and
+    because the fragment was clean the loss did not look like an error.
+
+    Splits on sentence boundaries first so each piece is a plausible unit of
+    language; only falls back to word boundaries when a single sentence is itself
+    over budget. Never splits mid-word -- a half word would be normalized into a
+    different word.
+    """
+    text = (text or "").strip()
+    if not text:
+        return []
+    pieces: list[str] = []
+    buf = ""
+
+    def flush() -> None:
+        nonlocal buf
+        if buf.strip():
+            pieces.append(buf.strip())
+        buf = ""
+
+    for sent in _SENT_SPLIT.split(text):
+        if not sent.strip():
+            continue
+        if len(sent.encode("utf-8")) > target_bytes:
+            flush()
+            words, cur = sent.split(), ""
+            for w in words:
+                cand = f"{cur} {w}".strip()
+                if cur and len(cand.encode("utf-8")) > target_bytes:
+                    pieces.append(cur)
+                    cur = w
+                else:
+                    cur = cand
+            if cur:
+                pieces.append(cur)
+            continue
+        cand = f"{buf} {sent}".strip()
+        if buf and len(cand.encode("utf-8")) > target_bytes:
+            flush()
+            buf = sent
+        else:
+            buf = cand
+    flush()
+    return pieces
+
+
+def normalize_long_text(
+    text: str,
+    *,
+    model_id: str = DEFAULT_MODEL,
+    batch_size: int = 32,
+    target_bytes: int = SEGMENT_BYTES,
+) -> str:
+    """Normalize text of any length by segmenting, normalizing, and rejoining.
+
+    Use this for manifest chunks, pages, or whole works.
+    :func:`normalize_medieval_text` is for a single line and truncates past
+    MAX_INPUT_BYTES.
+    """
+    pieces = segment_for_byt5(text, target_bytes=target_bytes)
+    if not pieces:
+        return ""
+    normed = normalize_lines(pieces, model_id=model_id, batch_size=batch_size)
+    return " ".join(p for p in normed if p)
+
+
+# ── Hallucination guard ───────────────────────────────────────────────────────
+
+# The PEN paper notes that normalizing models "tend to over-normalize and
+# hallucinate", and that is what we measured: given unreadable HTR
+# ("d UMxI5u 1 pos 0. si cilium p. 12e."), the model emitted invented Greek
+# ("Πολισμοῦς et Πολισμοῦς et"). Rare -- 1 chunk in 100 -- but it fabricates text
+# that was never on the page, which is exactly what must not reach a corpus.
+#
+# Script drift is the cheap, precise signal. Legitimate normalization of Latin
+# stays in Latin script; it expands abbreviations and fixes orthography. It never
+# introduces Greek or Cyrillic. So a segment whose output gains a script its
+# input did not have is rejected and the input is kept instead.
+#
+# Deliberately narrow: it does not try to judge whether an expansion is correct,
+# only whether the model changed alphabet. Broader heuristics (novel-token rate)
+# cannot work here -- 67.5% of output tokens are absent from the input by design,
+# because expanding e~ -> est creates a new token every time.
+_SCRIPT_RANGES = (
+    ("greek", 0x0370, 0x03FF),
+    ("greek_ext", 0x1F00, 0x1FFF),
+    ("cyrillic", 0x0400, 0x04FF),
+    ("hebrew", 0x0590, 0x05FF),
+    ("arabic", 0x0600, 0x06FF),
+)
+
+
+def _scripts_present(text: str) -> set[str]:
+    found = set()
+    for ch in text:
+        cp = ord(ch)
+        for name, lo, hi in _SCRIPT_RANGES:
+            if lo <= cp <= hi:
+                found.add(name)
+                break
+    return found
+
+
+def rejects_script_drift(source: str, generated: str) -> bool:
+    """True when *generated* introduces a script absent from *source*."""
+    return bool(_scripts_present(generated) - _scripts_present(source))
+
+
+def normalize_long_text_guarded(
+    text: str,
+    *,
+    model_id: str = DEFAULT_MODEL,
+    batch_size: int = 32,
+    target_bytes: int = SEGMENT_BYTES,
+) -> tuple[str, int]:
+    """:func:`normalize_long_text` with the script-drift guard applied per segment.
+
+    Returns ``(text, n_segments_rejected)``. Rejection is per SEGMENT, not per
+    chunk, so one unreadable line does not discard the normalization of the
+    dozens of good lines around it.
+    """
+    pieces = segment_for_byt5(text, target_bytes=target_bytes)
+    if not pieces:
+        return "", 0
+    normed = normalize_lines(pieces, model_id=model_id, batch_size=batch_size)
+    kept: list[str] = []
+    rejected = 0
+    for src, gen in zip(pieces, normed):
+        if gen and rejects_script_drift(src, gen):
+            rejected += 1
+            kept.append(src)
+        else:
+            kept.append(gen or src)
+    return " ".join(p for p in kept if p), rejected

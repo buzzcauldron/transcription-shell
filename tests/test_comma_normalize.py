@@ -102,3 +102,117 @@ def test_normalize_lines_falls_back_to_input_on_empty_output() -> None:
     with patch.object(N, "_load_model", return_value=triple):
         out = N.normalize_lines(["keepme", "other"])
     assert out == ["keepme", "ok"]
+
+
+# ── segmentation for long text ───────────────────────────────────────────────
+#
+# ByT5 is byte-level and line-trained. Handed a whole 400-word manifest chunk it
+# returned a correctly-normalized first fragment and silently dropped the rest --
+# measured at 256 output chars for 200/200 chunks, a ~90% loss that looked like
+# success because the surviving text was clean. These cover the segmentation that
+# prevents it.
+
+
+def test_segment_respects_byte_budget() -> None:
+    text = " ".join(f"verbum{i}" for i in range(200))
+    segs = N.segment_for_byt5(text, target_bytes=200)
+    assert len(segs) > 1
+    assert all(len(s.encode("utf-8")) <= 200 for s in segs), [
+        len(s.encode("utf-8")) for s in segs
+    ]
+
+
+def test_segment_never_splits_mid_word() -> None:
+    """A half word would be normalized into a different word."""
+    words = [f"w{i:04d}" for i in range(300)]
+    segs = N.segment_for_byt5(" ".join(words), target_bytes=120)
+    rejoined = " ".join(segs).split()
+    assert rejoined == words
+
+
+def test_segment_prefers_sentence_boundaries() -> None:
+    text = "Primum dictum est. Secundum dictum est. Tertium dictum est."
+    segs = N.segment_for_byt5(text, target_bytes=25)
+    assert all(s.endswith(".") for s in segs), segs
+
+
+def test_segment_handles_one_oversized_sentence() -> None:
+    """A single sentence over budget must fall back to word breaks, not truncate."""
+    long_sentence = " ".join(["verbumlongissimum"] * 40) + "."
+    segs = N.segment_for_byt5(long_sentence, target_bytes=100)
+    assert len(segs) > 1
+    assert " ".join(segs).split() == long_sentence.split()
+
+
+def test_segment_empty() -> None:
+    assert N.segment_for_byt5("") == []
+    assert N.segment_for_byt5("   ") == []
+
+
+def test_normalize_long_text_covers_whole_input() -> None:
+    """Every segment must reach the model -- the truncation regression."""
+    text = " ".join(f"verbum{i}" for i in range(200))
+    expected_segments = N.segment_for_byt5(text)
+    assert len(expected_segments) > 1
+
+    triple = _fake_model(["OUT"] * len(expected_segments))
+    with patch.object(N, "_load_model", return_value=triple):
+        out = N.normalize_long_text(text)
+    sent = triple[0].call_args[0][0]
+    assert len(sent) == len(expected_segments)
+    assert out == " ".join(["OUT"] * len(expected_segments))
+
+
+def test_output_budget_scales_with_input() -> None:
+    """A fixed max_new_tokens is what truncated the output; it must scale."""
+    short = N._budget(["abc"], None)
+    long_ = N._budget(["x" * 400], None)
+    assert long_ > short
+    assert long_ >= 800  # 400 bytes * 2.0 headroom
+    # An explicit value still wins, for reproducing an older run.
+    assert N._budget(["x" * 400], 256) == 256
+
+
+def test_single_line_helper_warns_when_given_long_text() -> None:
+    """normalize_medieval_text truncates by design; it must say so."""
+    triple = _fake_model(["out"])
+    with patch.object(N, "_load_model", return_value=triple):
+        with pytest.warns(UserWarning, match="TRUNCATED"):
+            N.normalize_medieval_text("x" * (N.MAX_INPUT_BYTES + 50))
+
+
+# ── hallucination guard ──────────────────────────────────────────────────────
+
+
+def test_script_drift_detected() -> None:
+    """Invented Greek from unreadable Latin input must be caught."""
+    assert N.rejects_script_drift(
+        "d UMxI5u 1 pos 0. si cilium p. 12e.", "Πολισμοῦς et Πολισμοῦς et Israel"
+    )
+
+
+def test_legitimate_expansion_is_not_flagged() -> None:
+    """Real normalization stays in Latin script and must pass."""
+    assert not N.rejects_script_drift(
+        "uixta numerũ uocabuloꝵ suoꝵ", "juxta numerum vocabulorum suorum"
+    )
+    assert not N.rejects_script_drift("ñ fecto quic qua", "non fato quidquam")
+
+
+def test_greek_input_may_keep_greek_output() -> None:
+    """The guard is about NEW scripts, not about Greek being forbidden."""
+    assert not N.rejects_script_drift("λόγος et uerbum", "λόγος et verbum")
+
+
+def test_guarded_normalize_falls_back_per_segment() -> None:
+    """One bad segment must not discard the good ones around it."""
+    text = "primum dictum est. secundum dictum est."
+    segs = N.segment_for_byt5(text, target_bytes=25)
+    assert len(segs) == 2
+    triple = _fake_model(["Πολισμοῦς invented", "secundum dictum est."])
+    with patch.object(N, "_load_model", return_value=triple):
+        out, rejected = N.normalize_long_text_guarded(text, target_bytes=25)
+    assert rejected == 1
+    assert "Πολισμ" not in out
+    assert segs[0] in out          # bad segment fell back to its input
+    assert "secundum dictum est." in out  # good segment kept its normalization
