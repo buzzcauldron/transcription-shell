@@ -44,7 +44,16 @@ def test_run_pipeline_mask_backend_mocked(
         prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
         provider="anthropic",
     )
-    settings = Settings(artifacts_dir=tmp_artifacts, lineation_backend="mask")
+    # require_htr_before_llm is off here on purpose: these tests assert which
+    # LINEATION backend run_pipeline dispatches to, and the HTR gate (added
+    # later, default on) would short-circuit the run before lineation was
+    # reached. Leaving it on made all three of these fail for a reason that has
+    # nothing to do with what they cover.
+    settings = Settings(
+        artifacts_dir=tmp_artifacts,
+        lineation_backend="mask",
+        require_htr_before_llm=False,
+    )
 
     with (
         patch(
@@ -86,7 +95,16 @@ def test_run_pipeline_kraken_backend_mocked(
         prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
         provider="anthropic",
     )
-    settings = Settings(artifacts_dir=tmp_artifacts, lineation_backend="kraken")
+    # require_htr_before_llm is off here on purpose: these tests assert which
+    # LINEATION backend run_pipeline dispatches to, and the HTR gate (added
+    # later, default on) would short-circuit the run before lineation was
+    # reached. Leaving it on made all three of these fail for a reason that has
+    # nothing to do with what they cover.
+    settings = Settings(
+        artifacts_dir=tmp_artifacts,
+        lineation_backend="kraken",
+        require_htr_before_llm=False,
+    )
 
     with (
         patch(
@@ -123,7 +141,16 @@ def test_run_pipeline_glyph_machina_backend_mocked(
         prompt_cfg={"protocolVersion": "1.1.0", "sourcePageId": "p1"},
         provider="anthropic",
     )
-    settings = Settings(artifacts_dir=tmp_artifacts, lineation_backend="glyph_machina")
+    # require_htr_before_llm is off here on purpose: these tests assert which
+    # LINEATION backend run_pipeline dispatches to, and the HTR gate (added
+    # later, default on) would short-circuit the run before lineation was
+    # reached. Leaving it on made all three of these fail for a reason that has
+    # nothing to do with what they cover.
+    settings = Settings(
+        artifacts_dir=tmp_artifacts,
+        lineation_backend="glyph_machina",
+        require_htr_before_llm=False,
+    )
 
     with (
         patch(

@@ -21,12 +21,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${SCRIPT_DIR}/.env.latin-ms"
 
 # ── Key-leak guard ────────────────────────────────────────────────────────────
-# Abort if the env file is tracked by git (would push secrets on next commit).
-if [[ -f "$ENV_FILE" ]] && git -C "$SCRIPT_DIR" ls-files --error-unmatch "$ENV_FILE" &>/dev/null 2>&1; then
-    echo "ERROR: ${ENV_FILE} is tracked by git — remove it from the index first:" >&2
-    echo "  git rm --cached scripts/latin_ms/.env.latin-ms" >&2
-    exit 1
-fi
+# Lives in lib/ so the test suite exercises the real implementation rather than
+# a copy pasted into the test. It fails CLOSED: see the commentary there.
+# shellcheck source=scripts/latin_ms/lib/env_leak_guard.sh
+source "${SCRIPT_DIR}/lib/env_leak_guard.sh"
+env_leak_guard "$ENV_FILE" "$SCRIPT_DIR" || exit 1
 
 [[ -f "$ENV_FILE" ]] && { set -a; source "$ENV_FILE"; set +a; }
 

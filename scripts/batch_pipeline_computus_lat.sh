@@ -68,11 +68,14 @@ LOG="$QDIR/logs/pipeline_supervisor.log"
 STATE="$QDIR/pipeline_state"
 SCRIPTS="$QDIR/scripts"
 TSHELL="__TSHELL__"
-VENV=""
-for cand in "$TSHELL/.venv-lineation" "$HOME/.venv-lineation" "$HOME/.venv-kraken"; do
-  if [[ -x "$cand/bin/python" ]]; then VENV="$cand"; break; fi
-done
-[[ -n "$VENV" ]] || VENV="$HOME/.venv-kraken"
+# Venv selection is delegated so it can VALIDATE the choice: a candidate with a
+# bin/python but no importable kraken (halxvi's Python 3.14 .venv-lineation) used
+# to be selected here and then crash at import, and a silent fallback to the
+# stale kraken 6.0.3 venv produced results not comparable to 7.0.2 runs.
+# shellcheck source=scripts/lib/pick_kraken_venv.sh
+source "$SCRIPTS/lib/pick_kraken_venv.sh"
+VENV="$(KRAKEN_VERSION_EXPECTED="${KRAKEN_VERSION_EXPECTED:-7.0.2}" pick_kraken_venv \
+  "$TSHELL/.venv-lineation" "$HOME/.venv-lineation" "$HOME/.venv-kraken")" || exit 1
 
 EXPAND_ROOT=""
 for cand in "$HOME/Projects/expand-diplomatic" /mnt/constantinople/seth/Projects/expand-diplomatic; do

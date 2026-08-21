@@ -387,6 +387,26 @@ class Settings(BaseSettings):
             "TRANSCRIBER_SHELL_KRAKEN_MIN_LENGTH", "KRAKEN_MIN_LENGTH"
         ),
     )
+    kraken_autocast: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_KRAKEN_AUTOCAST", "KRAKEN_AUTOCAST"
+        ),
+        description=(
+            "Run kraken segmentation under automatic mixed precision. kraken's "
+            "blla.segment exposes an `autocast` parameter defaulting to False, so "
+            "full fp32 was being used. Measured on a 3990x6190 page on the 4090 "
+            "(gm-seg, 3 reps): this is a MEMORY win, not a speed win -- peak VRAM "
+            "2.66GB -> 1.37GB (-48%), while wall time was flat to marginally worse "
+            "(best 7.40s -> 7.52s). Line count was identical (12), so output does "
+            "not change. Worth enabling because the GPU is shared with Ollama and "
+            "VRAM, not time, is what makes segmentation fail there; halving the "
+            "footprint is also what would let two segmentation workers run at once "
+            "instead of the current serialized one. Applied ONLY on CUDA -- "
+            "autocast gains nothing on CPU and MPS autocast is unreliable -- and "
+            "ignored on kraken builds with no such parameter."
+        ),
+    )
 
     # HTR backends (optional; run in parallel alongside LLM)
     kraken_htr_model_path: Path | None = Field(
