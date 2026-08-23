@@ -306,3 +306,72 @@ def test_oom_on_single_segment_keeps_source() -> None:
         with pytest.warns(UserWarning):
             res = N.normalize_lines(["only-line"], batch_size=1)
     assert res == ["only-line"]
+
+
+# ── non-prose and degeneration guards ────────────────────────────────────────
+#
+# Found only at corpus scale: ByT5 is prose-trained, and a computus calendar
+# table sent through it comes back as a repetition loop. One chunk returned 21.9x
+# its input length as "a a a a a a". Computus manuscripts are largely tables, so
+# this is systematic.
+
+
+def test_detects_tables() -> None:
+    assert N.looks_tabular("| vii | iii | xiiii iiii | viiii | iiii | xv v |")
+    assert N.looks_tabular("vii iii xiiii iiii viiii iiii xv v")
+    assert not N.looks_tabular(
+        "quia non fato quidquam geri sed omnia Dei judicio novimus ordinari"
+    )
+
+
+def test_detects_repetition_loop() -> None:
+    assert N.has_degenerate_repetition("a a a a a a a a a a")
+    # Real Latin repeats words at short range; that must not trip it.
+    assert not N.has_degenerate_repetition("et in et in terra pax hominibus")
+
+
+def test_rejects_runaway_length() -> None:
+    assert N.rejects_output("abc" * 10, "x" * 200) == "runaway-length"
+
+
+def test_accepts_ordinary_expansion() -> None:
+    """Abbreviation expansion legitimately lengthens text and must pass."""
+    assert N.rejects_output("ñ fecto quic qua", "non fato quidquam") is None
+
+
+def test_tabular_segments_are_never_sent_to_the_model() -> None:
+    table = "| vii | iii | xiiii iiii | viiii |"
+    prose = "quia non fato quidquam geri sed omnia."
+    triple = _fake_model(["NORMALIZED"])
+    with patch.object(N, "_load_model", return_value=triple):
+        out, rejected = N.normalize_long_text_guarded(
+            f"{table} {prose}", target_bytes=400
+        )
+    # Whole thing is one segment here and it contains pipes, so nothing is sent.
+    triple[1].generate.assert_not_called()
+    assert rejected == 0
+    assert "vii" in out
+
+
+def test_table_and_prose_in_separate_segments() -> None:
+    """A table segment is preserved verbatim while prose beside it is normalized."""
+    table = "| vii | iii | xiiii | viiii |"
+    prose = "quia non fato quidquam geri sed omnia Dei judicio novimus ordinari."
+    text = f"{table}. {prose}"
+    segs = N.segment_for_byt5(text, target_bytes=40)
+    assert len(segs) >= 2
+    triple = _fake_model(["PROSE-OUT"] * len(segs))
+    with patch.object(N, "_load_model", return_value=triple):
+        out, _rej = N.normalize_long_text_guarded(text, target_bytes=40)
+    sent = triple[0].call_args[0][0]
+    assert all("|" not in t for t in sent), sent
+    assert "vii" in out  # the table survived unmodified
+
+
+def test_repetition_loop_output_is_rejected() -> None:
+    prose = "quia non fato quidquam geri sed omnia Dei judicio."
+    triple = _fake_model(["a a a a a a a a a a a a"])
+    with patch.object(N, "_load_model", return_value=triple):
+        out, rejected = N.normalize_long_text_guarded(prose, target_bytes=400)
+    assert rejected == 1
+    assert out == prose

@@ -343,22 +343,113 @@ def normalize_long_text_guarded(
     batch_size: int = 32,
     target_bytes: int = SEGMENT_BYTES,
 ) -> tuple[str, int]:
-    """:func:`normalize_long_text` with the script-drift guard applied per segment.
+    """:func:`normalize_long_text` with every output guard applied per segment.
 
-    Returns ``(text, n_segments_rejected)``. Rejection is per SEGMENT, not per
-    chunk, so one unreadable line does not discard the normalization of the
-    dozens of good lines around it.
+    Returns ``(text, n_segments_rejected)``. Rejection and skipping are per
+    SEGMENT, not per chunk, so one table or one unreadable line does not discard
+    the normalization of the dozens of good lines around it.
+
+    Table-like segments are never sent to the model at all -- see
+    :func:`looks_tabular`. That is cheaper than generating and rejecting, and it
+    is the difference between a computus page being left as written and coming
+    back as thousands of characters of "a a a a".
     """
     pieces = segment_for_byt5(text, target_bytes=target_bytes)
     if not pieces:
         return "", 0
-    normed = normalize_lines(pieces, model_id=model_id, batch_size=batch_size)
-    kept: list[str] = []
+
+    prose_idx = [i for i, p in enumerate(pieces) if not looks_tabular(p)]
+    to_send = [pieces[i] for i in prose_idx]
+    normed = (
+        normalize_lines(to_send, model_id=model_id, batch_size=batch_size)
+        if to_send
+        else []
+    )
+
+    kept = list(pieces)  # tabular segments keep their source text as-is
     rejected = 0
-    for src, gen in zip(pieces, normed):
-        if gen and rejects_script_drift(src, gen):
+    for i, gen in zip(prose_idx, normed):
+        reason = rejects_output(pieces[i], gen)
+        if reason:
             rejected += 1
-            kept.append(src)
         else:
-            kept.append(gen or src)
+            kept[i] = gen
     return " ".join(p for p in kept if p), rejected
+
+
+# ── Non-prose and degeneration guards ────────────────────────────────────────
+#
+# Found at corpus scale, invisible in a 100-chunk sample. ByT5 is trained on
+# prose manuscript LINES. Handed a computus calendar table --
+#     | vii | iii | xiiii iiii | viiii | iiii | xv v |
+# -- it goes into a repetition loop and returns thousands of characters of
+# "a a a a a a" or "I II I II I II". One chunk came back 21.9x its input length.
+#
+# This matters even though tables carry almost no function words: 24,000
+# characters of invented filler swamps the statistics of the chunk it lands in.
+# Computus manuscripts are mostly tables by page count, so this is systematic,
+# not a curiosity.
+#
+# Three cheap checks, in order of preference: don't send tables at all; reject
+# output that ran away in length; reject output that is looping.
+
+_ROMAN_ONLY = re.compile(r"^[ivxlcdmIVXLCDM]+$")
+# Above this share of table-ish tokens a segment is treated as non-prose.
+TABULAR_TOKEN_SHARE = 0.55
+# Output longer than this multiple of its input is treated as degenerate.
+MAX_EXPANSION_RATIO = 3.0
+# A token repeated at least this many times consecutively means a loop.
+MAX_TOKEN_RUN = 6
+
+
+def looks_tabular(text: str) -> bool:
+    """True when a segment reads as a table rather than prose.
+
+    Tables are dominated by Roman numerals, single letters, and column rules.
+    Sending them to a prose model gains nothing -- there are no abbreviations to
+    expand and no orthography to fix -- and risks a repetition loop.
+    """
+    if "|" in text and text.count("|") >= 3:
+        return True
+    toks = text.split()
+    if len(toks) < 4:
+        return False
+    tabular = sum(
+        1
+        for t in toks
+        if _ROMAN_ONLY.match(t.strip(".,;:|")) or len(t.strip(".,;:|")) <= 1
+        or t.strip(".,;:|").isdigit()
+    )
+    return tabular / len(toks) >= TABULAR_TOKEN_SHARE
+
+
+def has_degenerate_repetition(text: str, *, max_run: int = MAX_TOKEN_RUN) -> bool:
+    """True when some token repeats consecutively more than *max_run* times."""
+    toks = text.split()
+    run = 1
+    for a, b in zip(toks, toks[1:]):
+        if a == b:
+            run += 1
+            if run > max_run:
+                return True
+        else:
+            run = 1
+    return False
+
+
+def rejects_output(source: str, generated: str) -> str | None:
+    """Reason to reject *generated*, or None to accept it.
+
+    Consolidates every reason we refuse a generation. Returning the reason rather
+    than a bool keeps the caller able to report WHY a corpus pass fell back,
+    which is what made the table degeneration findable at all.
+    """
+    if not generated:
+        return "empty"
+    if rejects_script_drift(source, generated):
+        return "script-drift"
+    if source and len(generated) > MAX_EXPANSION_RATIO * len(source):
+        return "runaway-length"
+    if has_degenerate_repetition(generated):
+        return "repetition-loop"
+    return None
