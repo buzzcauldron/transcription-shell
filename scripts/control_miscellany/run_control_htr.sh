@@ -117,7 +117,16 @@ while true; do
   for job in "$JOBS_ROOT"/ctrl_*; do
     [[ -d "$job" ]] || continue
     [[ -f "$job/status/acquire.DONE" ]] || continue
-    [[ -f "$job/status/htr_bridges.DONE" || -f "$job/status/pipeline.DONE" ]] && continue
+    # htr.DONE is what the LOCAL watcher writes on completion; the other two are
+    # written by the Bridges path and by the full pipeline. Omitting htr.DONE
+    # meant a locally-finished manuscript was never recognised as finished: the
+    # driver kept re-picking the same first N jobs, each worker started, logged
+    # "no pending pages", exited, and got relaunched two minutes later. Six
+    # manuscripts completed and then the run sat still for hours at
+    # pending=100 active=6 started_now=6 with the GPU at 0%.
+    for marker in htr.DONE htr_bridges.DONE pipeline.DONE; do
+      [[ -f "$job/status/$marker" ]] && continue 2
+    done
     n=$(count_images "$job")
     [[ "$n" -ge "$MIN_IMAGES" ]] || continue
     pending=$((pending+1))
