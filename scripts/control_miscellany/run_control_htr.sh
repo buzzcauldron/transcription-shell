@@ -135,7 +135,24 @@ while true; do
     #
     # Partial output is still usable: those manuscripts contribute the pages that
     # did succeed (359 of 445 in the case that exposed this).
-    for marker in htr.DONE htr_bridges.DONE pipeline.DONE htr.INCOMPLETE; do
+    # TERMINAL MARKERS. This list must cover every terminal state the worker can
+    # write, or a job in a state we forgot sits in a deadlock: nothing pending so
+    # no work to do, no recognised stamp so never skipped, re-picked every cycle
+    # forever. That happened twice -- first htr.DONE was missing, then
+    # htr.INCOMPLETE -- each time holding the run for hours while reporting
+    # healthy ticks.
+    #
+    # Audited against remote_stream_watch_transcribe.py, which can write:
+    #   htr.DONE         completion when llm_mode=off
+    #   transcribe.DONE  completion when llm_mode is NOT off (same code path,
+    #                    marker_name chosen by LLM_MODE) -- this driver supports
+    #                    STREAM_LLM_MODE=correct, so it is reachable here
+    #   pipeline.DONE    full-pipeline completion
+    #   htr.INCOMPLETE   pages exhausted, coverage under 90% (terminal)
+    #   llm.CAP          LLM quota cap -- deliberately NOT terminal: HTR work may
+    #                    still be pending, and skipping would abandon it
+    # htr_bridges.DONE is written by the Bridges path, not by the worker.
+    for marker in htr.DONE transcribe.DONE htr_bridges.DONE pipeline.DONE htr.INCOMPLETE; do
       [[ -f "$job/status/$marker" ]] && continue 2
     done
     n=$(count_images "$job")
@@ -154,7 +171,28 @@ while true; do
   done
   acq_busy=false
   pgrep -f "run_acquire_queue.py" >/dev/null 2>&1 && acq_busy=true
-  log "tick pending=$pending active=$active started_now=$started acquire_busy=$acq_busy"
+  # STALL DETECTION. Both deadlocks this driver hit were SILENT: healthy-looking
+  # ticks, six "active" workers, no errors, and zero progress for hours. What
+  # actually distinguished a working run from a stalled one was whether output
+  # was appearing, so measure that and say so.
+  #
+  # Counting YAML across every job each tick would be expensive, so track the
+  # count and only complain when it has not moved for several ticks while workers
+  # are supposedly active -- the exact signature of both failures.
+  produced=$(find "$JOBS_ROOT" -name '*_transcription.yaml' 2>/dev/null | wc -l | tr -d '[:space:]')
+  if [[ "$produced" -eq "${last_produced:--1}" ]]; then
+    stall_ticks=$((${stall_ticks:-0} + 1))
+  else
+    stall_ticks=0
+  fi
+  last_produced="$produced"
+  log "tick pending=$pending active=$active started_now=$started acquire_busy=$acq_busy yaml=$produced"
+  if [[ "$stall_ticks" -ge 5 && "$active" -gt 0 ]]; then
+    log "STALLED: $active worker(s) active but yaml stuck at $produced for $stall_ticks ticks."
+    log "STALLED: check a job log for 'no pending pages' -- a terminal marker may"
+    log "STALLED: be missing from the skip list above, which deadlocks the driver."
+  fi
+
   if [[ "$pending" -eq 0 && "$active" -eq 0 && "$acq_busy" == false ]]; then
     log "DONE no ready control jobs"
     exit 0
