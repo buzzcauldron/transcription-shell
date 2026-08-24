@@ -124,7 +124,18 @@ while true; do
     # "no pending pages", exited, and got relaunched two minutes later. Six
     # manuscripts completed and then the run sat still for hours at
     # pending=100 active=6 started_now=6 with the GPU at 0%.
-    for marker in htr.DONE htr_bridges.DONE pipeline.DONE; do
+    # htr.INCOMPLETE is TERMINAL, not transient. remote_stream_watch_transcribe
+    # writes it only from finish_manuscript(), i.e. after pages are exhausted,
+    # when YAML+skip coverage came in under 90% because some batches hard-failed.
+    # It deliberately refuses to stamp DONE there -- failed batches are not
+    # completions -- but the driver did not know the marker existed, so such a
+    # job sat in a deadlock: nothing pending so no work to do, no DONE stamp so
+    # never skipped, re-picked every two minutes forever. It held the run at
+    # 31/100 with six "active" workers and the machine at load 0.44.
+    #
+    # Partial output is still usable: those manuscripts contribute the pages that
+    # did succeed (359 of 445 in the case that exposed this).
+    for marker in htr.DONE htr_bridges.DONE pipeline.DONE htr.INCOMPLETE; do
       [[ -f "$job/status/$marker" ]] && continue 2
     done
     n=$(count_images "$job")
