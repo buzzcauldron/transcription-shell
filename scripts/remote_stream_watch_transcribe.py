@@ -253,6 +253,33 @@ def valid_yaml(stem: str) -> bool:
     return _yaml_path_for_stem(stem) is not None
 
 
+# A page that fails deterministically will fail on every attempt, so retries are
+# capped. Generous, because genuinely transient failures (a busy GPU, a locked
+# model file) deserve several tries before a page is written off.
+MAX_PAGE_ATTEMPTS = 4
+
+
+def _bump_attempts(stem: str) -> int:
+    """Increment and return this page's attempt count, persisted on disk.
+
+    On disk rather than in memory because the driver restarts this worker every
+    couple of minutes; an in-memory counter would reset each time and never cap.
+    """
+    d = JOB / "status" / "attempts"
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / stem
+    try:
+        n = int(f.read_text(encoding="utf-8").strip() or "0")
+    except (OSError, ValueError):
+        n = 0
+    n += 1
+    try:
+        f.write_text(f"{n}\n", encoding="utf-8")
+    except OSError:
+        pass
+    return n
+
+
 def _mark(stem: str, kind: str, reason: str) -> None:
     """Write ``.skipped`` / ``.failed`` marker under artifacts."""
     dest = ART / stem / f".{kind}"
@@ -416,15 +443,63 @@ def run_batch(imgs: list[Path], idx: int) -> None:
         result = subprocess.run(["bash", "-lc", cmd], stdout=f, stderr=subprocess.STDOUT)
     log(f"DONE batch {idx} exit={result.returncode}")
     log_txt = log_file.read_text(encoding="utf-8", errors="replace") if log_file.is_file() else ""
-    if is_llm_cap_error(log_txt):
+    # An LLM cap is irrelevant when there is no LLM call to cap, and treating it
+    # as the explanation for a failure hid the real one: a control run with
+    # llm_mode=off logged LLM_CAP on every batch while the actual errors were
+    # shapely TopologyExceptions from segmentation.
+    llm_off = (LLM_MODE or "").strip().lower() == "off"
+    if not llm_off and is_llm_cap_error(log_txt):
         log(f"LLM_CAP batch {idx} — keeping HTR, skipping autocorrect for the rest of this job")
         marker = JOB / "status" / "llm.CAP"
         marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n", encoding="utf-8")
-        return
+        # Deliberately NOT returning here. This used to return unconditionally,
+        # so when a batch failed for reasons BESIDES the cap, none of its pages
+        # were marked -- they stayed pending forever and the manuscript was
+        # retried without limit. One control manuscript reached batch 2172 for
+        # 602 pages, spinning ~11 hours, and because `pending` never reached 0
+        # finish_manuscript() never ran and no terminal marker was ever written,
+        # which in turn deadlocked the driver waiting on it.
+        #
+        # Falling through is safe: the loop below skips any page that already has
+        # valid YAML, so a genuine cap (HTR fine, autocorrect skipped) still does
+        # not mark good pages as failed.
+        if result.returncode == 0:
+            return
     if result.returncode != 0:
         if is_retryable_htr_error(log_txt):
-            log(f"RETRYABLE batch {idx} (not marking .failed)")
+            # BACKSTOP against unbounded retries. "Retryable" is a judgement about
+            # the error text, and a deterministic page-level failure that happens
+            # to match it will fail identically on every attempt. Without a cap
+            # the worker never gives up and never reaches pending=0, so it never
+            # stamps a terminal marker -- which is how one manuscript spun for
+            # ~11 hours across 2,172 batches and stalled everything downstream.
+            #
+            # Attempts are counted on disk, per page, because the worker itself is
+            # restarted every couple of minutes by the driver; an in-memory
+            # counter would reset each time and cap nothing.
+            over_budget = []
+            for img in imgs:
+                if valid_yaml(img.stem):
+                    continue
+                if _bump_attempts(img.stem) > MAX_PAGE_ATTEMPTS:
+                    over_budget.append(img)
+            if not over_budget:
+                log(f"RETRYABLE batch {idx} (not marking .failed)")
+                if "Kraken model not found" in log_txt:
+                    raise SystemExit(2)
+                return
+            for img in over_budget:
+                _mark(
+                    img.stem,
+                    "failed",
+                    f"gave up after {MAX_PAGE_ATTEMPTS} attempts "
+                    f"(last: batch {idx} exit {result.returncode})",
+                )
+            log(
+                f"GAVE UP on {len(over_budget)} page(s) after {MAX_PAGE_ATTEMPTS} "
+                f"attempts each; marking failed so the manuscript can finish"
+            )
             if "Kraken model not found" in log_txt:
                 raise SystemExit(2)
             return
