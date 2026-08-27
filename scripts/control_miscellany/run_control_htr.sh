@@ -114,7 +114,15 @@ while true; do
   active=0
   started=0
   pending=0
-  for job in "$JOBS_ROOT"/ctrl_*; do
+  # Job-name prefix is configurable so this driver can serve the computus tree
+  # too. Hardcoding ctrl_* meant pointing JOBS_ROOT at jobs/ silently matched
+  # nothing: the driver reported "pending=0 ... DONE no ready control jobs" and
+  # exited in seconds, looking like a completed run rather than a mismatch.
+  # ${JOB_PREFIX-ctrl_} without the colon on purpose: ":-" substitutes the
+  # default for an EMPTY value too, so JOB_PREFIX="" (meaning "match every
+  # job dir", which the computus tree needs since its dirs share no prefix)
+  # silently became ctrl_ and matched nothing.
+  for job in "$JOBS_ROOT"/${JOB_PREFIX-ctrl_}*; do
     [[ -d "$job" ]] || continue
     [[ -f "$job/status/acquire.DONE" ]] || continue
     # htr.DONE is what the LOCAL watcher writes on completion; the other two are
