@@ -114,6 +114,8 @@ while true; do
   active=0
   started=0
   pending=0
+  skipped_dupes=0
+  skipped_claimed=0
   # Job-name prefix is configurable so this driver can serve the computus tree
   # too. Hardcoding ctrl_* meant pointing JOBS_ROOT at jobs/ silently matched
   # nothing: the driver reported "pending=0 ... DONE no ready control jobs" and
@@ -163,6 +165,71 @@ while true; do
     for marker in htr.DONE transcribe.DONE htr_bridges.DONE pipeline.DONE htr.INCOMPLETE; do
       [[ -f "$job/status/$marker" ]] && continue 2
     done
+
+    # ALIAS DUPLICATES. The harvest registered many manuscripts under both a bare
+    # catalogue id (clat_467) and a descriptive one
+    # (clat_467_einsiedeln_stiftsbibliothek_29) and acquired both. Recognizing
+    # each twice is pure waste: 85 of 237 eligible computus manuscripts are second
+    # copies, 24,432 pages' worth, and roughly half of one 12-hour Bridges job
+    # went on them before this was noticed.
+    #
+    # Skip a job when a SIBLING sharing its alias stem is already terminal. The
+    # suffix must be descriptive (>=2 underscore-separated segments); a lone short
+    # token like `_cod` is a type marker, and matching on it would merge
+    # genuinely distinct manuscripts.
+    # CLAIMED BY ANOTHER MACHINE. Bridges runs the same job tree from /ocean, so
+    # a claim marker keeps the two from recognizing the same manuscript twice --
+    # which is exactly how ~28,500 pages of redundant HTR happened.
+    #
+    # NOT terminal: if the remote run dies the claim must be cleared or the work
+    # is never done. Stale claims are therefore expired here rather than trusted
+    # forever.
+    if [[ -f "$job/status/htr_bridges.CLAIMED" && ! -f "$job/status/htr_bridges.DONE" ]]; then
+      _claim_age=$(( $(date +%s) - $(stat -c %Y "$job/status/htr_bridges.CLAIMED" 2>/dev/null || echo 0) ))
+      if (( _claim_age < ${CLAIM_TTL_SECONDS:-172800} )); then
+        skipped_claimed=$((skipped_claimed+1))
+        continue
+      fi
+      log "claim on $(basename "$job") is $((_claim_age/3600))h old -- expiring it"
+      rm -f "$job/status/htr_bridges.CLAIMED"
+    fi
+
+    if [[ "${SKIP_ALIAS_DUPES:-1}" == 1 ]]; then
+      _base="$(basename "$job")"
+      _stem="$(printf '%s' "$_base" | sed -E 's/^([a-z]+_[0-9]+(_[0-9]+)?)(_[a-z][a-z0-9]*_.+)?$/\1/')"
+      if [[ -n "$_stem" ]]; then
+        _dupe_done=0
+        for _sib in "$JOBS_ROOT/$_stem" "$JOBS_ROOT/$_stem"_*; do
+          [[ -d "$_sib" ]] || continue
+          [[ "$_sib" == "$job" ]] && continue
+          [[ "$(basename "$_sib")" == "$_stem"* ]] || continue
+          for _m in htr.DONE transcribe.DONE htr_bridges.DONE pipeline.DONE; do
+            if [[ -f "$_sib/status/$_m" ]]; then _dupe_done=1; break; fi
+          done
+          [[ "$_dupe_done" == 1 ]] && break
+        done
+        if [[ "$_dupe_done" == 1 ]]; then
+          skipped_dupes=$((skipped_dupes+1))
+          continue
+        fi
+        # Neither copy finished yet: pick deterministically so both are not
+        # recognized in parallel. Prefer the one with MORE images -- the bare
+        # catalogue id is often a near-empty stub (1MB against 854MB) -- and
+        # break exact ties on the longer name, which is the descriptive id.
+        _mine=$(count_images "$job")
+        for _sib in "$JOBS_ROOT/$_stem" "$JOBS_ROOT/$_stem"_*; do
+          [[ -d "$_sib" ]] || continue
+          [[ "$_sib" == "$job" ]] && continue
+          [[ "$(basename "$_sib")" == "$_stem"* ]] || continue
+          [[ -f "$_sib/status/acquire.DONE" ]] || continue
+          _theirs=$(count_images "$_sib")
+          if (( _theirs > _mine )) || { (( _theirs == _mine )) &&              [[ ${#_sib} -gt ${#job} ]]; }; then
+            skipped_dupes=$((skipped_dupes+1))
+            continue 3
+          fi
+        done
+      fi
+    fi
     n=$(count_images "$job")
     [[ "$n" -ge "$MIN_IMAGES" ]] || continue
     pending=$((pending+1))
@@ -194,7 +261,7 @@ while true; do
     stall_ticks=0
   fi
   last_produced="$produced"
-  log "tick pending=$pending active=$active started_now=$started acquire_busy=$acq_busy yaml=$produced"
+  log "tick pending=$pending active=$active started_now=$started dupes_skipped=$skipped_dupes claimed_skipped=$skipped_claimed acquire_busy=$acq_busy yaml=$produced"
   if [[ "$stall_ticks" -ge 5 && "$active" -gt 0 ]]; then
     log "STALLED: $active worker(s) active but yaml stuck at $produced for $stall_ticks ticks."
     log "STALLED: check a job log for 'no pending pages' -- a terminal marker may"
