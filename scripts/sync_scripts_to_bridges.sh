@@ -13,7 +13,7 @@ rsync -avz -e "$RSYNC_SSH" \
   "$REPO/scripts/" "${REMOTE}/scripts/"
 
 if [[ -f "$REPO/artifacts/blind-test-training/plan.json" ]]; then
-  bridges_ssh "${REMOTE%%:*}" "mkdir -p ${REMOTE#*:}/artifacts/blind-test-training"
+  bridges_dtn_ssh "mkdir -p ${REMOTE#*:}/artifacts/blind-test-training"
   rsync -avz -e "$RSYNC_SSH" \
     "$REPO/artifacts/blind-test-training/" \
     "${REMOTE}/artifacts/blind-test-training/"

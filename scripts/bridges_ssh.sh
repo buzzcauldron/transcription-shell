@@ -30,6 +30,10 @@ bridges_ssh() {
   ssh "${BRIDGES_SSH_OPTS[@]}" "$BRIDGES_LOGIN" "$@"
 }
 
+bridges_dtn_ssh() {
+  ssh "${BRIDGES_SSH_OPTS[@]}" "$BRIDGES_DTN" "$@"
+}
+
 bridges_rsync_ssh_e() {
   printf 'ssh'
   local opt
