@@ -33,7 +33,11 @@ report() {
 
 if ! ssh_cmd "echo ok" >/dev/null 2>&1; then
   report "FAIL: cannot SSH to $BRIDGES_LOGIN (BatchMode)"
-  report "HINT: set BRIDGES_SSH_KEY or BRIDGES_SSH_KEY_FILE in automation secrets"
+  if [[ -z "${BRIDGES_SSH_KEY:-}" && -z "${BRIDGES_SSH_KEY_FILE:-}" ]]; then
+    report "HINT: BRIDGES_SSH_KEY is not set in automation secrets (see docs/bridges-training-continuity.md)"
+  else
+    report "HINT: verify BRIDGES_SSH_KEY / BRIDGES_SSH_KEY_FILE and PSC account access"
+  fi
   exit 2
 fi
 
