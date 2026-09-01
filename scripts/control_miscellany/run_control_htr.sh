@@ -225,7 +225,11 @@ while true; do
           _theirs=$(count_images "$_sib")
           if (( _theirs > _mine )) || { (( _theirs == _mine )) &&              [[ ${#_sib} -gt ${#job} ]]; }; then
             skipped_dupes=$((skipped_dupes+1))
-            continue 3
+            # continue 2, NOT 3. Nesting is: while true (1) -> for job (2) ->
+            # for _sib (3). `continue 3` restarts the WHILE loop, skipping the
+            # tick log and the sleep, so the driver span silently at full tilt
+            # and logged nothing for twelve hours after starting two workers.
+            continue 2
           fi
         done
       fi

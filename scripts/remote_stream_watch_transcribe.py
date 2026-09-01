@@ -466,6 +466,31 @@ def run_batch(imgs: list[Path], idx: int) -> None:
         # not mark good pages as failed.
         if result.returncode == 0:
             return
+    # NO-PROGRESS GUARD. A batch that exits 0 while producing no YAML leaves
+    # `pending` unchanged, so the manuscript is retried forever: two workers
+    # reached batch 43170 and 15881 overnight with "DONE batch N exit=0" and
+    # done=16 pending=34 frozen the whole time. The retry cap below only covers
+    # the returncode != 0 path, so a clean-exit stall slipped straight past it.
+    if result.returncode == 0:
+        made = [img for img in imgs if valid_yaml(img.stem)]
+        if not made:
+            stuck = []
+            for img in imgs:
+                if _bump_attempts(img.stem) > MAX_PAGE_ATTEMPTS:
+                    stuck.append(img)
+            for img in stuck:
+                _mark(
+                    img.stem,
+                    "failed",
+                    f"batch {idx} exited 0 but produced no YAML after "
+                    f"{MAX_PAGE_ATTEMPTS} attempts",
+                )
+            if stuck:
+                log(
+                    f"NO-PROGRESS batch {idx}: exit 0 with no YAML; marking "
+                    f"{len(stuck)} page(s) failed so the manuscript can finish"
+                )
+
     if result.returncode != 0:
         if is_retryable_htr_error(log_txt):
             # BACKSTOP against unbounded retries. "Retryable" is a judgement about
