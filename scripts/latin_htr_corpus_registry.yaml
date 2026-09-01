@@ -88,6 +88,11 @@ corpora:
     split_mode: holdout
     url: https://github.com/malamatenia/Eutyches
     citation: eutyches
+    notes: >
+      Mainly Latin caroline with short Greek passages preserved. Full Greek
+      corpora (papyri, Athos, EPARCHOS, …) live in greek_htr_corpus_registry.yaml
+      and download_greek_htr_corpora.sh — do not double-count if both trees are
+      on disk.
 
   caroline-minuscule:
     languages: [latin]

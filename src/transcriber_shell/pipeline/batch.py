@@ -12,8 +12,10 @@ from typing import Any
 import yaml
 
 from transcriber_shell.config import Settings
+from transcriber_shell.llm.errors import llm_cap_tripped
 from transcriber_shell.llm.validate_output import (
     has_correct_mode_text,
+    is_htr_only_transcript,
     load_transcription_root,
     load_yaml_or_json_path,
     validate_transcript_file,
@@ -40,6 +42,23 @@ def _expand_pdf(pdf_path: Path) -> list[Path]:
 def sanitize_job_id(stem: str) -> str:
     s = re.sub(r"[^a-zA-Z0-9._-]+", "_", stem).strip("._-")
     return (s[:120] if s else "job")
+
+
+def _batch_worker_count(
+    settings: Settings, n_images: int, document_job_id: str | None
+) -> int:
+    """Choose safe page concurrency.
+
+    A shared document job writes each page's intermediate lineation to the
+    same canonical ``lines.xml`` path. Those jobs must therefore run serially;
+    the file is renamed per page only after that page finishes.
+    """
+    if document_job_id:
+        return 1
+    return max(
+        1,
+        min(int(getattr(settings, "batch_parallel_pages", 1) or 1), n_images),
+    )
 
 
 def _htr_results_for_report(htr: dict[str, Any]) -> dict[str, Any] | None:
@@ -175,7 +194,7 @@ def run_batch(
 
     s = settings or Settings()
     n = len(images)
-    workers = max(1, min(int(getattr(s, "batch_parallel_pages", 1) or 1), n))
+    workers = _batch_worker_count(s, n, document_job_id)
 
     def _process(i: int, image: Path) -> dict[str, Any] | None:
         """Run the pipeline for a single image. Returns the report row, or None if cancelled."""
@@ -412,9 +431,12 @@ def has_successful_transcription(
     if not p.is_file() or p.stat().st_size == 0:
         return False
     ok, _errs, _warns = validate_transcript_file(p, settings=s)
-    if ok:
-        return True
-    return has_correct_mode_text(p)
+    if not (ok or has_correct_mode_text(p)):
+        return False
+    mode = (s.llm_mode or "full").strip().lower()
+    if mode == "correct" and is_htr_only_transcript(p) and not llm_cap_tripped():
+        return False
+    return True
 
 
 def write_batch_report(path: Path, rows: list[dict[str, Any]]) -> None:

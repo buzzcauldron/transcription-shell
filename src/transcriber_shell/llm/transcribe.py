@@ -36,6 +36,17 @@ def _is_key_wall(exc: BaseException) -> bool:
     return any(p in msg for p in _KEY_WALL_PHRASES)
 
 
+def _should_ollama_key_wall_fallback(settings: Settings) -> bool:
+    """Local Qwen VL fallback is opt-in and never used when HTR must precede LLM.
+
+    Harvest / ``llm_mode=correct`` keeps the Kraken draft on quota errors instead
+    of loading qwen2.5vl:32b onto the same GPU as r7.
+    """
+    if getattr(settings, "require_htr_before_llm", True):
+        return False
+    return bool(getattr(settings, "ollama_key_wall_fallback", False))
+
+
 class TranscribeResult(NamedTuple):
     """LLM response text and optional token usage (provider-dependent)."""
 
@@ -70,8 +81,65 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
     norm_mode = str(cfg.get("normalizationMode") or "").strip().lower()
     lang_hint = str(cfg.get("language") or cfg.get("script") or "").strip() or None
 
+    # Diff-based correction: ask for changed lines only. Requires the raw draft,
+    # which line_hint cannot supply (it is truncated and protocol-framed).
+    # Signalled to the caller via job.prompt_cfg so run_pipeline knows to merge
+    # rather than treat the response as a transcript.
+    if (
+        s.correct_mode_diff
+        and should_use_short_correct(s.llm_mode or "full", job.line_hint)
+        and job.htr_draft_raw
+    ):
+        from transcriber_shell.llm.correct_diff import build_diff_prompts
+
+        # ORDERING RULE: expand before correcting. See correct_pre_expand.
+        draft_for_llm = job.htr_draft_raw
+        if s.correct_mode_require_expand:
+            from transcriber_shell.llm.correct_pre_expand import (
+                ExpansionUnavailable,
+                expand_draft_lines,
+            )
+
+            raw_lines = [l.strip() for l in job.htr_draft_raw.splitlines() if l.strip()]
+            try:
+                expanded, n_exp = expand_draft_lines(raw_lines, s)
+            except ExpansionUnavailable as exc:
+                # Skipping is the correct failure mode: correcting a raw
+                # diplomatic draft is exactly what the rule forbids, and doing it
+                # silently would reintroduce the model-expands-unbidden behaviour.
+                raise LLMProviderError(
+                    f"correct mode requires an expanded draft: {exc}"
+                ) from exc
+            draft_for_llm = "\n".join(expanded)
+            job.prompt_cfg["_expand_lines_changed"] = n_exp
+
+        # Rules-only boundary repair, after expansion so the lexicon sees
+        # letters rather than abbreviation glyphs. Absorbs the missing-space
+        # edits that dominated the LLM's diff; see correct_mode_word_split.
+        if s.correct_mode_word_split:
+            from transcriber_shell.repair.word_split import (
+                load_default_lexicon,
+                repair_lines,
+            )
+
+            lex = load_default_lexicon()
+            if lex is not None:
+                split_lines, n_lines, n_tok = repair_lines(
+                    draft_for_llm.splitlines(), lex
+                )
+                draft_for_llm = "\n".join(split_lines)
+                job.prompt_cfg["_word_split_lines_changed"] = n_lines
+                job.prompt_cfg["_word_split_tokens"] = n_tok
+
+        system, user_text, draft_lines = build_diff_prompts(
+            draft=draft_for_llm,
+            normalization_mode=norm_mode or "diplomatic",
+            language_hint=lang_hint,
+        )
+        cfg["_diff_draft_lines"] = draft_lines
+        job.prompt_cfg["_diff_draft_lines"] = draft_lines
     # Phase 3: short correct prompt — draft-primary, skip full protocol zones.
-    if should_use_short_correct(s.llm_mode or "full", job.line_hint):
+    elif should_use_short_correct(s.llm_mode or "full", job.line_hint):
         system, user_text = build_correct_prompts(
             line_hint=job.line_hint or "",
             normalization_mode=norm_mode or "diplomatic",
@@ -140,7 +208,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
                 settings=s,
             )
         except (LLMProviderError, RuntimeError) as exc:
-            if _is_key_wall(exc):
+            if _is_key_wall(exc) and _should_ollama_key_wall_fallback(s):
                 return _ollama_qwen_fallback()
             raise
     if provider == "openai":
@@ -154,7 +222,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
                 settings=s,
             )
         except (LLMProviderError, RuntimeError) as exc:
-            if _is_key_wall(exc):
+            if _is_key_wall(exc) and _should_ollama_key_wall_fallback(s):
                 return _ollama_qwen_fallback()
             raise
     if provider == "gemini":
@@ -168,7 +236,7 @@ def run_transcribe(job: TranscribeJob, settings: Settings | None = None) -> Tran
                 settings=s,
             )
         except (LLMProviderError, RuntimeError) as exc:
-            if _is_key_wall(exc):
+            if _is_key_wall(exc) and _should_ollama_key_wall_fallback(s):
                 return _ollama_qwen_fallback()
             raise
     if provider == "ollama":

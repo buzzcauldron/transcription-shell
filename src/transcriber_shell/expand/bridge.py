@@ -62,15 +62,53 @@ def load_expand_examples(settings: Settings) -> list[dict[str, str]]:
     return []
 
 
-def _expand_kwargs(settings: Settings, examples: list[dict[str, str]]) -> dict[str, Any]:
-    api_key = settings.google_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get(
-        "GOOGLE_API_KEY"
+def resolve_expand_output_paths(yaml_path: Path) -> tuple[Path, Path, Path]:
+    """Diplomatic TEI + expanded TEI/txt. Prefer job ``04_expanded`` when under ``03_artifacts*``."""
+    stem = yaml_path.stem.replace("_transcription", "")
+    for parent in yaml_path.parents:
+        if parent.name.startswith("03_artifacts"):
+            job = parent.parent
+            tei_dir = job / ".tei_stage"
+            exp_dir = job / "04_expanded"
+            tei_dir.mkdir(parents=True, exist_ok=True)
+            exp_dir.mkdir(parents=True, exist_ok=True)
+            return (
+                tei_dir / f"{stem}_tei.xml",
+                exp_dir / f"{stem}_tei_expanded.xml",
+                exp_dir / f"{stem}_expanded.txt",
+            )
+    parent = yaml_path.parent
+    return (
+        parent / f"{stem}_diplomatic.tei.xml",
+        parent / f"{stem}_expanded.tei.xml",
+        parent / f"{stem}_expanded.txt",
     )
+
+
+def _expand_kwargs(settings: Settings, examples: list[dict[str, str]]) -> dict[str, Any]:
+    backend = (settings.expand_diplomatic_backend or "rules").strip().lower()
+    model = settings.expand_diplomatic_model
+    if backend in ("rules", "local"):
+        api_key = None
+    elif backend == "anthropic":
+        api_key = settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")
+        if not model or model.startswith("gemini"):
+            model = os.environ.get("ANTHROPIC_MODEL") or "claude-haiku-4-5-20251001"
+    elif backend == "groq":
+        api_key = os.environ.get("GROQ_API_KEY") or os.environ.get(
+            "TRANSCRIBER_SHELL_GROQ_API_KEY"
+        )
+        if not model or model.startswith("gemini") or model.startswith("claude"):
+            model = os.environ.get("GROQ_MODEL") or "llama-3.3-70b-versatile"
+    else:
+        api_key = settings.google_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get(
+            "GOOGLE_API_KEY"
+        )
     return {
         "examples": examples,
-        "model": settings.expand_diplomatic_model,
+        "model": model,
         "api_key": api_key,
-        "backend": settings.expand_diplomatic_backend,
+        "backend": backend,
         "modality": settings.expand_diplomatic_modality,
         "passes": settings.expand_diplomatic_passes,
         "dry_run": settings.expand_diplomatic_dry_run,
@@ -167,11 +205,10 @@ def expand_yaml_artifact(
     from transcriber_shell.xml_tools.tei import yaml_to_tei
 
     yaml_path = yaml_path.expanduser().resolve()
-    stem = yaml_path.stem.replace("_transcription", "")
-    parent = yaml_path.parent
-    tei_path = tei_out or parent / f"{stem}_diplomatic.tei.xml"
-    out_tei = expanded_tei_out or parent / f"{stem}_expanded.tei.xml"
-    out_txt = expanded_txt_out or parent / f"{stem}_expanded.txt"
+    default_tei, default_exp_tei, default_txt = resolve_expand_output_paths(yaml_path)
+    tei_path = tei_out or default_tei
+    out_tei = expanded_tei_out or default_exp_tei
+    out_txt = expanded_txt_out or default_txt
 
     yaml_to_tei(yaml_path, tei_path)
     tei_xml = tei_path.read_text(encoding="utf-8")

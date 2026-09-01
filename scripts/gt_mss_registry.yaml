@@ -76,6 +76,14 @@ sources:
     script: anglicana
     notes: "JUST1 King's Bench roll pages"
 
+  - path: local/val_holdout_gt
+    corpus: gt-local-holdout
+    split_mode: holdout
+    languages: [latin]
+    era: medieval
+    script: anglicana
+    notes: "Local Mac val_holdout_gt (JUST1/CP40/KB27) synced for Anglicana fine-tune"
+
   - path: dropbox/Cornell/Tours-746
     corpus: gt-dropbox-tours746
     split_mode: holdout

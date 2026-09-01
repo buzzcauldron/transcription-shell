@@ -1,0 +1,1100 @@
+{
+  "generated_at": "2026-08-13T13:48:56.940084+00:00",
+  "policy": "genre-mixed miscellanies; primary+secondary; no single whole-book genre",
+  "layers": [
+    {
+      "id": "holdings",
+      "tool": "computus.lat + union registry",
+      "status": "computed",
+      "signal": "holding-library geography and confirmed digitization URLs"
+    },
+    {
+      "id": "citca_origin",
+      "tool": "CitCA manifest",
+      "status": "computed",
+      "signal": "origin region and century for 54 dated witnesses only"
+    },
+    {
+      "id": "title_genre",
+      "tool": "transcriber_shell.stylometry.title_genre",
+      "status": "computed",
+      "signal": "work-title prior (CitCA texts[]); not a book-level genre"
+    },
+    {
+      "id": "discourse_mix",
+      "tool": "genre_signal / medieval-proof",
+      "status": "computed",
+      "n": 8,
+      "signal": "rolling primary+secondary discourse; near-ties kept"
+    },
+    {
+      "id": "fingerprint",
+      "tool": "stylometry.fingerprint (FW + char n-grams)",
+      "status": "computed",
+      "n": 8,
+      "signal": "book-level style neighborhood without R stylo"
+    },
+    {
+      "id": "dendro_series",
+      "tool": "dendro-shell crossdate idea on rolling computus_calendar weight",
+      "status": "computed",
+      "signal": "lag-correlation of mix series between books; not ring detection"
+    },
+    {
+      "id": "layout",
+      "tool": "DocLay YOLO (transcriber_shell.figures.doclay)",
+      "status": "specified",
+      "signal": "page mix Table/Text/Picture = compilation strategy"
+    },
+    {
+      "id": "script",
+      "tool": "manuscript-fingerprint L0 on PAGE XML",
+      "status": "specified",
+      "signal": "script-family clustering from ink-component heights; skip typebox L1 (print)"
+    },
+    {
+      "id": "keyness",
+      "tool": "antconc-engine keyword vs locked historical core",
+      "status": "specified",
+      "signal": "computus-like vs not, without a whole-book genre call"
+    },
+    {
+      "id": "r_stylo",
+      "tool": "stylometry-r run_stylo_target.R",
+      "status": "partial",
+      "n": 2,
+      "signal": "harvest jobs clat_107 / clat_114 only; mixed miscellanies"
+    }
+  ],
+  "citca": {
+    "n_witnesses": 54,
+    "n_indexed_works": 203,
+    "title_unmatched": 82,
+    "origin": {
+      "Northern / NE France": 16,
+      "Lake Constance": 11,
+      "German lands": 8,
+      "Loire / E. France": 7,
+      "unknown": 6,
+      "Italy": 5,
+      "Southern France": 1
+    },
+    "century": {
+      "800s": 33,
+      "700s": 12,
+      "undated": 7,
+      "900s": 2
+    },
+    "title_genre": {
+      "computus": 53,
+      "epistolary": 37,
+      "grammar": 13,
+      "history": 4,
+      "natural-philosophy": 4,
+      "scholastic": 4,
+      "astronomy": 2,
+      "exegesis": 2,
+      "hagiography": 1,
+      "moral-instruction": 1
+    },
+    "witnesses": [
+      {
+        "id": "ALBI_BM_38BIS_61_COD",
+        "origin_bucket": "Southern France",
+        "century": "800s",
+        "title_genres": [
+          "computus",
+          "computus"
+        ]
+      },
+      {
+        "id": "BAV_REG_LAT_141_CU1",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": [
+          "computus"
+        ]
+      },
+      {
+        "id": "BERLIN_SBPK_PHILLIPPS_1831_COD",
+        "origin_bucket": "Italy",
+        "century": "800s",
+        "title_genres": [
+          "computus",
+          "computus",
+          "computus",
+          "history",
+          "natural-philosophy",
+          "computus",
+          "computus",
+          "astronomy",
+          "grammar",
+          "grammar"
+        ]
+      },
+      {
+        "id": "BERN_BB_441_COD",
+        "origin_bucket": "Loire / E. France",
+        "century": "900s",
+        "title_genres": [
+          "computus"
+        ]
+      },
+      {
+        "id": "BERN_BB_611_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "700s",
+        "title_genres": []
+      },
+      {
+        "id": "BERN_BB_AA_90_16_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "BLB_AUG_PERG_229_COD",
+        "origin_bucket": "Italy",
+        "century": "800s",
+        "title_genres": [
+          "grammar",
+          "grammar"
+        ]
+      },
+      {
+        "id": "BLB_AUG_PERG_239_COD",
+        "origin_bucket": "Lake Constance",
+        "century": "900s",
+        "title_genres": [
+          "computus"
+        ]
+      },
+      {
+        "id": "BLCOTCAL_A_XV_CU1",
+        "origin_bucket": "Northern / NE France",
+        "century": "700s",
+        "title_genres": [
+          "computus",
+          "computus",
+          "scholastic",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "grammar",
+          "hagiography"
+        ]
+      },
+      {
+        "id": "BLCOTCAL_A_XV_CU2",
+        "origin_bucket": "Northern / NE France",
+        "century": "700s",
+        "title_genres": []
+      },
+      {
+        "id": "BNF_LAT_2796_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": [
+          "computus",
+          "grammar",
+          "computus"
+        ]
+      },
+      {
+        "id": "BNF_LAT_4860_COD",
+        "origin_bucket": "Lake Constance",
+        "century": "800s",
+        "title_genres": [
+          "computus",
+          "computus",
+          "computus",
+          "scholastic",
+          "epistolary",
+          "computus",
+          "history",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "computus",
+          "grammar",
+          "epistolary"
+        ]
+      },
+      {
+        "id": "BNF_LAT_5543_COD",
+        "origin_bucket": "Loire / E. France",
+        "century": "800s",
+        "title_genres": [
+          "computus",
+          "epistolary",
+          "natural-philosophy",
+          "computus",
+          "computus",
+          "epistolary",
+          "epistolary",
+          "grammar",
+          "grammar",
+          "computus",
+          "computus"
+        ]
+      },
+      {
+        "id": "BNF_LAT_894_COD",
+        "origin_bucket": "Loire / E. France",
+        "century": "800s",
+        "title_genres": [
+          "computus"
+        ]
+      },
+      {
+        "id": "BSB_CLM_14725_COD",
+        "origin_bucket": "German lands",
+        "century": "700s",
+        "title_genres": [
+          "computus",
+          "computus",
+          "computus",
+          "computus",
+          "moral-instruction",
+          "grammar"
+        ]
+      },
+      {
+        "id": "DB_103_COD",
+        "origin_bucket": "German lands",
+        "century": "700s",
+        "title_genres": [
+          "computus",
+          "computus",
+          "natural-philosophy",
+          "natural-philosophy",
+          "computus",
+          "epistolary"
+        ]
+      },
+      {
+        "id": "HABCODGUELF_91_WEISS_COD",
+        "origin_bucket": "German lands",
+        "century": "800s",
+        "title_genres": [
+          "computus",
+          "computus",
+          "computus"
+        ]
+      },
+      {
+        "id": "KBR_10127_44_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "700s",
+        "title_genres": [
+          "computus"
+        ]
+      },
+      {
+        "id": "KBR_5413_22__CU1",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "KBR_8654_72_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": [
+          "computus"
+        ]
+      },
+      {
+        "id": "KBR_9311_19_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "KBR_9565_66_COD",
+        "origin_bucket": "Lake Constance",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "KBR_9581_95_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "Leiden_UB_VLF_26_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "Leiden_UB_VLF_74_COD",
+        "origin_bucket": "Loire / E. France",
+        "century": "800s",
+        "title_genres": [
+          "grammar",
+          "grammar"
+        ]
+      },
+      {
+        "id": "Leiden_UB_VLF_82_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": [
+          "grammar"
+        ]
+      },
+      {
+        "id": "Leiden_UB_VLQ_69_COD",
+        "origin_bucket": "Lake Constance",
+        "century": "700s",
+        "title_genres": [
+          "epistolary"
+        ]
+      },
+      {
+        "id": "Leiden_UB_VLQ_75_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "Leiden_UB_VMI_11_COD",
+        "origin_bucket": "German lands",
+        "century": "700s",
+        "title_genres": [
+          "computus"
+        ]
+      },
+      {
+        "id": "MILAN_BA_H_150_COD",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": [
+          "computus",
+          "exegesis",
+          "epistolary",
+          "astronomy",
+          "computus"
+        ]
+      },
+      {
+        "id": "MILAN_SAAC_13_COD",
+        "origin_bucket": "Italy",
+        "century": "800s",
+        "title_genres": [
+          "computus"
+        ]
+      },
+      {
+        "id": "MONTPELLIER_BISM_H_157_COD",
+        "origin_bucket": "Loire / E. France",
+        "century": "800s",
+        "title_genres": [
+          "epistolary",
+          "history",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "history",
+          "exegesis",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary"
+        ]
+      },
+      {
+        "id": "ROME_BC_641_COD",
+        "origin_bucket": "Italy",
+        "century": "800s",
+        "title_genres": [
+          "computus",
+          "computus"
+        ]
+      },
+      {
+        "id": "ROME_BV_E_26_COD",
+        "origin_bucket": "Loire / E. France",
+        "century": "800s",
+        "title_genres": [
+          "computus",
+          "computus",
+          "computus"
+        ]
+      },
+      {
+        "id": "SB_110_cod",
+        "origin_bucket": "Italy",
+        "century": "700s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_184_cod",
+        "origin_bucket": "Lake Constance",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_225_cod",
+        "origin_bucket": "Lake Constance",
+        "century": "700s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_248_cod",
+        "origin_bucket": "Northern / NE France",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_250_cod",
+        "origin_bucket": "Lake Constance",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_251_1",
+        "origin_bucket": "Lake Constance",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_251_2",
+        "origin_bucket": "Lake Constance",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_682_cod",
+        "origin_bucket": "German lands",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_732_COD",
+        "origin_bucket": "German lands",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_878_cod",
+        "origin_bucket": "Lake Constance",
+        "century": "800s",
+        "title_genres": []
+      },
+      {
+        "id": "SB_913_cod",
+        "origin_bucket": "German lands",
+        "century": "700s",
+        "title_genres": []
+      },
+      {
+        "id": "SUBMSC_0046_cod",
+        "origin_bucket": "Lake Constance",
+        "century": "800s",
+        "title_genres": [
+          "scholastic",
+          "scholastic",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary",
+          "epistolary"
+        ]
+      },
+      {
+        "id": "VATICAN_BAV_PAL_LAT_1447_CU1",
+        "origin_bucket": "German lands",
+        "century": "700s",
+        "title_genres": [
+          "computus",
+          "computus",
+          "computus",
+          "computus",
+          "epistolary"
+        ]
+      },
+      {
+        "id": "tours_bm_746",
+        "origin_bucket": "Loire / E. France",
+        "century": "undated",
+        "title_genres": []
+      },
+      {
+        "id": "morgan_m925",
+        "origin_bucket": "unknown",
+        "century": "undated",
+        "title_genres": []
+      },
+      {
+        "id": "bl_harley_3667",
+        "origin_bucket": "unknown",
+        "century": "undated",
+        "title_genres": []
+      },
+      {
+        "id": "oxford_sjc_17",
+        "origin_bucket": "unknown",
+        "century": "undated",
+        "title_genres": []
+      },
+      {
+        "id": "cambridge_sjc_a22",
+        "origin_bucket": "unknown",
+        "century": "undated",
+        "title_genres": []
+      },
+      {
+        "id": "wellcome_computistical_miscellany",
+        "origin_bucket": "unknown",
+        "century": "undated",
+        "title_genres": [
+          "computus",
+          "computus",
+          "computus"
+        ]
+      },
+      {
+        "id": "nypl_computus_text_3",
+        "origin_bucket": "unknown",
+        "century": "undated",
+        "title_genres": []
+      }
+    ]
+  },
+  "core_texts": {
+    "n_texts": 8,
+    "texts_dir": "stylometry-r/output/batch_stylo_texts",
+    "near_tie_share": 0.0,
+    "primary_counts": {
+      "computus_calendar": 6,
+      "astronomical_technical": 1,
+      "theological_scholastic": 1
+    },
+    "secondary_counts": {
+      "astronomical_technical": 5,
+      "computus_calendar": 2,
+      "narrative_history": 1
+    },
+    "mix": [
+      {
+        "id": "basel_ubb_an_iv_18_latin",
+        "words": 8907,
+        "chunks": 12,
+        "primary": "astronomical_technical",
+        "secondary": "computus_calendar",
+        "p_primary": 0.8208,
+        "p_secondary": 0.1255,
+        "near_tie": false,
+        "n_boundaries": 0,
+        "window_primaries": [
+          "astronomical_technical",
+          "astronomical_technical",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "astronomical_technical"
+        ],
+        "confidence": 1.0,
+        "model": "rule_delta_genre_v1",
+        "probs": {
+          "astronomical_technical": 0.8208,
+          "computus_calendar": 0.1255,
+          "narrative_history": 0.0181,
+          "theological_scholastic": 0.013,
+          "legal_charter": 0.0105,
+          "medical_recipe": 0.0044
+        }
+      },
+      {
+        "id": "basel_ubb_f_vii_12_latin",
+        "words": 89735,
+        "chunks": 12,
+        "primary": "computus_calendar",
+        "secondary": "astronomical_technical",
+        "p_primary": 0.9961,
+        "p_secondary": 0.0029,
+        "near_tie": false,
+        "n_boundaries": 0,
+        "window_primaries": [
+          "computus_calendar",
+          "computus_calendar",
+          "astronomical_technical",
+          "astronomical_technical",
+          "computus_calendar",
+          "computus_calendar",
+          "astronomical_technical",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar"
+        ],
+        "confidence": 1.0,
+        "model": "rule_delta_genre_v1",
+        "probs": {
+          "computus_calendar": 0.9961,
+          "astronomical_technical": 0.0029,
+          "narrative_history": 0.0005,
+          "theological_scholastic": 0.0001,
+          "medical_recipe": 0.0001,
+          "epistolary": 0.0001
+        }
+      },
+      {
+        "id": "bav_pal_lat_1354_latin",
+        "words": 183111,
+        "chunks": 12,
+        "primary": "computus_calendar",
+        "secondary": "astronomical_technical",
+        "p_primary": 0.9835,
+        "p_secondary": 0.0162,
+        "near_tie": false,
+        "n_boundaries": 0,
+        "window_primaries": [
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "astronomical_technical",
+          "astronomical_technical",
+          "astronomical_technical",
+          "computus_calendar"
+        ],
+        "confidence": 1.0,
+        "model": "rule_delta_genre_v1",
+        "probs": {
+          "computus_calendar": 0.9835,
+          "astronomical_technical": 0.0162,
+          "narrative_history": 0.0001,
+          "theological_scholastic": 0.0,
+          "verse_poetry": 0.0,
+          "epistolary": 0.0
+        }
+      },
+      {
+        "id": "bav_reg_lat_123_latin",
+        "words": 112673,
+        "chunks": 12,
+        "primary": "computus_calendar",
+        "secondary": "astronomical_technical",
+        "p_primary": 0.9918,
+        "p_secondary": 0.0074,
+        "near_tie": false,
+        "n_boundaries": 0,
+        "window_primaries": [
+          "computus_calendar",
+          "computus_calendar",
+          "narrative_history",
+          "astronomical_technical",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "narrative_history",
+          "computus_calendar",
+          "astronomical_technical"
+        ],
+        "confidence": 1.0,
+        "model": "rule_delta_genre_v1",
+        "probs": {
+          "computus_calendar": 0.9918,
+          "astronomical_technical": 0.0074,
+          "narrative_history": 0.0003,
+          "medical_recipe": 0.0001,
+          "theological_scholastic": 0.0001,
+          "legal_charter": 0.0001
+        }
+      },
+      {
+        "id": "bav_reg_lat_141_cu1_latin",
+        "words": 48822,
+        "chunks": 12,
+        "primary": "computus_calendar",
+        "secondary": "narrative_history",
+        "p_primary": 0.9913,
+        "p_secondary": 0.0038,
+        "near_tie": false,
+        "n_boundaries": 0,
+        "window_primaries": [
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "theological_scholastic",
+          "theological_scholastic",
+          "theological_scholastic",
+          "computus_calendar",
+          "theological_scholastic",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar"
+        ],
+        "confidence": 1.0,
+        "model": "rule_delta_genre_v1",
+        "probs": {
+          "computus_calendar": 0.9913,
+          "narrative_history": 0.0038,
+          "theological_scholastic": 0.0024,
+          "astronomical_technical": 0.0013,
+          "liturgical": 0.0003,
+          "epistolary": 0.0003
+        }
+      },
+      {
+        "id": "bl_cotton_vitellius_a_xii_latin",
+        "words": 87328,
+        "chunks": 12,
+        "primary": "computus_calendar",
+        "secondary": "astronomical_technical",
+        "p_primary": 0.9588,
+        "p_secondary": 0.0168,
+        "near_tie": false,
+        "n_boundaries": 0,
+        "window_primaries": [
+          "computus_calendar",
+          "astronomical_technical",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar"
+        ],
+        "confidence": 1.0,
+        "model": "rule_delta_genre_v1",
+        "probs": {
+          "computus_calendar": 0.9588,
+          "astronomical_technical": 0.0168,
+          "theological_scholastic": 0.0128,
+          "narrative_history": 0.0035,
+          "liturgical": 0.0028,
+          "medical_recipe": 0.0018
+        }
+      },
+      {
+        "id": "bl_harley_531_latin",
+        "words": 282694,
+        "chunks": 12,
+        "primary": "theological_scholastic",
+        "secondary": "computus_calendar",
+        "p_primary": 0.8232,
+        "p_secondary": 0.1377,
+        "near_tie": false,
+        "n_boundaries": 0,
+        "window_primaries": [
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "astronomical_technical",
+          "astronomical_technical",
+          "computus_calendar",
+          "computus_calendar",
+          "narrative_history",
+          "theological_scholastic",
+          "computus_calendar",
+          "astronomical_technical",
+          "narrative_history"
+        ],
+        "confidence": 1.0,
+        "model": "rule_delta_genre_v1",
+        "probs": {
+          "theological_scholastic": 0.8232,
+          "computus_calendar": 0.1377,
+          "astronomical_technical": 0.029,
+          "narrative_history": 0.0045,
+          "legal_charter": 0.0014,
+          "liturgical": 0.0012
+        }
+      },
+      {
+        "id": "bl_royal_12_d_iv_latin",
+        "words": 58342,
+        "chunks": 12,
+        "primary": "computus_calendar",
+        "secondary": "astronomical_technical",
+        "p_primary": 1.0,
+        "p_secondary": 0.0,
+        "near_tie": false,
+        "n_boundaries": 0,
+        "window_primaries": [
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "astronomical_technical",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "astronomical_technical",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar",
+          "computus_calendar"
+        ],
+        "confidence": 1.0,
+        "model": "rule_delta_genre_v1",
+        "probs": {
+          "computus_calendar": 1.0,
+          "astronomical_technical": 0.0,
+          "theological_scholastic": 0.0,
+          "narrative_history": 0.0,
+          "legal_charter": 0.0,
+          "liturgical": 0.0
+        }
+      }
+    ],
+    "fingerprint_nearest": [
+      {
+        "a": "bav_reg_lat_123_latin",
+        "b": "bav_reg_lat_141_cu1_latin",
+        "vector_cosine": 0.0611,
+        "fw_cosine": 0.1319
+      },
+      {
+        "a": "basel_ubb_an_iv_18_latin",
+        "b": "bav_reg_lat_141_cu1_latin",
+        "vector_cosine": 0.0815,
+        "fw_cosine": 0.1721
+      },
+      {
+        "a": "bav_reg_lat_123_latin",
+        "b": "bl_cotton_vitellius_a_xii_latin",
+        "vector_cosine": 0.0815,
+        "fw_cosine": 0.1438
+      },
+      {
+        "a": "bav_reg_lat_141_cu1_latin",
+        "b": "bl_cotton_vitellius_a_xii_latin",
+        "vector_cosine": 0.112,
+        "fw_cosine": 0.2141
+      },
+      {
+        "a": "basel_ubb_f_vii_12_latin",
+        "b": "bl_cotton_vitellius_a_xii_latin",
+        "vector_cosine": 0.1173,
+        "fw_cosine": 0.12
+      },
+      {
+        "a": "bl_cotton_vitellius_a_xii_latin",
+        "b": "bl_royal_12_d_iv_latin",
+        "vector_cosine": 0.1197,
+        "fw_cosine": 0.2534
+      },
+      {
+        "a": "bav_reg_lat_123_latin",
+        "b": "bl_royal_12_d_iv_latin",
+        "vector_cosine": 0.1233,
+        "fw_cosine": 0.1898
+      },
+      {
+        "a": "basel_ubb_an_iv_18_latin",
+        "b": "bav_reg_lat_123_latin",
+        "vector_cosine": 0.1243,
+        "fw_cosine": 0.255
+      },
+      {
+        "a": "basel_ubb_f_vii_12_latin",
+        "b": "bav_reg_lat_123_latin",
+        "vector_cosine": 0.1375,
+        "fw_cosine": 0.1852
+      },
+      {
+        "a": "basel_ubb_an_iv_18_latin",
+        "b": "bl_cotton_vitellius_a_xii_latin",
+        "vector_cosine": 0.1535,
+        "fw_cosine": 0.2748
+      },
+      {
+        "a": "bav_reg_lat_141_cu1_latin",
+        "b": "bl_royal_12_d_iv_latin",
+        "vector_cosine": 0.1555,
+        "fw_cosine": 0.2962
+      },
+      {
+        "a": "basel_ubb_f_vii_12_latin",
+        "b": "bav_reg_lat_141_cu1_latin",
+        "vector_cosine": 0.1717,
+        "fw_cosine": 0.2998
+      }
+    ],
+    "dendro_crossdate": [
+      {
+        "a": "basel_ubb_an_iv_18_latin",
+        "b": "bl_royal_12_d_iv_latin",
+        "lag": 0,
+        "r": -0.8137,
+        "overlap": 12
+      },
+      {
+        "a": "basel_ubb_f_vii_12_latin",
+        "b": "bl_royal_12_d_iv_latin",
+        "lag": -1,
+        "r": 0.7912,
+        "overlap": 11
+      },
+      {
+        "a": "bav_reg_lat_123_latin",
+        "b": "bl_harley_531_latin",
+        "lag": -3,
+        "r": -0.789,
+        "overlap": 9
+      },
+      {
+        "a": "basel_ubb_an_iv_18_latin",
+        "b": "bav_reg_lat_123_latin",
+        "lag": 4,
+        "r": -0.7505,
+        "overlap": 8
+      },
+      {
+        "a": "bl_harley_531_latin",
+        "b": "bl_royal_12_d_iv_latin",
+        "lag": 2,
+        "r": -0.6968,
+        "overlap": 10
+      },
+      {
+        "a": "bl_cotton_vitellius_a_xii_latin",
+        "b": "bl_royal_12_d_iv_latin",
+        "lag": 4,
+        "r": 0.6862,
+        "overlap": 8
+      },
+      {
+        "a": "bav_reg_lat_123_latin",
+        "b": "bl_royal_12_d_iv_latin",
+        "lag": 1,
+        "r": -0.6762,
+        "overlap": 11
+      },
+      {
+        "a": "bl_cotton_vitellius_a_xii_latin",
+        "b": "bl_harley_531_latin",
+        "lag": 4,
+        "r": 0.669,
+        "overlap": 8
+      },
+      {
+        "a": "basel_ubb_f_vii_12_latin",
+        "b": "bl_cotton_vitellius_a_xii_latin",
+        "lag": 4,
+        "r": -0.6663,
+        "overlap": 8
+      },
+      {
+        "a": "basel_ubb_f_vii_12_latin",
+        "b": "bl_harley_531_latin",
+        "lag": -1,
+        "r": 0.6592,
+        "overlap": 11
+      },
+      {
+        "a": "basel_ubb_an_iv_18_latin",
+        "b": "bav_reg_lat_141_cu1_latin",
+        "lag": -3,
+        "r": 0.6569,
+        "overlap": 9
+      },
+      {
+        "a": "basel_ubb_an_iv_18_latin",
+        "b": "basel_ubb_f_vii_12_latin",
+        "lag": 2,
+        "r": 0.6391,
+        "overlap": 10
+      },
+      {
+        "a": "basel_ubb_an_iv_18_latin",
+        "b": "bav_pal_lat_1354_latin",
+        "lag": 2,
+        "r": 0.6237,
+        "overlap": 10
+      },
+      {
+        "a": "bav_reg_lat_141_cu1_latin",
+        "b": "bl_cotton_vitellius_a_xii_latin",
+        "lag": 3,
+        "r": -0.6217,
+        "overlap": 9
+      },
+      {
+        "a": "bav_pal_lat_1354_latin",
+        "b": "bav_reg_lat_141_cu1_latin",
+        "lag": -2,
+        "r": -0.6138,
+        "overlap": 10
+      },
+      {
+        "a": "bav_pal_lat_1354_latin",
+        "b": "bav_reg_lat_123_latin",
+        "lag": -3,
+        "r": 0.5776,
+        "overlap": 9
+      },
+      {
+        "a": "bav_reg_lat_123_latin",
+        "b": "bl_cotton_vitellius_a_xii_latin",
+        "lag": -4,
+        "r": 0.5744,
+        "overlap": 8
+      },
+      {
+        "a": "bav_reg_lat_123_latin",
+        "b": "bav_reg_lat_141_cu1_latin",
+        "lag": 1,
+        "r": -0.5709,
+        "overlap": 11
+      },
+      {
+        "a": "bav_reg_lat_141_cu1_latin",
+        "b": "bl_royal_12_d_iv_latin",
+        "lag": 3,
+        "r": -0.5633,
+        "overlap": 9
+      },
+      {
+        "a": "basel_ubb_an_iv_18_latin",
+        "b": "bl_cotton_vitellius_a_xii_latin",
+        "lag": -4,
+        "r": -0.5373,
+        "overlap": 8
+      }
+    ]
+  },
+  "pipeline_snapshot": {
+    "union_records": 752,
+    "confirmed_urls": 334,
+    "unique_jobs_with_image_dir": 285,
+    "expand_dirs": 65,
+    "core_extracts_expanded_words_m": 4.22,
+    "harvest_stylo_jobs": [
+      "clat_107",
+      "clat_114"
+    ]
+  }
+}

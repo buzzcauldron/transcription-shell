@@ -40,9 +40,9 @@ def _effective_combination(s: "Settings") -> str:
 
 
 def _force_htr_before_llm(plan: HtrExecutionPlan) -> HtrExecutionPlan:
-    """``llm_mode=correct`` needs drafts in ``line_hint`` before ``run_transcribe``.
+    """Upgrade parallel-with-LLM plans so drafts exist before ``run_transcribe``.
 
-    Parallel-with-LLM plans never inject drafts; upgrade them to before-LLM.
+    Parallel-with-LLM never injects drafts into ``line_hint`` in time for the LLM call.
     """
     if plan.kind == HtrPlanKind.WITH_LLM_PARALLEL and plan.tasks:
         return HtrExecutionPlan(kind=HtrPlanKind.BEFORE_LLM_PARALLEL, tasks=plan.tasks)
@@ -56,10 +56,12 @@ def plan_htr_execution(
     """Map settings + built tasks to an execution plan (may be NONE)."""
     c = _effective_combination(s)
     llm_mode = (s.llm_mode or "full").strip().lower()
-    correct_needs_draft = llm_mode == "correct"
+    # Default policy: HTR must finish before LLM (never LLM solo / never parallel-with-LLM).
+    force_before = bool(getattr(s, "require_htr_before_llm", True)) or llm_mode == "correct"
 
     if c in ("off", "shell", "none", "llm_only"):
-        # LLM-only path: never run HTR backends, even when seg/HTR models are configured.
+        # Explicit LLM-only combo: no HTR backends. Pipeline refuses LLM when
+        # require_htr_before_llm is set (default).
         return HtrExecutionPlan(kind=HtrPlanKind.NONE)
 
     if c in ("kraken_htr", "zenodo"):
@@ -90,7 +92,7 @@ def plan_htr_execution(
         if not all_tasks:
             return HtrExecutionPlan(kind=HtrPlanKind.NONE)
         plan = HtrExecutionPlan(kind=HtrPlanKind.WITH_LLM_PARALLEL, tasks=dict(all_tasks))
-        return _force_htr_before_llm(plan) if correct_needs_draft else plan
+        return _force_htr_before_llm(plan) if force_before else plan
 
     if c == "sequential":
         if not all_tasks:

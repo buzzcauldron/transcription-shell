@@ -455,7 +455,12 @@ class TestTranscribePipelineMocked:
             },
             provider="anthropic",
         )
-        settings = Settings(artifacts_dir=tmp_path / "artifacts")
+        # These cases mock the LLM and skip HTR, so the HTR->LLM gate (added later,
+        # default on) refuses the run before the behaviour under test is reached.
+        # The gate has its own coverage; disable it here.
+        settings = Settings(
+            artifacts_dir=tmp_path / "artifacts", require_htr_before_llm=False
+        )
 
         with (
             patch(
@@ -501,7 +506,9 @@ class TestTranscribePipelineMocked:
         from PIL import Image
 
         artifacts = tmp_path / "artifacts"
-        settings = Settings(artifacts_dir=artifacts)
+        # LLM is mocked and HTR is skipped, so the HTR->LLM gate would refuse
+        # every page before the batch behaviour under test runs.
+        settings = Settings(artifacts_dir=artifacts, require_htr_before_llm=False)
 
         for i in range(1, 4):
             img = tmp_path / f"KB27_f{i:03d}r.jpg"
@@ -966,89 +973,131 @@ class TestNormalizationProtocolSchema:
 class TestEnvLeakGuard:
     """run_pipeline.sh must abort if .env.latin-ms is git-tracked."""
 
-    def test_git_tracked_env_aborts_pipeline(self, tmp_path: Path) -> None:
-        """Simulate a git repo where .env.latin-ms is tracked — expect exit 1."""
+    # These exercise scripts/latin_ms/lib/env_leak_guard.sh directly. The earlier
+    # version of these tests pasted a copy of the guard logic into the test body
+    # and ran that, so it validated a duplicate and could not catch a regression
+    # in the shipped guard -- and there was one: a stale x86_64
+    # /usr/local/bin/git exits 126, the guard read every non-zero status as
+    # "not tracked", and the pipeline loaded secrets anyway.
+    GUARD_LIB = (
+        Path(__file__).resolve().parents[1]
+        / "scripts" / "latin_ms" / "lib" / "env_leak_guard.sh"
+    )
+
+    def _run_guard(self, repo: Path, env_file: Path, path_prepend: str = "") -> "subprocess.CompletedProcess[str]":
+        script = repo / "call_guard.sh"
+        script.write_text(
+            "#!/usr/bin/env bash\n"
+            f'source "{self.GUARD_LIB}"\n'
+            f'env_leak_guard "{env_file}" "{repo}"\n'
+        )
+        script.chmod(0o755)
+        env = dict(os.environ)
+        if path_prepend:
+            env["PATH"] = f"{path_prepend}:{env.get('PATH', '')}"
+        return subprocess.run(
+            ["bash", str(script)], cwd=repo, capture_output=True, text=True, env=env
+        )
+
+    @staticmethod
+    def _init_repo(tmp_path: Path) -> None:
         subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
-        subprocess.run(
-            ["git", "config", "user.email", "test@test.com"],
-            cwd=tmp_path, check=True, capture_output=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.name", "Test"],
-            cwd=tmp_path, check=True, capture_output=True,
-        )
+        for k, v in (("user.email", "test@test.com"), ("user.name", "Test")):
+            subprocess.run(
+                ["git", "config", k, v], cwd=tmp_path, check=True, capture_output=True
+            )
+
+    def test_git_tracked_env_aborts_pipeline(self, tmp_path: Path) -> None:
+        """A tracked .env.latin-ms must abort."""
+        self._init_repo(tmp_path)
         env_file = tmp_path / ".env.latin-ms"
         env_file.write_text("ANTHROPIC_API_KEY=fake\n")
         subprocess.run(
-            ["git", "add", ".env.latin-ms"],
-            cwd=tmp_path, check=True, capture_output=True,
+            ["git", "add", ".env.latin-ms"], cwd=tmp_path, check=True, capture_output=True
         )
 
-        # Write a minimal run_pipeline.sh that only runs the guard
-        guard_sh = tmp_path / "guard_test.sh"
-        guard_sh.write_text(
-            "#!/usr/bin/env bash\n"
-            'ENV_FILE=".env.latin-ms"\n'
-            "SCRIPT_DIR=\"$(pwd)\"\n"
-            'if git -C "$SCRIPT_DIR" ls-files --error-unmatch "$ENV_FILE" &>/dev/null 2>&1; then\n'
-            '    echo "ERROR: env file is tracked" >&2\n'
-            "    exit 1\n"
-            "fi\n"
-            "exit 0\n"
-        )
-        guard_sh.chmod(0o755)
+        result = self._run_guard(tmp_path, env_file)
+        assert result.returncode == 1, f"guard did not fire: {result.stderr}"
+        assert "tracked" in result.stderr
 
-        result = subprocess.run(
-            ["bash", str(guard_sh)],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
+    def test_tracked_but_locally_deleted_env_still_aborts(self, tmp_path: Path) -> None:
+        """In the index but absent from the worktree still leaks on commit.
+
+        The old guard short-circuited on `[[ -f "$ENV_FILE" ]]` and never looked.
+        """
+        self._init_repo(tmp_path)
+        env_file = tmp_path / ".env.latin-ms"
+        env_file.write_text("ANTHROPIC_API_KEY=fake\n")
+        subprocess.run(
+            ["git", "add", ".env.latin-ms"], cwd=tmp_path, check=True, capture_output=True
         )
-        assert result.returncode == 1, "Guard should abort when .env.latin-ms is tracked"
-        assert "tracked" in result.stderr or "ERROR" in result.stderr
+        env_file.unlink()
+
+        result = self._run_guard(tmp_path, env_file)
+        assert result.returncode == 1, f"guard did not fire: {result.stderr}"
+
+    def test_guard_fails_closed_when_git_is_broken(self, tmp_path: Path) -> None:
+        """An unrunnable git must abort, not be read as 'clean'.
+
+        Regression test for the live bug: /usr/local/bin/git on this machine is a
+        stale x86_64 binary exiting 126, which the guard accepted as proof the
+        file was untracked.
+        """
+        self._init_repo(tmp_path)
+        env_file = tmp_path / ".env.latin-ms"
+        env_file.write_text("ANTHROPIC_API_KEY=fake\n")
+
+        # A `git` earlier on PATH that fails the way a wrong-architecture binary
+        # does: non-zero, no useful output.
+        fakebin = tmp_path / "fakebin"
+        fakebin.mkdir()
+        broken = fakebin / "git"
+        broken.write_text("#!/usr/bin/env bash\nexit 126\n")
+        broken.chmod(0o755)
+
+        result = self._run_guard(tmp_path, env_file, path_prepend=str(fakebin))
+        assert result.returncode == 1, (
+            "guard failed OPEN with a broken git -- this is the vulnerability: "
+            f"stdout={result.stdout!r} stderr={result.stderr!r}"
+        )
+        assert "cannot run git" in result.stderr or "could not determine" in result.stderr
 
     def test_untracked_env_passes_guard(self, tmp_path: Path) -> None:
-        """An untracked .env.latin-ms should not trigger the guard."""
-        subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
-        subprocess.run(
-            ["git", "config", "user.email", "test@test.com"],
-            cwd=tmp_path, check=True, capture_output=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.name", "Test"],
-            cwd=tmp_path, check=True, capture_output=True,
-        )
+        """An untracked .env.latin-ms should not trigger the guard.
+
+        A WORKING git is put first on PATH deliberately. This machine has a stale
+        x86_64 /usr/local/bin/git that exits 126, and the guard now (correctly)
+        refuses rather than guessing -- so without this the test would assert the
+        guard's failure-closed path instead of its clean path.
+        """
+        working_git = self._find_working_git()
+        if working_git is None:
+            pytest.skip("no runnable git available")
+        self._init_repo(tmp_path)
         env_file = tmp_path / ".env.latin-ms"
         env_file.write_text("ANTHROPIC_API_KEY=fake\n")
 
-        guard_sh = tmp_path / "guard_test.sh"
-        guard_sh.write_text(
-            "#!/usr/bin/env bash\n"
-            'ENV_FILE=".env.latin-ms"\n'
-            "SCRIPT_DIR=\"$(pwd)\"\n"
-            'if git -C "$SCRIPT_DIR" ls-files --error-unmatch "$ENV_FILE" &>/dev/null 2>&1; then\n'
-            '    echo "ERROR: env file is tracked" >&2\n'
-            "    exit 1\n"
-            "fi\n"
-            "exit 0\n"
+        result = self._run_guard(
+            tmp_path, env_file, path_prepend=str(working_git.parent)
         )
-        guard_sh.chmod(0o755)
+        assert result.returncode == 0, f"false positive: {result.stderr}"
 
-        result = subprocess.run(
-            ["bash", str(guard_sh)],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0, "Guard should pass when .env.latin-ms is untracked"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Pipeline configuration validator
-# ─────────────────────────────────────────────────────────────────────────────
-
-class TestPipelineConfigValidation:
-    """Validate Settings objects catch misconfigured pipeline before run."""
+    @staticmethod
+    def _find_working_git() -> Path | None:
+        """First git on PATH that actually executes."""
+        for d in os.environ.get("PATH", "").split(os.pathsep):
+            cand = Path(d) / "git"
+            if not cand.is_file():
+                continue
+            try:
+                r = subprocess.run(
+                    [str(cand), "--version"], capture_output=True, timeout=10
+                )
+            except OSError:
+                continue
+            if r.returncode == 0:
+                return cand
+        return None
 
     def test_settings_default_lineation_backend(self) -> None:
         from transcriber_shell.config import Settings

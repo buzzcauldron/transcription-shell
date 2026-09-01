@@ -106,6 +106,10 @@ def transcribe_openai(
                     usage = None
             return TranscribeResult(text, usage)
         except APIStatusError as e:
+            from transcriber_shell.llm.errors import skip_retries_on_llm_cap
+
+            if skip_retries_on_llm_cap(s, e):
+                raise
             if e.status_code in _RETRYABLE_STATUS and attempt + 1 < max_attempts:
                 _sleep_backoff(attempt)
                 continue

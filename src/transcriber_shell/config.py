@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -94,6 +95,19 @@ class Settings(BaseSettings):
             "TRANSCRIBER_SHELL_OLLAMA_TIMEOUT",
         ),
         description="HTTP timeout (seconds) for Ollama /api/chat; local vision models are often slow on CPU.",
+    )
+    ollama_key_wall_fallback: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_OLLAMA_KEY_WALL_FALLBACK",
+            "OLLAMA_KEY_WALL_FALLBACK",
+        ),
+        description=(
+            "If true, a cloud-provider key/quota wall may fall back to local "
+            "ollama/qwen2.5vl:32b. Default false: that model steals the GPU from "
+            "on-machine Kraken HTR. Opt in only for deliberate LLM-only runs "
+            "(also requires require_htr_before_llm=false)."
+        ),
     )
 
     anthropic_timeout_seconds: float = Field(
@@ -371,6 +385,26 @@ class Settings(BaseSettings):
         default=100.0,
         validation_alias=AliasChoices(
             "TRANSCRIBER_SHELL_KRAKEN_MIN_LENGTH", "KRAKEN_MIN_LENGTH"
+        ),
+    )
+    kraken_autocast: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_KRAKEN_AUTOCAST", "KRAKEN_AUTOCAST"
+        ),
+        description=(
+            "Run kraken segmentation under automatic mixed precision. kraken's "
+            "blla.segment exposes an `autocast` parameter defaulting to False, so "
+            "full fp32 was being used. Measured on a 3990x6190 page on the 4090 "
+            "(gm-seg, 3 reps): this is a MEMORY win, not a speed win -- peak VRAM "
+            "2.66GB -> 1.37GB (-48%), while wall time was flat to marginally worse "
+            "(best 7.40s -> 7.52s). Line count was identical (12), so output does "
+            "not change. Worth enabling because the GPU is shared with Ollama and "
+            "VRAM, not time, is what makes segmentation fail there; halving the "
+            "footprint is also what would let two segmentation workers run at once "
+            "instead of the current serialized one. Applied ONLY on CUDA -- "
+            "autocast gains nothing on CPU and MPS autocast is unreliable -- and "
+            "ignored on kraken builds with no such parameter."
         ),
     )
 
@@ -723,7 +757,88 @@ class Settings(BaseSettings):
             "LLM stage behavior. full (current default — protocol YAML); "
             "correct (short prompt: treat HTR draft as primary, fix recognition errors); "
             "off (skip LLM entirely — equivalent to setting htr_combination to a *_only variant). "
-            "Honored only when an HTR backend produced drafts; falls back to full otherwise."
+            "When require_htr_before_llm is true (default), correct/full both require a "
+            "non-empty HTR draft before the LLM runs — there is no LLM-only fallback."
+        ),
+    )
+
+    require_htr_before_llm: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM",
+            "REQUIRE_HTR_BEFORE_LLM",
+        ),
+        description=(
+            "If true (default), refuse to call the LLM unless a non-empty HTR draft was "
+            "produced first (lineation → HTR → LLM). Blocks htr_combination=shell/llm_only, "
+            "parallel-with-LLM plans, continue-on-lineation-failure without lines, and "
+            "empty/failed HTR. Set false only for deliberate LLM-only experiments."
+        ),
+    )
+
+    correct_mode_require_expand: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_CORRECT_MODE_REQUIRE_EXPAND",
+            "CORRECT_MODE_REQUIRE_EXPAND",
+        ),
+        description=(
+            "ORDERING RULE: llm_mode=correct runs only on an expand-diplomatic'd "
+            "draft, never on raw diplomatic HTR. Measured on 20 raw pages, a model "
+            "told to preserve ink forms expanded them anyway (sp̃s->spēs, "
+            "uiuunt->vivunt, adiuuar&->adiuvare) and changed 73.9% of lines at "
+            "2,427 output tokens/page -- no cheaper than the whole-page rewrite. "
+            "Asking a model not to expand fights the task; expand-diplomatic does "
+            "it deterministically with its rules backend, leaving the LLM only the "
+            "recognition errors rules cannot fix. When the expander is unavailable "
+            "correction is SKIPPED rather than run on raw text, since running it "
+            "raw is what this rule forbids. Set False only for a deliberate "
+            "experiment."
+        ),
+    )
+
+    correct_mode_word_split: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_CORRECT_MODE_WORD_SPLIT",
+            "CORRECT_MODE_WORD_SPLIT",
+        ),
+        description=(
+            "Run rules-only word-boundary repair on the draft after "
+            "expand-diplomatic and before the LLM. Much of what the LLM rewrote on "
+            "20 validation pages was not recognition but missing spaces -- "
+            "INNOMINE->IN NOMINE, adopus->ad opus, Ethoc->Et hoc, Undefit->Unde "
+            "Fit -- which is dictionary segmentation, not language understanding, "
+            "so a DP search over a Latin frequency lexicon does it for zero tokens "
+            "and no network call. Measured corpus-wide: raw HTR function-word rate "
+            "18.41%->19.41%, about 7% of the 14.25-point gap to printed editions "
+            "(32.66%). On edition text it is deliberately almost inert -- 0.025% of "
+            "tokens touched, function-word rate +0.04 -- which is what makes it "
+            "safe to run on reference and target text alike. Ordering matters: it "
+            "runs AFTER expansion, because expansion turns abbreviation glyphs into "
+            "letters the lexicon can match. Costs nothing when the lexicon is "
+            "absent; the draft passes through unchanged. NOTE this does not replace "
+            "the LLM pass -- 7% of the gap is a cheap down payment, not the fix."
+        ),
+    )
+
+    correct_mode_diff: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "TRANSCRIBER_SHELL_CORRECT_MODE_DIFF",
+            "CORRECT_MODE_DIFF",
+        ),
+        description=(
+            "When True, llm_mode=correct asks the model for CHANGED LINES ONLY and "
+            "merges them into the HTR draft locally, instead of having it re-emit "
+            "the whole page as protocol YAML. Measured on an 80-line page needing 8 "
+            "fixes: output drops from ~2,400 to ~137 tokens (94% less, ~82% cheaper), "
+            "because output bills ~5x input and the rewrite dominated the cost. It "
+            "also prevents wholesale regeneration structurally -- corrected pages "
+            "previously diverged from the HTR by 0.93-0.99 of characters, which no "
+            "prompt wording prevented. Off by default: it changes the output "
+            "contract, and a model that ignores the format falls back to normal "
+            "transcript handling rather than producing an empty page."
         ),
     )
 
@@ -749,8 +864,9 @@ class Settings(BaseSettings):
             "EXPAND_DIPLOMATIC_ENABLED",
         ),
         description=(
-            "After diplomatic LLM transcription, run expand-diplomatic (TEI derivative). "
-            "Requires expand-diplomatic checkout or pip install; set EXPAND_DIPLOMATIC_ROOT."
+            "After diplomatic HTR (before LLM cleanup), run expand-diplomatic. "
+            "Backend ``rules`` expands from examples.json with no LLM. "
+            "Requires expand-diplomatic checkout; set EXPAND_DIPLOMATIC_ROOT."
         ),
     )
     expand_diplomatic_root: Path | None = Field(
@@ -761,11 +877,12 @@ class Settings(BaseSettings):
         ),
     )
     expand_diplomatic_backend: str = Field(
-        default="gemini",
+        default="rules",
         validation_alias=AliasChoices(
             "EXPAND_DIPLOMATIC_BACKEND",
             "TRANSCRIBER_SHELL_EXPAND_BACKEND",
         ),
+        description="rules (no LLM) | gemini | groq | anthropic | local",
     )
     expand_diplomatic_model: str = Field(
         default="gemini-2.5-flash",
@@ -1054,6 +1171,17 @@ class Settings(BaseSettings):
         if s not in allowed:
             raise ValueError(f"llm_mode must be one of {sorted(allowed)}; got {s!r}")
         return s
+
+    @field_validator("kraken_model_path", "kraken_htr_model_path", mode="before")
+    @classmethod
+    def _drop_foreign_os_model_path(cls, v: object) -> object:
+        """Ignore Mac /Users/ checkpoints leaked into Linux .env files."""
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return None
+        text = str(v).replace("\\", "/")
+        if sys.platform != "darwin" and "/Users/" in text:
+            return None
+        return v
 
     def resolved_protocol_root(self, package_root: Path | None = None) -> Path:
         if self.protocol_root is not None:

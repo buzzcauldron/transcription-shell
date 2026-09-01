@@ -21,8 +21,10 @@ import yaml
 
 # Directories searched in order for <name>.yaml spec files.
 _BUILTIN_DIRS: list[Path] = [
-    # src/transcriber_shell/document_types.py → parents[2] = repo root
+    # Normal checkout: src/transcriber_shell/... → parents[2] = repo root
     Path(__file__).resolve().parents[2] / "scripts" / "latin_ms" / "document_types",
+    # Bridges layout: code root is .../transcriber-shell/src (scripts live beside the package)
+    Path(__file__).resolve().parents[1] / "scripts" / "latin_ms" / "document_types",
 ]
 
 _ENV_RE = re.compile(r"\$\{(\w+)\}")

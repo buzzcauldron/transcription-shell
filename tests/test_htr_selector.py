@@ -59,9 +59,23 @@ def test_plan_kraken_then_gm_order() -> None:
     assert order == ["kr", "gm"]
 
 
-def test_plan_default_parallel_when_htr_parallel_true() -> None:
+def test_plan_default_forces_htr_before_llm_when_required() -> None:
+    """Default policy: never parallel-with-LLM; HTR must finish first."""
     tasks = {"kraken-htr": lambda: HtrResult(text="z", backend="kraken-htr", line_count=1)}
-    s = Settings(htr_combination="default", htr_parallel=True)
+    s = Settings(htr_combination="default", htr_parallel=True, require_htr_before_llm=True)
+    plan = plan_htr_execution(s, tasks)
+    assert plan.kind == HtrPlanKind.BEFORE_LLM_PARALLEL
+    assert plan.tasks == tasks
+
+
+def test_plan_parallel_opt_out_allows_with_llm_when_require_false() -> None:
+    tasks = {"kraken-htr": lambda: HtrResult(text="z", backend="kraken-htr", line_count=1)}
+    s = Settings(
+        htr_combination="parallel",
+        htr_parallel=True,
+        llm_mode="full",
+        require_htr_before_llm=False,
+    )
     plan = plan_htr_execution(s, tasks)
     assert plan.kind == HtrPlanKind.WITH_LLM_PARALLEL
     assert plan.tasks == tasks

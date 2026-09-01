@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Pull latest GM HTR weights from Bridges2 DTN into ~/src/latin_documents/.
+# Pull latest GM HTR weights from Bridges2 into ~/src/latin_documents/.
 set -euo pipefail
 
-REMOTE="bridges2-dtn:/ocean/projects/hum260002p/sstrickland/transcriber-shell/src"
-DEST="${HOME}/src/latin_documents"
+REMOTE_HOST="${BRIDGES_HOST:-bridges2-dtn}"
+REMOTE_DIR="${BRIDGES_HTR_DIR:-/ocean/projects/hum260002p/sstrickland/transcriber-shell/src}"
+DEST="${HTR_LOCAL_DIR:-${HOME}/src/latin_documents}"
 mkdir -p "$DEST"
 
 MODELS=(
@@ -15,10 +16,13 @@ MODELS=(
   gm-htr-r6-core_best.mlmodel
   gm-htr-r7-full_best.mlmodel
   gm-htr-r8-gothic-bible_best.mlmodel
+  gm-htr-greek-minuscule_best.mlmodel
+  gm-seg.mlmodel
 )
 
 for m in "${MODELS[@]}"; do
-  if rsync -avz --ignore-missing-args -e "ssh -o BatchMode=yes" "${REMOTE}/${m}" "${DEST}/"; then
+  if rsync -avz --ignore-missing-args -e "ssh -o BatchMode=yes" \
+      "${REMOTE_HOST}:${REMOTE_DIR}/${m}" "${DEST}/"; then
     :
   fi
 done

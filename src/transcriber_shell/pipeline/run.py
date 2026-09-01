@@ -18,11 +18,17 @@ import yaml
 from transcriber_shell.config import LineationBackend, Settings
 from transcriber_shell.glyph_machina.workflow import GlyphMachinaError, fetch_lines_xml
 from transcriber_shell.kraken_lineation import KrakenLineationError, fetch_lines_xml_kraken
-from transcriber_shell.llm.errors import LLMProviderError
+from transcriber_shell.llm.errors import (
+    LLMProviderError,
+    is_llm_cap_error,
+    llm_cap_tripped,
+    trip_llm_cap,
+)
 from transcriber_shell.mask_lineation import MaskLineationError, fetch_lines_xml_mask
 from transcriber_shell.llm.transcribe import run_transcribe, strip_yaml_fence, TranscribeResult
 from transcriber_shell.llm.validate_output import (
     has_correct_mode_text,
+    is_htr_only_transcript,
     normalize_transcription_yaml_data,
     validate_transcript_file,
 )
@@ -127,6 +133,31 @@ def _htr_results_to_line_hint(htr_results: dict[str, Any]) -> str | None:
     """Turn HTR backend output into an optional LLM hint (truncated)."""
     from transcriber_shell.htr.base import HtrResult
 
+    # ONE DRAFT, NOT ALL OF THEM.
+    #
+    # Every backend's draft used to go into the prompt at cap=6000 chars each, so
+    # running Glyph Machina AND Kraken doubled the draft payload to ~3,000 input
+    # tokens per page before anything else. Correct mode needs the BEST draft, not
+    # a chorus: the model is being asked to fix recognition errors, and a second
+    # noisy draft adds tokens without adding information it can act on.
+    #
+    # Ranked by confidence when the backend reports one, else by line count as a
+    # proxy for coverage. Failures are still surfaced so a silently dead backend
+    # does not look like a clean run.
+    _CONF_RANK = {"high": 3, "medium": 2, "low": 1}
+
+    def _score(r: object) -> tuple[int, int]:
+        if not isinstance(r, HtrResult):
+            return (-1, -1)
+        return (_CONF_RANK.get(str(r.confidence or "").lower(), 0), int(r.line_count or 0))
+
+    usable = {n: r for n, r in htr_results.items()
+              if isinstance(r, HtrResult) and r.text.strip()}
+    if len(usable) > 1:
+        best = max(usable, key=lambda n: _score(usable[n]))
+        htr_results = {best: usable[best],
+                       **{n: r for n, r in htr_results.items() if isinstance(r, Exception)}}
+
     parts: list[str] = []
     for name, res in htr_results.items():
         if isinstance(res, Exception):
@@ -146,6 +177,47 @@ def _htr_results_to_line_hint(htr_results: dict[str, Any]) -> str | None:
     return (
         "HTR machine-readable drafts (for cross-check only; output must still be full protocol YAML):\n"
         + "\n".join(parts)
+    )
+
+
+def _has_usable_htr_draft(htr_results: dict[str, Any] | None) -> bool:
+    """True when at least one HTR backend returned non-empty text."""
+    from transcriber_shell.htr.base import HtrResult
+
+    if not htr_results:
+        return False
+    for res in htr_results.values():
+        if isinstance(res, HtrResult) and res.text.strip():
+            return True
+    return False
+
+
+def _refuse_llm_without_htr(
+    job: TranscribeJob,
+    s: Settings,
+    *,
+    lines_out: Path | None,
+    text_line_count: int,
+    htr_results: dict[str, Any],
+    errors: list[str],
+    warnings: list[str],
+    timings: list[tuple[str, float]],
+    reason: str,
+) -> PipelineResult:
+    errors.append(
+        f"HTR→LLM required: refusing LLM without a usable HTR draft ({reason}). "
+        "Configure a Kraken/GM/TrOCR model (htr_combination=kraken_htr|gm_htr|…), "
+        "or set TRANSCRIBER_SHELL_REQUIRE_HTR_BEFORE_LLM=0 only for deliberate LLM-only experiments."
+    )
+    return PipelineResult(
+        job.job_id,
+        lines_out,
+        None,
+        text_line_count,
+        errors=errors,
+        warnings=warnings,
+        htr_results=dict(htr_results or {}),
+        timings=timings,
     )
 
 
@@ -248,33 +320,89 @@ def _htr_only_short_circuit(
     errors: list[str],
     warnings: list[str],
     timings: list[tuple[str, float]],
+    *,
+    mark_needs_llm: bool = True,
 ) -> PipelineResult:
-    """Write raw HTR text as the final output and skip the LLM step entirely."""
+    """Write on-machine Kraken HTR as YAML and skip the LLM step."""
     from transcriber_shell.htr.base import HtrResult as _HtrResult
-    parts = [
-        res.text.strip()
-        for res in htr_results.values()
-        if isinstance(res, _HtrResult) and res.text.strip()
-    ]
-    if not parts:
+
+    lines: list[str] = []
+    backend = "kraken-htr"
+    for res in htr_results.values():
+        if not isinstance(res, _HtrResult) or not res.text.strip():
+            continue
+        backend = res.backend or backend
+        lines.extend(ln.strip() for ln in res.text.splitlines() if ln.strip())
+    if not lines:
         errors.append("htr_only: HTR returned no text.")
         return PipelineResult(
             job.job_id, lines_out, None, text_line_count,
             errors=errors, warnings=warnings, htr_results=htr_results, timings=timings,
         )
-    raw_htr = "\n\n".join(parts)
+    raw_htr = "\n".join(lines)
+    payload = {
+        "transcriptionOutput": {
+            "metadata": {
+                "modelId": backend,
+                "notes": "htr_only: on-machine Kraken; not protocol-compliant (no LLM correct)",
+            },
+            "segments": [{"text": ln, "position": "main"} for ln in lines],
+        }
+    }
     out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
     out_yaml.parent.mkdir(parents=True, exist_ok=True)
-    out_yaml.write_text(raw_htr, encoding="utf-8")
+    out_yaml.write_text(yaml.safe_dump(payload, allow_unicode=True, sort_keys=False), encoding="utf-8")
     try:
-        out_yaml.with_suffix(".txt").write_text(raw_htr, encoding="utf-8")
+        out_yaml.with_suffix(".txt").write_text(raw_htr + "\n", encoding="utf-8")
     except OSError:
         pass
-    warnings.append("htr_only: output is raw HTR text, not protocol-compliant YAML.")
+    if (s.llm_mode or "full").strip().lower() != "off" and mark_needs_llm:
+        try:
+            (out_yaml.parent / ".needs_llm").write_text(
+                "htr_only: LLM cleanup not applied\n", encoding="utf-8"
+            )
+        except OSError:
+            pass
+    warnings.append("htr_only: on-machine HTR YAML (no LLM correct).")
+    expanded_tei: Path | None = None
+    expanded_txt: Path | None = None
+    if s.expand_diplomatic_enabled:
+        from transcriber_shell.expand.bridge import maybe_run_expand_stage
+
+        s_rules = s.model_copy(
+            update={
+                "expand_diplomatic_backend": "rules",
+                "expand_diplomatic_whole_document": False,
+            }
+        )
+        t_exp = time.perf_counter()
+        expanded_tei, expanded_txt, expand_warns = maybe_run_expand_stage(
+            out_yaml, job.prompt_cfg, s_rules
+        )
+        warnings.extend(expand_warns)
+        if expanded_tei is not None:
+            timings.append(("expand", time.perf_counter() - t_exp))
     return PipelineResult(
         job.job_id, lines_out, out_yaml, text_line_count,
         errors=errors, warnings=warnings, htr_results=htr_results, timings=timings,
+        expanded_tei_path=expanded_tei,
+        expanded_txt_path=expanded_txt,
     )
+
+
+def _best_htr_draft(htr_results: dict[str, Any]) -> str | None:
+    """Raw text of the highest-confidence HTR draft, or None."""
+    from transcriber_shell.htr.base import HtrResult
+
+    best, best_score = None, (-1, -1)
+    rank = {"high": 3, "medium": 2, "low": 1}
+    for res in (htr_results or {}).values():
+        if not isinstance(res, HtrResult) or not res.text.strip():
+            continue
+        score = (rank.get(str(res.confidence or "").lower(), 0), int(res.line_count or 0))
+        if score > best_score:
+            best, best_score = res.text.strip(), score
+    return best
 
 
 def _append_htr_hint(job: TranscribeJob, htr_results: dict[str, Any]) -> None:
@@ -282,6 +410,46 @@ def _append_htr_hint(job: TranscribeJob, htr_results: dict[str, Any]) -> None:
     hint_extra = _htr_results_to_line_hint(htr_results)
     if hint_extra:
         job.line_hint = f"{job.line_hint}\n\n{hint_extra}" if job.line_hint else hint_extra
+    # Kept separately and untruncated for diff-based correction.
+    job.htr_draft_raw = _best_htr_draft(htr_results)
+
+
+def _htr_results_from_yaml(path: Path) -> dict[str, Any]:
+    """Rebuild HTR drafts from an existing ``htr_only`` YAML so Kraken is not re-run."""
+    from transcriber_shell.htr.base import HtrResult
+    from transcriber_shell.llm.validate_output import load_transcription_root, load_yaml_or_json_path
+
+    try:
+        data = load_yaml_or_json_path(path)
+        root = load_transcription_root(data) or {}
+    except Exception:
+        return {}
+    lines: list[str] = []
+    for seg in root.get("segments") or []:
+        if not isinstance(seg, dict):
+            continue
+        text = str(seg.get("text") or seg.get("diplomaticText") or "").strip()
+        if text:
+            lines.append(text)
+    if not lines:
+        return {}
+    joined = "\n".join(lines)
+    return {
+        "cached-htr": HtrResult(
+            text=joined,
+            backend="cached-htr",
+            line_count=len(lines),
+        )
+    }
+
+
+def _clear_needs_llm_marker(out_yaml: Path) -> None:
+    marker = out_yaml.parent / ".needs_llm"
+    try:
+        if marker.is_file():
+            marker.unlink()
+    except OSError:
+        pass
 
 
 def _do_htr(
@@ -300,6 +468,20 @@ def _do_htr(
     ``short_circuit`` is a complete ``PipelineResult`` only when the plan is ``HTR_ONLY``
     (or HTR errored under that plan) — the caller must return it immediately and skip the LLM.
     """
+    existing = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
+    if (
+        (s.llm_mode or "full").strip().lower() == "correct"
+        and not llm_cap_tripped()
+        and existing.is_file()
+        and is_htr_only_transcript(existing)
+    ):
+        reused = _htr_results_from_yaml(existing)
+        if _has_usable_htr_draft(reused):
+            warnings.append("Reused on-machine HTR YAML for LLM autocorrect.")
+            _log("htr: reused existing htr_only YAML (LLM autocorrect pass)")
+            _append_htr_hint(job, reused)
+            return reused, None, None, None
+
     from transcriber_shell.htr.detect import detect_scripts
     from transcriber_shell.htr.parallel import build_htr_tasks, run_htr_ordered, run_htr_parallel
     from transcriber_shell.htr.selector import HtrPlanKind, plan_htr_execution
@@ -311,14 +493,25 @@ def _do_htr(
     early: dict[str, Any] = {}
 
     if plan.kind == HtrPlanKind.NONE:
-        if htr_tasks and (s.htr_combination or "").strip().lower() in ("shell", "off", "none", "llm_only"):
-            warnings.append(
+        combo = (s.htr_combination or "").strip().lower()
+        if combo in ("shell", "off", "none", "llm_only"):
+            msg = (
                 "HTR backends are configured (Glyph Machina and/or Zenodo paths) but "
                 f"htr_combination={s.htr_combination!r} runs the original shell (LLM) only; HTR was skipped."
+            )
+            if getattr(s, "require_htr_before_llm", True) and (s.llm_mode or "full").lower() != "off":
+                errors.append(msg + " LLM blocked (require_htr_before_llm).")
+            elif htr_tasks:
+                warnings.append(msg)
+        elif getattr(s, "require_htr_before_llm", True) and (s.llm_mode or "full").lower() != "off":
+            errors.append(
+                "HTR→LLM required: no HTR backend tasks available for "
+                f"htr_combination={s.htr_combination!r}. Configure model paths or change combination."
             )
         return early, None, None, None
 
     if plan.kind == HtrPlanKind.WITH_LLM_PARALLEL and plan.tasks:
+        # Parallel-with-LLM is only reachable when require_htr_before_llm is false.
         _log("htr: starting (parallel with LLM)…")
         executor = ThreadPoolExecutor(max_workers=1)
         future = executor.submit(run_htr_parallel, plan.tasks)
@@ -557,12 +750,38 @@ def run_pipeline(
     htr_future: Future | None = None
     htr_executor: ThreadPoolExecutor | None = None
     htr_results_early: dict[str, Any] = {}
+    require_htr = bool(getattr(s, "require_htr_before_llm", True))
+    llm_on = (s.llm_mode or "full").lower() != "off"
+
     if lines_out is not None and not s.xml_only:
         htr_results_early, htr_future, htr_executor, short_circuit = _do_htr(
             job, s, lines_out, errors, warnings, timings, text_line_count, _log,
         )
         if short_circuit is not None:
             return short_circuit
+        if errors:
+            return PipelineResult(
+                job.job_id,
+                lines_out,
+                None,
+                text_line_count,
+                errors=errors,
+                warnings=warnings,
+                htr_results=dict(htr_results_early or {}),
+                timings=timings,
+            )
+    elif require_htr and llm_on and not s.xml_only:
+        return _refuse_llm_without_htr(
+            job,
+            s,
+            lines_out=lines_out,
+            text_line_count=text_line_count,
+            htr_results={},
+            errors=errors,
+            warnings=warnings,
+            timings=timings,
+            reason="no lines XML — HTR cannot run (lineation failed or was skipped)",
+        )
 
     # llm_mode=off short-circuits to the same htr_only output path when drafts exist.
     if (s.llm_mode or "full").lower() == "off" and htr_results_early:
@@ -570,18 +789,61 @@ def run_pipeline(
             job, s, lines_out, text_line_count, htr_results_early, errors, warnings, timings,
         )
 
+    if require_htr and llm_on and not _has_usable_htr_draft(htr_results_early):
+        # Drain a parallel future if somehow still pending (opt-out path only).
+        if htr_future is not None:
+            htr_results_early = _finalize_htr_results(
+                htr_results_early, htr_future, htr_executor, warnings
+            )
+            _append_htr_hint(job, htr_results_early)
+        if not _has_usable_htr_draft(htr_results_early):
+            return _refuse_llm_without_htr(
+                job,
+                s,
+                lines_out=lines_out,
+                text_line_count=text_line_count,
+                htr_results=htr_results_early,
+                errors=errors,
+                warnings=warnings,
+                timings=timings,
+                reason="HTR produced no non-empty draft text",
+            )
+
     # ── LLM ───────────────────────────────────────────────────────────────
+    if (s.llm_mode or "full").strip().lower() == "correct" and llm_cap_tripped():
+        htr = _finalize_htr_results(htr_results_early, htr_future, htr_executor, warnings)
+        warnings.append("LLM autocorrect skipped (rate limit / quota); kept on-machine HTR.")
+        _log("llm: cap already hit — skipped autocorrect, kept Kraken HTR")
+        return _htr_only_short_circuit(
+            job, s, lines_out, text_line_count, htr, [], warnings, timings,
+            mark_needs_llm=False,
+        )
+
     _log(f"llm: starting ({job.provider}/{job.model_override or 'default'})…")
     llm_usage: dict[str, int] | None = None
     t_llm = time.perf_counter()
     try:
         tx = run_transcribe(job, settings=s)
     except (LLMProviderError, TimeoutError, OSError, httpx.TimeoutException, Exception) as e:
+        htr = _finalize_htr_results(htr_results_early, htr_future, htr_executor, warnings)
+        if _has_usable_htr_draft(htr):
+            warnings.append(
+                "LLM cleanup failed; kept on-machine HTR. " + _format_llm_error(job, e)
+            )
+            if is_llm_cap_error(e):
+                trip_llm_cap()
+                _log("llm: cap — kept Kraken HTR, skipping autocorrect on remaining pages")
+            else:
+                _log("llm: failed — saved Kraken HTR (cleanup deferred)")
+            return _htr_only_short_circuit(
+                job, s, lines_out, text_line_count, htr, [], warnings, timings,
+                mark_needs_llm=not is_llm_cap_error(e),
+            )
         errors.append(_format_llm_error(job, e))
         return PipelineResult(
             job.job_id, lines_out, None, text_line_count,
             errors=errors, warnings=warnings,
-            htr_results=_finalize_htr_results(htr_results_early, htr_future, htr_executor, warnings),
+            htr_results=htr,
             timings=timings,
         )
     if isinstance(tx, TranscribeResult):
@@ -591,6 +853,64 @@ def run_pipeline(
     _llm_s = time.perf_counter() - t_llm
     timings.append(("llm", _llm_s))
     _log(f"llm: done ({_llm_s:.1f}s)")
+
+    # DIFF-BASED CORRECTION: the response is a list of changed lines, not a page.
+    # Merge it into the draft locally. Falls back to normal transcript handling if
+    # the model ignored the format, so enabling the flag cannot blank a page.
+    draft_lines = job.prompt_cfg.pop("_diff_draft_lines", None)
+    if draft_lines:
+        from transcriber_shell.llm.correct_diff import (
+            apply_corrections,
+            corrections_to_transcript,
+            parse_corrections,
+        )
+
+        corrections = parse_corrections(raw)
+        if corrections is None:
+            warnings.append(
+                "correct_mode_diff: model did not return a corrections document; "
+                "treating the response as a full transcript instead."
+            )
+        else:
+            merged, out_of_range = apply_corrections(draft_lines, corrections)
+            if out_of_range:
+                warnings.append(
+                    "correct_mode_diff: ignored out-of-range line number(s) "
+                    f"{out_of_range} — the model referenced lines the draft does not have."
+                )
+            _log(
+                f"correct(diff): {len(corrections)} of {len(draft_lines)} lines changed"
+            )
+            model_id = job.model_override or s.resolved_model(job.provider)
+            data = corrections_to_transcript(
+                merged,
+                normalization_mode=str(job.prompt_cfg.get("normalizationMode") or "diplomatic"),
+                model_id=model_id,
+            )
+            meta = data["transcriptionOutput"]["metadata"]
+            meta["timestamp"] = datetime.now(timezone.utc).isoformat()
+            meta["correctionMode"] = "diff"
+            meta["linesChanged"] = len(corrections)
+            meta["linesTotal"] = len(draft_lines)
+            out_yaml = transcription_yaml_path(s.artifacts_dir, job.job_id, job.image_path)
+            out_yaml.parent.mkdir(parents=True, exist_ok=True)
+            out_yaml.write_text(
+                yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8"
+            )
+            try:
+                transcription_txt_path(
+                    s.artifacts_dir, job.job_id, job.image_path
+                ).write_text(_extract_plain_text(data), encoding="utf-8")
+            except OSError:
+                pass
+            return PipelineResult(
+                job.job_id, lines_out, out_yaml, text_line_count,
+                errors=errors, warnings=warnings, llm_usage=llm_usage,
+                htr_results=_finalize_htr_results(
+                    htr_results_early, htr_future, htr_executor, warnings
+                ),
+                timings=timings,
+            )
 
     raw = strip_yaml_fence(raw)
     raw = _repair_yaml_uncertain_tokens(raw)
@@ -610,6 +930,7 @@ def run_pipeline(
                 _meta["modelId"] = _actual_model
                 _meta["timestamp"] = datetime.now(timezone.utc).isoformat()
             out_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            _clear_needs_llm_marker(out_yaml)
             out_txt = transcription_txt_path(s.artifacts_dir, job.job_id, job.image_path)
             try:
                 out_txt.write_text(_extract_plain_text(data), encoding="utf-8")

@@ -40,7 +40,19 @@ import importlib.util as _ilu
 def _load_eval_core():
     spec = _ilu.spec_from_file_location("_eval_core", EVAL_CORE)
     mod = _ilu.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    # Register BEFORE exec_module. Any dataclass defined in the loaded module
+    # records __module__ = "_eval_core", and dataclasses resolves that name
+    # through sys.modules when it evaluates a field's type. Absent from
+    # sys.modules it gets None and blows up with
+    #   AttributeError: 'NoneType' object has no attribute '__dict__'
+    # during collection, taking the whole file down with it.
+    import sys as _sys
+    _sys.modules[spec.name] = mod
+    try:
+        spec.loader.exec_module(mod)
+    except Exception:
+        _sys.modules.pop(spec.name, None)
+        raise
     return mod
 
 _eval = _load_eval_core()
@@ -219,6 +231,15 @@ class TestMaskLineation:
     def _run_mask_lineation(self, image: Path, tmp_path: Path, stem: str) -> int:
         """Return TextLine count produced by mask backend."""
         torch = pytest.importorskip("torch", reason="torch not installed")
+        # The class-level skipif covers the U-Net weights but not the inference
+        # module that consumes them, and the two are installed separately. With
+        # weights present and latin_lineation_mvp absent this failed with a bare
+        # ModuleNotFoundError, reading as a lineation regression rather than a
+        # missing optional dependency.
+        pytest.importorskip(
+            "latin_lineation_mvp",
+            reason="latin_lineation_mvp (mask inference backend) not installed",
+        )
         from transcriber_shell.mask_lineation import fetch_lines_xml_mask
         from transcriber_shell.config import Settings
 

@@ -118,3 +118,11 @@ def test_detect_alias_akdeniz():
                 p = mp.detect_machine_profile()
     assert p.alias == "akdeniz"
     assert p.host_class == "cuda_interactive"
+
+
+def test_apply_efficiency_keeps_explicit_llm_off():
+    p = _prof(host_class="cuda_interactive", has_nvidia=True, gpu_vram_mb=24564)
+    s0 = Settings(llm_mode="off", htr_combination="kraken_htr")
+    s, _, msgs = apply_machine_efficiency(s0, profile=p)
+    assert s.llm_mode == "off"
+    assert any("llm_mode=off" in m for m in msgs)

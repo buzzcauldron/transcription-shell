@@ -9,12 +9,38 @@ IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".tif", ".tiff")
 
 
 def find_image_for_xml(xml_path: Path) -> Path | None:
+    """Locate page image for a PAGE/ALTO XML.
+
+    Checks same directory first, then common eScriptorium / Athos layouts
+    (sibling ``images/``, parent of ``xml/``, etc.).
+    """
     stem = xml_path.stem
     parent = xml_path.parent
-    for ext in IMAGE_EXTS:
-        candidate = parent / (stem + ext)
-        if candidate.is_file():
-            return candidate.resolve()
+    search_dirs = [
+        parent,
+        parent / "images",
+        parent / "image",
+        parent.parent / "images",
+        parent.parent / "image",
+        parent.parent,
+    ]
+    # Athos / EPARCHOS: .../xml/foo.xml + .../images|image/foo.png
+    if parent.name.lower() in {"xml", "page", "pagexml", "alto", "page-xml"}:
+        search_dirs.insert(1, parent.parent / "images")
+        search_dirs.insert(2, parent.parent / "image")
+    seen: set[Path] = set()
+    for directory in search_dirs:
+        try:
+            directory = directory.resolve()
+        except OSError:
+            continue
+        if directory in seen or not directory.is_dir():
+            continue
+        seen.add(directory)
+        for ext in IMAGE_EXTS:
+            candidate = directory / (stem + ext)
+            if candidate.is_file():
+                return candidate.resolve()
     return None
 
 

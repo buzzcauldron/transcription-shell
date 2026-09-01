@@ -1,0 +1,1388 @@
+[
+  {
+    "institution": "paris bibliothèque nationale de france",
+    "n": 91,
+    "by_status": {
+      "confirmed": 54,
+      "needs_review": 35,
+      "downloaded": 2
+    }
+  },
+  {
+    "institution": "london british library",
+    "n": 67,
+    "by_status": {
+      "needs_review": 22,
+      "not_digitized_unknown": 8,
+      "url_failed": 2,
+      "confirmed": 35
+    }
+  },
+  {
+    "institution": "vatican biblioteca apostolica vaticana",
+    "n": 64,
+    "by_status": {
+      "confirmed": 61,
+      "url_failed": 1,
+      "needs_review": 2
+    }
+  },
+  {
+    "institution": "oxford bodleian library",
+    "n": 45,
+    "by_status": {
+      "confirmed": 35,
+      "url_failed": 1,
+      "needs_review": 9
+    }
+  },
+  {
+    "institution": "st. gall stiftsbibliothek",
+    "n": 36,
+    "by_status": {
+      "confirmed": 26,
+      "downloaded": 10
+    }
+  },
+  {
+    "institution": "munich bayerische staatsbibliothek",
+    "n": 35,
+    "by_status": {
+      "confirmed": 18,
+      "url_failed": 3,
+      "not_digitized_unknown": 13,
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "bern burgerbibliothek",
+    "n": 18,
+    "by_status": {
+      "needs_review": 15,
+      "confirmed": 2,
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "karlsruhe landesbibliothek",
+    "n": 13,
+    "by_status": {
+      "not_digitized_unknown": 9,
+      "url_failed": 4
+    }
+  },
+  {
+    "institution": "milan biblioteca ambrosiana",
+    "n": 13,
+    "by_status": {
+      "not_digitized_unknown": 11,
+      "needs_review": 2
+    }
+  },
+  {
+    "institution": "vienna österreichische nationalbibliothek",
+    "n": 13,
+    "by_status": {
+      "not_digitized_unknown": 12,
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "zürich zentralbibliothek",
+    "n": 13,
+    "by_status": {
+      "confirmed": 2,
+      "not_digitized_unknown": 10,
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "berlin staatsbibliothek zu berlin - preußischer kulturbesitz",
+    "n": 11,
+    "by_status": {
+      "url_failed": 10,
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "einsiedeln stiftsbibliothek",
+    "n": 11,
+    "by_status": {
+      "confirmed": 7,
+      "needs_review": 4
+    }
+  },
+  {
+    "institution": "leiden universiteitsbibliotheek",
+    "n": 11,
+    "by_status": {
+      "not_digitized_unknown": 3,
+      "confirmed": 1,
+      "url_failed": 5,
+      "needs_review": 2
+    }
+  },
+  {
+    "institution": "brussels koninklijke bibliotheek albert i",
+    "n": 9,
+    "by_status": {
+      "needs_review": 5,
+      "not_digitized_unknown": 4
+    }
+  },
+  {
+    "institution": "wolfenbüttel herzog august bibliothek",
+    "n": 9,
+    "by_status": {
+      "not_digitized_unknown": 6,
+      "needs_review": 3
+    }
+  },
+  {
+    "institution": "basel universitätsbibliothek",
+    "n": 8,
+    "by_status": {
+      "downloaded": 4,
+      "confirmed": 2,
+      "needs_review": 2
+    }
+  },
+  {
+    "institution": "montpellier bibliothèque interuniversitaire",
+    "n": 7,
+    "by_status": {
+      "confirmed": 2,
+      "not_digitized_unknown": 5
+    }
+  },
+  {
+    "institution": "bamberg staatsbibliothek",
+    "n": 6,
+    "by_status": {
+      "downloaded": 2,
+      "needs_review": 4
+    }
+  },
+  {
+    "institution": "el escorial real biblioteca del monasterio de san lorenzo",
+    "n": 6,
+    "by_status": {
+      "needs_review": 6
+    }
+  },
+  {
+    "institution": "florence biblioteca medicea laurenziana",
+    "n": 6,
+    "by_status": {
+      "needs_review": 2,
+      "url_failed": 4
+    }
+  },
+  {
+    "institution": "st. petersburg natsionalnaja biblioteka",
+    "n": 6,
+    "by_status": {
+      "not_digitized_unknown": 6
+    }
+  },
+  {
+    "institution": "würzburg universitätsbibliothek",
+    "n": 6,
+    "by_status": {
+      "url_failed": 5,
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "brussels koninklijke bibliotheek van belgië / bibliothèque royale de belgique",
+    "n": 6,
+    "by_status": {
+      "needs_review": 1,
+      "not_digitized_unknown": 5
+    }
+  },
+  {
+    "institution": "leiden universitaire bibliotheken",
+    "n": 6,
+    "by_status": {
+      "not_digitized_unknown": 2,
+      "needs_review": 4
+    }
+  },
+  {
+    "institution": "cambridge corpus christi college library",
+    "n": 5,
+    "by_status": {
+      "confirmed": 5
+    }
+  },
+  {
+    "institution": "cologne erzbischöfliche diözesan- und dombibliothek",
+    "n": 5,
+    "by_status": {
+      "confirmed": 5
+    }
+  },
+  {
+    "institution": "rouen bibliothèque municipale",
+    "n": 5,
+    "by_status": {
+      "not_digitized_unknown": 5
+    }
+  },
+  {
+    "institution": "cambridge trinity college library",
+    "n": 4,
+    "by_status": {
+      "needs_review": 2,
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "cambridge university library",
+    "n": 4,
+    "by_status": {
+      "needs_review": 3,
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "fulda hochschul- und landesbibliothek",
+    "n": 4,
+    "by_status": {
+      "access_blocked": 4
+    }
+  },
+  {
+    "institution": "madrid biblioteca nacional de españa",
+    "n": 4,
+    "by_status": {
+      "url_failed": 3,
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "stuttgart württembergische landesbibliothek",
+    "n": 4,
+    "by_status": {
+      "not_digitized_unknown": 4
+    }
+  },
+  {
+    "institution": "angers bibliothèque municipale",
+    "n": 3,
+    "by_status": {
+      "downloaded": 3
+    }
+  },
+  {
+    "institution": "baltimore walters art gallery",
+    "n": 3,
+    "by_status": {
+      "downloaded": 1,
+      "not_digitized_unknown": 1,
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "darmstadt landes- und hochschulbibliothek",
+    "n": 3,
+    "by_status": {
+      "not_digitized_unknown": 2,
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "freiburg im breisgau universitätsbibliothek",
+    "n": 3,
+    "by_status": {
+      "needs_review": 2,
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "montecassino archivio della badia",
+    "n": 3,
+    "by_status": {
+      "needs_review": 2,
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "monza biblioteca capitolare",
+    "n": 3,
+    "by_status": {
+      "not_digitized_unknown": 3
+    }
+  },
+  {
+    "institution": "stockholm kungliga biblioteket",
+    "n": 3,
+    "by_status": {
+      "not_digitized_unknown": 2,
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "trier stadtbibliothek",
+    "n": 3,
+    "by_status": {
+      "not_digitized_unknown": 3
+    }
+  },
+  {
+    "institution": "valenciennes bibliothèque municipale",
+    "n": 3,
+    "by_status": {
+      "not_digitized_unknown": 3
+    }
+  },
+  {
+    "institution": "verona biblioteca capitolare",
+    "n": 3,
+    "by_status": {
+      "not_digitized_unknown": 3
+    }
+  },
+  {
+    "institution": "amiens bibliothèque municipale",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 1,
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "augsburg universitätsbibliothek",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "cambridge st. john's college library",
+    "n": 2,
+    "by_status": {
+      "needs_review": 2
+    }
+  },
+  {
+    "institution": "cologny bibliothek bodmeriana",
+    "n": 2,
+    "by_status": {
+      "confirmed": 2
+    }
+  },
+  {
+    "institution": "copenhagen kongelige bibliotek",
+    "n": 2,
+    "by_status": {
+      "url_failed": 1,
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "erfurt stadt- und regionalbibliothek",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "fribourg bibliothèque cantonale et universitaire",
+    "n": 2,
+    "by_status": {
+      "confirmed": 2
+    }
+  },
+  {
+    "institution": "ivrea biblioteca capitolare",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "kassel universitäts-",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "laon bibliothèque municipale",
+    "n": 2,
+    "by_status": {
+      "confirmed": 1,
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "madrid real academia de la historia",
+    "n": 2,
+    "by_status": {
+      "needs_review": 2
+    }
+  },
+  {
+    "institution": "metz bibliothèque municipale",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "milan archivio di st. ambrogio",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "orléans médiathèque",
+    "n": 2,
+    "by_status": {
+      "confirmed": 1,
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "oxford new college library",
+    "n": 2,
+    "by_status": {
+      "needs_review": 2
+    }
+  },
+  {
+    "institution": "silos archivio del monsterio de santo domingo",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "tours bibliothèque municipale",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "unknown location unknown institution",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "utrecht universiteitsbibliotheek",
+    "n": 2,
+    "by_status": {
+      "url_failed": 2
+    }
+  },
+  {
+    "institution": "vercelli biblioteca capitolare",
+    "n": 2,
+    "by_status": {
+      "not_digitized_unknown": 2
+    }
+  },
+  {
+    "institution": "verdun library study du grand verdun - fonds patrimoniaux",
+    "n": 2,
+    "by_status": {
+      "url_failed": 2
+    }
+  },
+  {
+    "institution": "vatican city biblioteca apostolica vaticana",
+    "n": 2,
+    "by_status": {
+      "confirmed": 1,
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "karlsruhe badische landesbibliothek",
+    "n": 2,
+    "by_status": {
+      "downloaded": 2
+    }
+  },
+  {
+    "institution": "albi bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "augsburg staats- und stadtbibliothek",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "autun bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "avignon bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "avranches bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "barcelona archivo de la corona de aragón",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "besançon bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "bordeaux bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "bremen staats- und universitätsbibliothek",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "bruges stadsbibliotheek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "bückeburg niedersächsisches staatsarchiv",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "caen bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "cambridge fitzwilliam museum",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "cambridge pembroke college library",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "cologne historisches archiv",
+    "n": 1,
+    "by_status": {
+      "access_blocked": 1
+    }
+  },
+  {
+    "institution": "cologne unknown institution",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "dijon bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "dresden landesbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "durham cathedral library",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "düsseldorf universitäts- und landesbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "exeter cathedral library",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "florence biblioteca nazionale centrale",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "frankfurt am main stadt- und universitätsbibliothek",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "freiburg im breisgau erzbischöfliche archiv",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "geneva bibliotheque publique et universitaire",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "gent universiteitsbibliotheek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "glasgow university library",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "gotha forschungs- und landesbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "göttingen staats- und universitätsbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "hannover landesbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "harvard houghton library",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "heidelberg universitätsbibliothek",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "hermetschwil benediktinerinnenkloster",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "jena thüringer universitäts- und landesbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "lambach stiftsbibliothek",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "león archivo de la catedral",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "los angeles john paul getty museum",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "lucca biblioteca capitolare feliniana",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "lucca biblioteca civica agorà",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "lyon bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "mainz domschatz",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "manchester john rylands university library",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "melk stiftsbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "merseburg domstifsbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "modena biblioteca et archivio capitolare",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "munich hauptstaatsarchiv",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "münster staatsarchiv",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "münster universitätsbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "nancy bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "new york pierpont morgan library",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "oxford corpus christi college",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "oxford st. john's college",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "padua biblioteca antoniana",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "prague knihovna metropolitni kapitoli",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "prague národni knihovna",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "regensburg unknown institution",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "rochester n.y. sibley music library",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "rome biblioteca casanatense",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "rome biblioteca nazionale centrale",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "rome biblioteca vallicelliana",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "rome bibliotheca albani",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "rome bibliotheca angelica",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "salamanca bibliotecas universidad",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "salerno archivio della badia",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "salisbury cathedral library",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "santiago de compostela biblioteca universitaria",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "schaffhausen stadtbibliothek",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "solothurn st. ursenkathedrale",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "solothurn zentralbiliothek",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "st. omer bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "strasbourg bibliothèque nationale et universitaire",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "toledo biblioteca del cabildo",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "tournai bibliothèque de la ville",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "trient museo provinciale del castello del buonconsiglio",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "trier unknown institution",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "turino biblioteca nazionale universitaria",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "venice biblioteca nazionale marciana",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "weimar landesbibliothek",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "wroclaw biblioteka uniwersyteka",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "albi albi bibliothèque municipale",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "berlin staatsbibliothek - preußischer kulturbesitz",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "paris bibliothèque nationale de france lat. 2796",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "paris bibliothèque nationale de france lat. 894",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "cologne dombibliothek",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "milan basilica di sant’ambrogio",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "Bibliothèque municipale de Tours",
+    "n": 1,
+    "by_status": {
+      "local": 1
+    }
+  },
+  {
+    "institution": "The Morgan Library & Museum",
+    "n": 1,
+    "by_status": {
+      "url_failed": 1
+    }
+  },
+  {
+    "institution": "British Library",
+    "n": 1,
+    "by_status": {
+      "confirmed": 1
+    }
+  },
+  {
+    "institution": "St John's College, Oxford",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "St John's College, Cambridge",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "Wellcome Collection",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "New York Public Library",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "sb 732 cod",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "sb 878 cod",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "sb 913 cod",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "sb 110 cod",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "sb 184 cod",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "sb 248 cod",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "sb 250 cod",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "sb 682 cod",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "nypl computus text 3",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "bnf lat 4860 cod",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "bnf lat 7418",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "oxford sjc 17",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "pal lat 1407",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "wellcome computistical miscellany",
+    "n": 1,
+    "by_status": {
+      "not_digitized_unknown": 1
+    }
+  },
+  {
+    "institution": "einsiedeln sbe 029",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "bl royal 13 a xi",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "munich bayerische staatsbibliothek clm 4382",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "munich bayerische staatsbibliothek clm 4376",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "london british library harley ms 531",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "provenance-conflicted local wellcome 103 asset",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "london wellcome collection ms.3",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "vatican biblioteca apostolica vaticana reg. lat. 141",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "vatican biblioteca apostolica vaticana reg. lat. 123",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "vatican biblioteca apostolica vaticana pal. lat. 1354",
+    "n": 1,
+    "by_status": {
+      "needs_review": 1
+    }
+  },
+  {
+    "institution": "basel universitätsbibliothek f vii 12",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "basel universitätsbibliothek an iv 18",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "st. gall stiftsbibliothek 251",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "london british library cotton vitellius a xii",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "london british library royal 12 d iv",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "oxford bodleian library ms bodl. 309",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "cambridge university library ms ff.1.27",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "munich bayerische staatsbibliothek clm 18158",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  },
+  {
+    "institution": "munich bayerische staatsbibliothek clm 14770",
+    "n": 1,
+    "by_status": {
+      "downloaded": 1
+    }
+  }
+]

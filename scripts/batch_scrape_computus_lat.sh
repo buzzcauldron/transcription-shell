@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Queue computus.lat IIIF manuscripts for strigil acquire-only on a remote host.
 #
-# Scraping is network-bound; this deliberately does NOT start HTR watchers.
-# Default: akdeniz, concurrency 2, skip jobs that already exist.
+# Prefer the full harvest orchestrator for the union registry workflow:
+#   bash scripts/computus/run_web_harvest.sh
+#
+# This script builds a structured JSONL acquire queue (not a fragile TSV)
+# and optionally installs a remote worker via run_acquire_queue.py.
+# Robots policy is respected (no --no-robots).
 #
 # Usage:
 #   bash scripts/batch_scrape_computus_lat.sh [--dry-run] [--limit N] [--remote HOST]
@@ -15,7 +19,7 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 REMOTE="${STREAM_REMOTE:-akdeniz}"
 CATALOG_URL='https://raw.githubusercontent.com/thomsnijders/thomsnijders.github.io/main/json/ms-catalog.json'
 LOCAL_CATALOG="$ROOT/references/computus-library/computus_lat_ms-catalog.json"
-QUEUE_FILE="$ROOT/references/computus-library/computus_lat_scrape_queue.tsv"
+QUEUE_FILE="$ROOT/references/computus-library/web_harvest/queues/computus_lat_scrape_queue.jsonl"
 DRY_RUN=false
 LIMIT=0
 CONCURRENCY=2
@@ -32,18 +36,18 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-mkdir -p "$ROOT/references/computus-library"
+mkdir -p "$ROOT/references/computus-library/web_harvest/queues"
 if [[ ! -f "$LOCAL_CATALOG" ]]; then
   echo "Fetching computus.lat MS catalogue..."
   curl -fsSL "$CATALOG_URL" -o "$LOCAL_CATALOG"
 fi
 
-existing=$(ssh -o BatchMode=yes -o ConnectTimeout=20 "$REMOTE" 'ls "$HOME/latin-ms-workspace/jobs/" 2>/dev/null || true')
+existing=$(ssh -o BatchMode=yes -o ConnectTimeout=20 "$REMOTE" 'ls /mnt/constantinople/seth/latin-ms-workspace/jobs/ 2>/dev/null || ls "$HOME/latin-ms-workspace/jobs/" 2>/dev/null || true')
 export EXISTING_JOBS="$existing"
 export LOCAL_CATALOG QUEUE_FILE LIMIT
 
 python3 - <<'PY'
-import json, os, re
+import json, os, re, urllib.parse
 from pathlib import Path
 
 ms = json.loads(Path(os.environ["LOCAL_CATALOG"]).read_text(encoding="utf-8"))
@@ -72,6 +76,30 @@ def job_id(shelf: str, msid) -> str:
     s = re.sub(r"_+", "_", s).strip("_")[:40].rstrip("_")
     return f"clat_{msid}_{s}"[:60]
 
+def flags_for(url: str) -> list[str]:
+    flags: list[str] = []
+    if any(
+        x in url
+        for x in (
+            "bl.uk",
+            "wellcomecollection",
+            "morgan.org",
+            "diglib.hab.de",
+            "internetculturale.it",
+            "digital.staatsbibliothek-berlin.de",
+        )
+    ):
+        flags.append("--js")
+    stripped = url.split("?")[0]
+    if (
+        "gallica.bnf.fr" in url
+        or stripped.endswith("/manifest")
+        or stripped.endswith("/manifest.json")
+        or "manifest" in stripped.lower()
+    ):
+        flags.extend(["--source", "iiif"])
+    return flags
+
 seen_url = set()
 rows = []
 for rec in ms:
@@ -87,20 +115,26 @@ for rec in ms:
     jid = job_id(rec.get("Shelfmark") or "", rec.get("MSID"))
     if jid in existing:
         continue
-    flags = "--source iiif" if "manifest" in url.lower() else ""
-    # Prefer --no-robots for Gallica (robots often block automated fetch)
-    if "gallica.bnf.fr" in url and "--no-robots" not in flags:
-        flags = (flags + " --no-robots").strip()
-    rows.append((jid, url, flags, rec.get("Shelfmark") or ""))
+    rows.append(
+        {
+            "job_id": jid,
+            "record_id": f"clat_{rec.get('MSID')}",
+            "url": url,
+            "flags": flags_for(url),
+            "shelfmark": rec.get("Shelfmark") or "",
+            "host": urllib.parse.urlparse(url).netloc.lower(),
+            "reason": "catalogue_iiif",
+        }
+    )
 
 if limit > 0:
     rows = rows[:limit]
 
 out = Path(os.environ["QUEUE_FILE"])
+out.parent.mkdir(parents=True, exist_ok=True)
 with out.open("w", encoding="utf-8") as f:
-    for jid, url, flags, shelf in rows:
-        shelf = shelf.replace("\t", " ").replace("\n", " ")
-        f.write(f"{jid}\t{url}\t{flags}\t{shelf}\n")
+    for row in rows:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
 print(f"Wrote {len(rows)} queue rows → {out}")
 PY
 
@@ -116,103 +150,49 @@ fi
 
 if [[ "$INSTALL_QUEUE" != "true" ]]; then
   echo "Re-run with --install-queue to start acquire-only worker on $REMOTE (concurrency=$CONCURRENCY)."
+  echo "Or use: bash scripts/computus/run_web_harvest.sh"
   exit 0
 fi
 
-WORKER_LOCAL=$(mktemp)
-cat > "$WORKER_LOCAL" <<'WORKER'
-#!/usr/bin/env bash
-set -uo pipefail
-QUEUE="${1:?queue.tsv}"
-CONCURRENCY="${2:-2}"
-JOBS_ROOT="${HOME}/latin-ms-workspace/jobs"
-STRIGIL_DIR="${HOME}/Projects/strigil"
-STRIGIL_PY="${HOME}/.venv-strigil/bin/python"
-# Prefer absolute constantinople paths when present (akdeniz alt drive).
-if [[ -d /mnt/constantinople/seth/latin-ms-workspace/jobs ]]; then
-  JOBS_ROOT=/mnt/constantinople/seth/latin-ms-workspace/jobs
-fi
-if [[ -d /mnt/constantinople/seth/Projects/strigil ]]; then
-  STRIGIL_DIR=/mnt/constantinople/seth/Projects/strigil
-fi
-[[ -x "$STRIGIL_PY" ]] || STRIGIL_PY=python3
-mkdir -p "${JOBS_ROOT%/jobs}/computus_lat_queue/logs" "$JOBS_ROOT"
+ssh -o BatchMode=yes "$REMOTE" 'mkdir -p /mnt/constantinople/seth/latin-ms-workspace/computus_web_harvest/{queues,logs} || mkdir -p "$HOME/latin-ms-workspace/computus_web_harvest/{queues,logs}"'
 
-active_acquires() {
-  pgrep -af -u "$USER" '[Pp]ython.*strigil\.cli' 2>/dev/null | wc -l | tr -d ' '
-}
-
-job_busy() {
-  local job="$1" pidfile="$job/status/acquire_full.pid" pid
-  [[ -f "$pidfile" ]] || return 1
-  pid=$(tr -d ' \n' < "$pidfile")
-  [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
-}
-
-while IFS=$'\t' read -r jid url flags shelf || [[ -n "${jid:-}" ]]; do
-  [[ -z "${jid:-}" ]] && continue
-  job="$JOBS_ROOT/$jid"
-  nimg=0
-  if [[ -d "$job/00_sources_chunks/full" ]]; then
-    nimg=$(find "$job/00_sources_chunks/full" -type f 2>/dev/null | wc -l | tr -d ' ')
-  fi
-  if [[ "${nimg:-0}" -gt 5 ]]; then
-    echo "[skip done] $jid ($nimg images)"
-    continue
-  fi
-  if job_busy "$job"; then
-    echo "[skip running] $jid"
-    continue
-  fi
-  while true; do
-    n=$(active_acquires); n=${n:-0}
-    [[ "$n" -lt "$CONCURRENCY" ]] && break
-    echo "[wait] active strigil=$n >= $CONCURRENCY"
-    sleep 30
-  done
-  mkdir -p "$job/00_sources_chunks/full" "$job/logs" "$job/status"
-  printf '%s\n' "$shelf" > "$job/shelfmark.txt"
-  printf '%s\n' "$url" > "$job/source_url.txt"
-  echo "[launch $(date -Iseconds)] $jid"
-  (
-    cd "$STRIGIL_DIR" || exit 0
-    export PYTHONPATH="$STRIGIL_DIR"
-    # shellcheck disable=SC2086
-    nohup "$STRIGIL_PY" -m strigil.cli \
-      --url "$url" \
-      --out-dir "$job/00_sources_chunks/full" \
-      --types images \
-      --manuscript \
-      --min-image-size 200k \
-      --no-progress \
-      --workers 4 \
-      $flags \
-      >"$job/logs/acquire_full.log" 2>&1 &
-    echo $! >"$job/status/acquire_full.pid"
-  )
-  sleep 5
-done < "$QUEUE"
-echo "[queue] finished submitting all rows $(date -Iseconds)"
-WORKER
-
-ssh -o BatchMode=yes "$REMOTE" 'mkdir -p "$HOME/latin-ms-workspace/computus_lat_queue/logs"'
-rsync -az "$QUEUE_FILE" "$REMOTE:latin-ms-workspace/computus_lat_queue/queue.tsv"
-rsync -az "$WORKER_LOCAL" "$REMOTE:latin-ms-workspace/computus_lat_queue/run_queue.sh"
-rsync -az "$LOCAL_CATALOG" "$REMOTE:latin-ms-workspace/computus_lat_queue/ms-catalog.json"
-ssh -o BatchMode=yes "$REMOTE" 'chmod +x "$HOME/latin-ms-workspace/computus_lat_queue/run_queue.sh"'
+REMOTE_TS="$(cd "$ROOT" && git rev-parse --show-toplevel 2>/dev/null || echo "$ROOT")"
+# Sync scripts into the checkout on the remote host
+rsync -az \
+  "$ROOT/scripts/computus/run_acquire_queue.py" \
+  "$ROOT/scripts/batch_scrape_computus_lat.sh" \
+  "$REMOTE:/tmp/computus_acquire_sync/"
+rsync -az "$QUEUE_FILE" "$REMOTE:/mnt/constantinople/seth/latin-ms-workspace/computus_web_harvest/queues/computus_lat_scrape_queue.jsonl" 2>/dev/null \
+  || rsync -az "$QUEUE_FILE" "$REMOTE:latin-ms-workspace/computus_web_harvest/queues/computus_lat_scrape_queue.jsonl"
 
 ssh -o BatchMode=yes "$REMOTE" "bash -s" <<EOF
-set -e
-Q=\$HOME/latin-ms-workspace/computus_lat_queue
+set -euo pipefail
+Q=/mnt/constantinople/seth/latin-ms-workspace/computus_web_harvest
+if [[ ! -d \$Q ]]; then Q=\$HOME/latin-ms-workspace/computus_web_harvest; fi
+JOBS=/mnt/constantinople/seth/latin-ms-workspace/jobs
+if [[ ! -d \$JOBS ]]; then JOBS=\$HOME/latin-ms-workspace/jobs; fi
+STRIGIL=/mnt/constantinople/seth/Projects/strigil
+if [[ ! -d \$STRIGIL ]]; then STRIGIL=\$HOME/Projects/strigil; fi
+PY=\$HOME/.venv-strigil/bin/python
+[[ -x \$PY ]] || PY=python3
+mkdir -p "\$Q/logs" "\$Q/queues"
+# prefer transcription-shell checkout if present
+ACQ=/mnt/constantinople/seth/Projects/transcription-shell/scripts/computus/run_acquire_queue.py
+if [[ ! -f \$ACQ ]]; then ACQ=/tmp/computus_acquire_sync/run_acquire_queue.py; fi
 if [[ -f \$Q/queue_worker.pid ]]; then
   kill \$(cat \$Q/queue_worker.pid) 2>/dev/null || true
 fi
-nohup bash \$Q/run_queue.sh \$Q/queue.tsv $CONCURRENCY >\$Q/logs/queue_worker.log 2>&1 &
+nohup \$PY \$ACQ \\
+  --queue \$Q/queues/computus_lat_scrape_queue.jsonl \\
+  --jobs-root \$JOBS \\
+  --strigil-dir \$STRIGIL \\
+  --python \$PY \\
+  --global-concurrency $CONCURRENCY \\
+  >\$Q/logs/queue_worker.log 2>&1 &
 echo \$! >\$Q/queue_worker.pid
 sleep 2
 echo "started queue worker pid=\$(cat \$Q/queue_worker.pid) concurrency=$CONCURRENCY"
 head -20 \$Q/logs/queue_worker.log || true
 EOF
 
-rm -f "$WORKER_LOCAL"
-echo "Installed acquire-only queue on $REMOTE (concurrency=$CONCURRENCY, no HTR watchers)."
+echo "Installed acquire-only JSONL queue on $REMOTE (concurrency=$CONCURRENCY, no HTR, no --no-robots)."

@@ -9,14 +9,14 @@ script: caroline_minuscule
 
 llm:
   primary: gemini-2.5-flash
-  # Cheap corrector when llm_mode=correct (HTR draft primary). Not the silent default
-  # until held-out CER gates pass — set TRANSCRIBER_SHELL_LLM_MODE=correct to use.
-  correct: gemini-2.5-flash
+  # Cheap corrector when llm_mode=correct (HTR draft primary, text-only). Prefer Haiku
+  # while Gemini keys are unavailable on lab hosts; flash remains fine when GOOGLE_API_KEY works.
+  correct: claude-haiku-4
   fallback: claude-sonnet-4
 
 htr:
-  model: computus-caroline-c1
-  path: "${HOME}/src/gm-htr-computus_best.mlmodel"
+  # Registry picks the highest training-round checkpoint on disk that covers
+  # lat-Latn / early_medieval / caroline_minuscule (r7-full when present).
 
 segmentation:
   model: gm-seg

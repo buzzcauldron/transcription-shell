@@ -1,0 +1,50 @@
+# transcriber-shell prompt config for polytonic Greek manuscripts and papyri.
+# Covers: Hellenistic–Roman papyri, Byzantine minuscule codices, mixed classical text
+# in later hands. language tag grc-Grek (protocol: ell-Grek / grc).
+
+targetLanguage: "grc-Grek"
+targetEra: "classical_to_byzantine"
+eraRange: "-400-1600"
+diplomaticProfile: "layout_aware"
+diplomaticToggles: "{\"preserveLineBreaks\": true, \"preserveOriginalAbbreviations\": true, \"captureUnclearGlyphShape\": true}"
+normalizationMode: "diplomatic"
+languageSet: "[]"
+scriptNotesOptional: >
+  Polytonic Greek (ancient or medieval). Hands range from papyrus cursive
+  majuscule / mixed documentary scripts (Hellenistic–Roman Egypt) to Byzantine
+  minuscule book hands (9th–16th c.), including tachygraphy, nomina sacra, and
+  late Renaissance Greek hands (e.g. Eparchos).
+
+  ORTHOGRAPHY — DIPLOMATIC:
+  - Preserve polytonic diacritics as written: breathing marks (ἀ / ἁ), accents
+    (ά / ὰ / ᾶ), and diaeresis (ϊ / ϋ). Prefer Unicode NFC for storage.
+  - Do NOT silently modernize to monotonic Greek or strip diacritics.
+  - Preserve iota subscript/adscript if visible (ᾳ ῃ ῳ); if ambiguous, mark low
+    confidence rather than inventing.
+  - Respect manuscript word division and scriptio continua where no spaces exist —
+    do not introduce modern word breaks unless the line image shows clear gaps.
+
+  ABBREVIATIONS / COMPRESSIONS:
+  - Nomina sacra and other suspensions: preserve marks (overlines, superscript
+    letters) diplomatically; do not expand unless the diplomatic profile is set
+    to expand unambiguously abbreviated forms project-wide.
+  - Common Byzantine tachygraphic signs: transcribe the visible sign; if no
+    reliable Unicode mapping, use the protocol unclear/glyph-shape fields.
+
+  LATIN / OTHER SCRIPTS:
+  - Occasional Latin glosses or titles: tag with appropriate language code in
+    segment metadata; keep Greek body text as grc-Grek.
+  - Greek text embedded in an otherwise Latin page (e.g. computus or glossed
+    grammar): use project bilingual rules — preserve Greek characters inside
+    Latin context, never Latinize Greek letterforms.
+
+  DAMAGE & FRAGMENTS (esp. papyri):
+  - Damaged, lacunose, or fiber-lost zones: empty segment or unclear glyph span
+    per protocol; never invent words from known literary parallels.
+  - Literary identification (Homer, Menander, medical treatises) may orient
+    reading but must not override glyph evidence.
+
+  SEGMENTATION: one segment per TextLine from the supplied PageXML; count must
+  match exactly.
+
+sourcePageId: ""

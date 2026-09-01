@@ -1,0 +1,185 @@
+id	institution	display	n_candidates	best_kind	best_conf	best_host	best_url	last_error
+nypl_computus_text_3	New York Public Library	NYPL Digital Collections, Computus Text 3	1	catalogue_or_other	medium	digitalcollections.nypl.org	https://digitalcollections.nypl.org/	
+cambridge_sjc_a22	St John's College, Cambridge	Cambridge, St John's College, MS A.22 (Reading Computus)	8	archive_org	medium	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp89g00720r000700900004-1	
+oxford_sjc_17	St John's College, Oxford	Oxford, St John's College, MS 17 (Thorney Computus)	9	archive_org	medium	archive.org	http://archive.org/details/TheByrhtferthsManuscriptms17SaintJohnsCollegeOxford	
+clat_21	augsburg staats- und stadtbibliothek	Augsburg, Staats- und Stadtbibliothek, folio 8	8	archive_org	low	archive.org	https://archive.org/details/11198319bsb	
+clat_593	baltimore walters art gallery	Baltimore, Walters Art Gallery, W 6	8	archive_org	low	archive.org	https://archive.org/details/MemoirsOfBabur	
+clat_25	baltimore walters art gallery	Baltimore, Walters Art Gallery, W 73	4	archive_org	low	archive.org	https://archive.org/details/walterscollectio00walt_0	http_403
+clat_655	bamberg staatsbibliothek	Bamberg, Staatsbibliothek, 1	8	archive_org	low	archive.org	https://archive.org/details/katalogderhandsc03staa	
+clat_520	bamberg staatsbibliothek	Bamberg, Staatsbibliothek, 131	8	archive_org	low	archive.org	https://archive.org/details/11716234bsb	
+clat_446	bamberg staatsbibliothek	Bamberg, Staatsbibliothek, 160	9	catalogue_or_other	medium	www.nbn-resolving.de	http://digital.bib-bvb.de/view/bvb_mets/viewer.0.6.5.jsp?folder_id=0&dvs=1786400678011~124&pid=4776613&locale=en&usePid1=true&usePid2=true	
+clat_29	bamberg staatsbibliothek	Bamberg, Staatsbibliothek, 63	8	archive_org	low	archive.org	https://archive.org/details/engel_fragmente_fraenkischer_chroniken_text	
+clat_683	barcelona archivo de la corona de aragón	Barcelona, Archivo de la Corona de Aragón, 59	8	archive_org	medium	archive.org	https://archive.org/details/coleccindedocum00araggoog	
+clat_327	basel universitätsbibliothek	Basel, Universitätsbibliothek, F III 15k (F 3 15k)	1	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Basel%2C+Universit%C3%A4tsbibliothek%2C+F+III+15k+%28F+3+15k%29	
+clat_331	basel universitätsbibliothek	Basel, Universitätsbibliothek, N I 2 no. 31	1	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Basel%2C+Universit%C3%A4tsbibliothek%2C+N+I+2+no.+31	
+BERLIN_SBPK_PHILLIPPS_1831_COD	berlin staatsbibliothek - preußischer kulturbesitz	Berlin, Staatsbibliothek - Preußischer Kulturbesitz, Phillipps 1831	2	catalogue_or_other	medium	digital.staatsbibliothek-berlin.de	https://digital.staatsbibliothek-berlin.de/werkansicht/?PPN=PPN797388990	
+clat_37	berlin staatsbibliothek zu berlin - preußischer kulturbesitz	Berlin, Staatsbibliothek zu Berlin - Preußischer Kulturbesitz, 1869	4	catalogue_or_other	medium	bibliotheca-laureshamensis-digital.de	https://bibliotheca-laureshamensis-digital.de/view/sbb-pk_msphillipps1869	
+clat_39	bern burgerbibliothek	Bern, Burgerbibliothek, 129	1	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+129	
+clat_333	bern burgerbibliothek	Bern, Burgerbibliothek, 250	4	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+250	
+clat_40	bern burgerbibliothek	Bern, Burgerbibliothek, 265	4	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+265	
+clat_334	bern burgerbibliothek	Bern, Burgerbibliothek, 299	3	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+299	
+clat_335	bern burgerbibliothek	Bern, Burgerbibliothek, 306	4	archive_org	low	archive.org	https://archive.org/details/bub_gb_zgoIAAAAIAAJ	
+clat_336	bern burgerbibliothek	Bern, Burgerbibliothek, 330	4	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+330	
+clat_338	bern burgerbibliothek	Bern, Burgerbibliothek, 336	1	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+336	
+clat_337	bern burgerbibliothek	Bern, Burgerbibliothek, 357	4	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+357	
+clat_339	bern burgerbibliothek	Bern, Burgerbibliothek, 410	3	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+410	
+clat_42	bern burgerbibliothek	Bern, Burgerbibliothek, 417	3	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+417	
+BERN_BB_441_COD	bern burgerbibliothek	Bern, Burgerbibliothek, 441	3	archive_org	low	archive.org	https://archive.org/details/bub_gb_gAhVAAAAcAAJ	
+clat_281	bern burgerbibliothek	Bern, Burgerbibliothek, 645	1	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+645	
+clat_38	bern burgerbibliothek	Bern, Burgerbibliothek, 83	5	archive_org	low	archive.org	https://archive.org/details/bub_gb_M45GAQAAIAAJ	
+clat_282	bern burgerbibliothek	Bern, Burgerbibliothek, A 92	4	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+A+92	
+BERN_BB_AA_90_16_COD	bern burgerbibliothek	Bern, Burgerbibliothek, AA 90.16	2	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Bern%2C+Burgerbibliothek%2C+AA+90.16	
+clat_44	besançon bibliothèque municipale	Besançon, Bibliothèque Municipale, 186	1	catalogue_or_other	medium	memoirevive.besancon.fr	https://memoirevive.besancon.fr/ark:/48565/fl7xr2js3k6d/e5737117-226e-4069-999f-ea1fc7760b9b	
+bl_royal_13_a_xi	bl royal 13 a xi	bl royal 13 a xi	8	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+bnf_lat_4860_cod	bnf lat 4860 cod	bnf lat 4860 cod	1	catalogue_api	low	gallica.bnf.fr	https://gallica.bnf.fr/services/engine/search/sru?operation=searchRetrieve&version=1.2&query=%28gallica%20all%20%22Latin%204860%22%29&maximumRecords=5	
+bnf_lat_7418	bnf lat 7418	bnf lat 7418	1	catalogue_api	low	gallica.bnf.fr	https://gallica.bnf.fr/services/engine/search/sru?operation=searchRetrieve&version=1.2&query=%28gallica%20all%20%22Latin%207418%22%29&maximumRecords=5	
+clat_286	brussels koninklijke bibliotheek albert i	Brussels, Koninklijke Bibliotheek Albert I, 10127-44	1	catalogue_or_other	medium	uurl.kbr.be	https://uurl.kbr.be/1559700	
+clat_48	brussels koninklijke bibliotheek albert i	Brussels, Koninklijke Bibliotheek Albert I, 2194-95	1	catalogue_or_other	medium	uurl.kbr.be	https://uurl.kbr.be/1782777	
+clat_49	brussels koninklijke bibliotheek albert i	Brussels, Koninklijke Bibliotheek Albert I, 5413-22	1	catalogue_or_other	medium	uurl.kbr.be	https://uurl.kbr.be/1449095	
+clat_50	brussels koninklijke bibliotheek albert i	Brussels, Koninklijke Bibliotheek Albert I, 9581-95	1	catalogue_or_other	medium	uurl.kbr.be	https://uurl.kbr.be/1558116	
+clat_51	brussels koninklijke bibliotheek albert i	Brussels, Koninklijke Bibliotheek Albert I, II 2558 (2 2558)	1	catalogue_or_other	medium	uurl.kbr.be	https://uurl.kbr.be/1760778	
+KBR_10127_44_COD	brussels koninklijke bibliotheek van belgië / bibliothèque royale de belgique	Brussels, Koninklijke Bibliotheek van België / Bibliothèque royale de Belgique, 10127-44	1	catalogue_or_other	medium	elmss.nuigalway.ie	https://elmss.nuigalway.ie/catalogue/273	
+clat_54	cambridge pembroke college library	Cambridge, Pembroke College Library, 227	2	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp83-00423r000900930002-8	
+clat_374	cambridge st. john's college library	Cambridge, St. John's College Library, A.22	8	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+clat_375	cambridge st. john's college library	Cambridge, St. John's College Library, I.15	8	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+clat_349	cambridge trinity college library	Cambridge, Trinity College Library, O.2.45	8	archive_org	medium	archive.org	https://archive.org/details/cu31924089994945	
+clat_55	cambridge trinity college library	Cambridge, Trinity College Library, R.15.32 (945)	9	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	ConnectError: [Errno -2] Name or service not known
+clat_377	cambridge university library	Cambridge, University Library, Gg.V.35 (Gg.5.35)	4	archive_org	low	archive.org	https://archive.org/details/barboursdesscho02horsgoog	
+clat_378	cambridge university library	Cambridge, University Library, I.15	8	archive_org	low	archive.org	https://archive.org/details/in.ernet.dli.2015.86278	
+clat_379	cambridge university library	Cambridge, University Library, Kk.V.32 (Kk.5.32)	2	archive_org	low	archive.org	https://archive.org/details/earlyenglishver02herrgoog	
+cambridge_cudl_ff_1_27	cambridge university library ms ff.1.27	Cambridge University Library MS Ff.1.27	9	archive_org	low	archive.org	https://archive.org/details/theodorus-gaza-grammar-manuscript	http_403
+clat_381	durham cathedral library	Durham, Cathedral Library, 100	7	archive_org	low	archive.org	https://archive.org/details/oldestenglishte00churgoog	
+einsiedeln_sbe_029	einsiedeln sbe 029	einsiedeln sbe 029	1	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=einsiedeln+sbe+029	
+clat_640	einsiedeln stiftsbibliothek	Einsiedeln, Stiftsbibliothek, 174	1	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Einsiedeln%2C+Stiftsbibliothek%2C+174	
+clat_62	einsiedeln stiftsbibliothek	Einsiedeln, Stiftsbibliothek, 178	4	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Einsiedeln%2C+Stiftsbibliothek%2C+178	
+clat_63	einsiedeln stiftsbibliothek	Einsiedeln, Stiftsbibliothek, 263	3	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Einsiedeln%2C+Stiftsbibliothek%2C+263	
+clat_646	einsiedeln stiftsbibliothek	Einsiedeln, Stiftsbibliothek, 356	1	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Einsiedeln%2C+Stiftsbibliothek%2C+356	
+clat_66	el escorial real biblioteca del monasterio de san lorenzo	El Escorial, Real Biblioteca del Monasterio de San Lorenzo, C IV 10 (100 4 10)	8	archive_org	medium	archive.org	https://archive.org/details/griegos_escorial	
+clat_397	el escorial real biblioteca del monasterio de san lorenzo	El Escorial, Real Biblioteca del Monasterio de San Lorenzo, D I 1	8	archive_org	medium	archive.org	https://archive.org/details/griegos_escorial	
+clat_398	el escorial real biblioteca del monasterio de san lorenzo	El Escorial, Real Biblioteca del Monasterio de San Lorenzo, D I 2	8	archive_org	medium	archive.org	https://archive.org/details/griegos_escorial	
+clat_67	el escorial real biblioteca del monasterio de san lorenzo	El Escorial, Real Biblioteca del Monasterio de San Lorenzo, L III 8 (50 3 8)	8	archive_org	medium	archive.org	https://archive.org/details/griegos_escorial	
+clat_399	el escorial real biblioteca del monasterio de san lorenzo	El Escorial, Real Biblioteca del Monasterio de San Lorenzo, M III 3 (M3 3)	8	archive_org	medium	archive.org	https://archive.org/details/griegos_escorial	
+clat_552	el escorial real biblioteca del monasterio de san lorenzo	El Escorial, Real Biblioteca del Monasterio de San Lorenzo, R II 18 (R 2 18)	8	archive_org	medium	archive.org	https://archive.org/details/griegos_escorial	
+clat_69	florence biblioteca medicea laurenziana	Florence, Biblioteca Medicea Laurenziana, 168	2	archive_org	low	archive.org	https://archive.org/details/gri_33125010857072	
+clat_70	florence biblioteca medicea laurenziana	Florence, Biblioteca Medicea Laurenziana, 1727	3	archive_org	low	archive.org	https://archive.org/details/gri_33125008652899	
+clat_492	freiburg im breisgau universitätsbibliothek	Freiburg im Breisgau, Universitätsbibliothek, 57	1	catalogue_or_other	medium	dl.ub.uni-freiburg.de	https://dl.ub.uni-freiburg.de/diglit/hs57	
+clat_490	freiburg im breisgau universitätsbibliothek	Freiburg im Breisgau, Universitätsbibliothek, 65	1	catalogue_or_other	medium	dl.ub.uni-freiburg.de	https://dl.ub.uni-freiburg.de/diglit/hs65	
+clat_383	glasgow university library	Glasgow, University Library, 85 (T.4.2)	6	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+Leiden_UB_VLF_74_COD	leiden universitaire bibliotheken	Leiden, Universitaire Bibliotheken, VLF 74	1	catalogue_or_other	medium	db.innovatingknowledge.nl	https://db.innovatingknowledge.nl/#detail/M0145	
+Leiden_UB_VLF_82_COD	leiden universitaire bibliotheken	Leiden, Universitaire Bibliotheken, VLF 82	1	catalogue_or_other	medium	db.innovatingknowledge.nl	https://db.innovatingknowledge.nl/#detail/M0147	
+Leiden_UB_VLQ_69_COD	leiden universitaire bibliotheken	Leiden, Universitaire Bibliotheken, VLQ 69	1	catalogue_or_other	medium	digitalcollections.universiteitleiden.nl	https://digitalcollections.universiteitleiden.nl/view/item/4154089	
+Leiden_UB_VMI_11_COD	leiden universitaire bibliotheken	Leiden, Universitaire Bibliotheken, VMI 11	1	catalogue_or_other	medium	elmss.nuigalway.ie	https://elmss.nuigalway.ie/catalogue/317	
+clat_403	leiden universiteitsbibliotheek	Leiden, Universiteitsbibliotheek, 26	4	archive_org	low	archive.org	https://archive.org/details/goedgezintieneeu0000unse	
+clat_288	leiden universiteitsbibliotheek	Leiden, Universiteitsbibliotheek, 5	9	archive_org	low	archive.org	https://archive.org/details/4.Des.ErasmiOperaOmniaTIVOsterreichNationalbibliothek	http_404
+clat_407	león archivo de la catedral	León, Archivo de la Catedral, 8	5	archive_org	low	archive.org	https://archive.org/details/alberto-de-carvalho-memoria-a-respeito-da-sepultura-rasa-de-pedro-alvares-cabral-1902	
+clat_357	london british library	London, British Library, 12 D IV (12 D 4)	8	archive_org	low	archive.org	https://archive.org/details/TheRomanHistoryWithNotesHistoricalGeographicalAndCriticalVol1	
+clat_358	london british library	London, British Library, 12 F II (12 F 2)	8	archive_org	low	archive.org	https://archive.org/details/TheRomanHistoryWithNotesHistoricalGeographicalAndCriticalVol1	
+clat_393	london british library	London, British Library, 19725	2	archive_org	low	archive.org	https://archive.org/details/historyriseprog02clargoog	
+clat_162	london british library	London, British Library, 2030	5	archive_org	low	archive.org	https://archive.org/details/chronicleoflond1898lond_3	
+clat_156	london british library	London, British Library, 2506	4	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp83-00423r000900930002-8	
+clat_161	london british library	London, British Library, 263	8	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+clat_444	london british library	London, British Library, 2902	2	archive_org	low	archive.org	https://archive.org/details/commentariesonc03burggoog	
+clat_416	london british library	London, British Library, 332	8	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+clat_150	london british library	London, British Library, 356	8	archive_org	low	archive.org	https://archive.org/details/ibogaine_literature	
+clat_359	london british library	London, British Library, 3667	1	archive_org	low	archive.org	https://archive.org/details/cihm_46303	
+clat_604	london british library	London, British Library, 37517	2	archive_org	low	archive.org	https://archive.org/details/HM56911_43	
+clat_373	london british library	London, British Library, 377	8	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+clat_159	london british library	London, British Library, 3969	2	archive_org	low	archive.org	https://archive.org/details/stereoatlasofost16athe	
+clat_548	london british library	London, British Library, 7 F VIII (7 F 8)	8	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+clat_370	london british library	London, British Library, 843	6	archive_org	low	archive.org	https://archive.org/details/ParthiansSassanidsAndArabs	
+clat_360	london british library	London, British Library, Cleopatra A VII (Cleopatra A 7)	5	archive_org	low	archive.org	https://archive.org/details/TheAncrenRiwle	
+clat_362	london british library	London, British Library, Julius A VI part 1 (Julius A 4 part 1)	5	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+clat_371	london british library	London, British Library, Nero D II (Nero D 2)	4	archive_org	low	archive.org	https://archive.org/details/TheAncrenRiwle	
+clat_153	london british library	London, British Library, Tiberius B V Part I (Tiberius B 4 Part 1)	5	archive_org	low	archive.org	https://archive.org/details/pilgrimagelifem01locogoog	
+clat_364	london british library	London, British Library, Tiberius B V part 1 (Tiberius B 5 part 1)	5	archive_org	low	archive.org	https://archive.org/details/pilgrimagelifem01locogoog	
+clat_434	london british library	London, British Library, Tiberius B V/1 (Tiberius B 5/1)	8	archive_org	low	archive.org	https://archive.org/details/kingalfredswest00sweegoog	
+clat_154	london british library	London, British Library, Tiberius C I (Tiberius 100 1)	5	archive_org	low	archive.org	https://archive.org/details/facsimilesofhora00cath	
+wellcome_3	london wellcome collection ms.3	London, Wellcome Collection MS.3	9	catalogue_or_other	medium	portail.biblissima.fr	https://portail.biblissima.fr/ark:/43093/mdata85bbefdb7ac63305e703e52b1c1c8bb0c014a9ce	
+clat_680	los angeles john paul getty museum	Los Angeles, John Paul Getty Museum, V 2	8	archive_org	medium	archive.org	https://archive.org/details/alfredstieglitzp0000stie_n6t8	
+clat_607	madrid real academia de la historia	Madrid, Real Academia de la Historia, 18	8	archive_org	medium	archive.org	https://archive.org/details/historiageneraly01fern	
+clat_666	madrid real academia de la historia	Madrid, Real Academia de la Historia, 36	8	archive_org	medium	archive.org	https://archive.org/details/historiageneraly01fern	
+clat_679	mainz domschatz	Mainz, Domschatz, 4	4	archive_org	low	archive.org	https://archive.org/details/isbn_9783795425838	
+clat_565	manchester john rylands university library	Manchester, John Rylands University Library, 116	6	archive_org	medium	archive.org	https://archive.org/details/bulletinofjohnry2219unse	
+clat_507	milan biblioteca ambrosiana	Milan, Biblioteca Ambrosiana, A 3 sup.	8	archive_org	medium	archive.org	https://archive.org/details/ilcanzoniereprov00bert	
+MILAN_BA_H_150_COD	milan biblioteca ambrosiana	Milan, Biblioteca Ambrosiana, H 150 inf.	1	catalogue_or_other	medium	ambrosiana.comperio.it	https://ambrosiana.comperio.it/opac/detail/view/ambro:catalog:58504	
+clat_390	montecassino archivio della badia	Montecassino, Archivio della Badia, 2	1	archive_org	medium	archive.org	https://archive.org/details/necrologyofsanni00hilk	
+clat_167	montecassino archivio della badia	Montecassino, Archivio della Badia, 3	1	archive_org	medium	archive.org	https://archive.org/details/necrologyofsanni00hilk	
+bsb_clm_14770	munich bayerische staatsbibliothek clm 14770	Munich, Bayerische Staatsbibliothek Clm 14770	1	catalogue_or_other	medium	portail.biblissima.fr	https://portail.biblissima.fr/en/ark:/43093/mdata8ea49060613e4847617f4945bcd33693db2839f0	
+bsb_clm_18158	munich bayerische staatsbibliothek clm 18158	Munich, Bayerische Staatsbibliothek Clm 18158	1	catalogue_or_other	medium	portail.biblissima.fr	https://portail.biblissima.fr/en/ark:/43093/mdata29a80bbe5ac0163d476d20d9667dbdf712bf466c	
+bsb_clm_4376	munich bayerische staatsbibliothek clm 4376	Munich, Bayerische Staatsbibliothek Clm 4376	1	catalogue_or_other	medium	portail.biblissima.fr	https://portail.biblissima.fr/en/ark:/43093/mdatacb4524e5c5e9966832f245e76e8535e86a2408df	
+bsb_clm_4382	munich bayerische staatsbibliothek clm 4382	Munich, Bayerische Staatsbibliothek Clm 4382	1	catalogue_or_other	medium	portail.biblissima.fr	https://portail.biblissima.fr/en/ark:/43093/mdata166e92dad13763d2916b7ff5457a682d1dd281e8	
+clat_188	new york pierpont morgan library	New York, Pierpont Morgan Library, M 857	4	archive_org	low	archive.org	https://archive.org/details/jpierpontmorganc0000wads	
+nypl_computus_text_3	nypl computus text 3	nypl computus text 3	1	archive_org	low	archive.org	https://archive.org/details/NYPLMA069_41	
+clat_200	oxford bodleian library	Oxford, Bodleian Library, 118	8	archive_org	low	archive.org	https://archive.org/details/opera00aris	
+clat_199	oxford bodleian library	Oxford, Bodleian Library, 176	8	archive_org	medium	archive.org	https://archive.org/details/earlybodleianmus03unse	
+clat_253	oxford bodleian library	Oxford, Bodleian Library, 193	6	archive_org	medium	archive.org	https://archive.org/details/bookofhoursforen0000mast	
+clat_202	oxford bodleian library	Oxford, Bodleian Library, 223	7	archive_org	medium	archive.org	https://archive.org/details/MS_Broxbourne_84_3	
+clat_193	oxford bodleian library	Oxford, Bodleian Library, 279	8	archive_org	low	archive.org	https://archive.org/details/opera00aris	
+clat_195	oxford bodleian library	Oxford, Bodleian Library, 28	8	archive_org	medium	archive.org	https://archive.org/details/thebanostracaedi00royauoft	
+clat_499	oxford bodleian library	Oxford, Bodleian Library, 39	8	archive_org	low	archive.org	https://archive.org/details/shakespearessonn00shakrich	
+clat_201	oxford bodleian library	Oxford, Bodleian Library, 594	4	archive_org	low	archive.org	https://archive.org/details/discoveryofwitch0000hark_l9w9	
+clat_196	oxford bodleian library	Oxford, Bodleian Library, 63	8	archive_org	low	archive.org	https://archive.org/details/biblialatina01egge	
+clat_203	oxford new college library	Oxford, New College Library, 104	6	archive_org	low	archive.org	https://archive.org/details/ExtrasensoryPerceptionResearchFinding	
+clat_204	oxford new college library	Oxford, New College Library, 252	5	archive_org	low	archive.org	https://archive.org/details/marriagedivorcec0000unse	
+pal_lat_1407	pal lat 1407	pal lat 1407	6	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp80-00809a000700230003-1	
+clat_271	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 10487 (formerly 10457)	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_601	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 11589	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_542	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 12052	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_343	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 14088	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_506	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 1417	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_341	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 15170	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_137	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 1612	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_138	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 1613	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_139	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 1614	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_344	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 1616	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_297	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 1645	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_132	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 16680	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_134	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 176	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_651	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 18005	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_133	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 18461	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_395	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 2169	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_533	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 2183	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_135	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 229	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_106	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 2796	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_136	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 456	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_108	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 4883 A	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_109	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 5001	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_110	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 5009	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_111	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 5239	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_396	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 609	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_605	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 7271	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_117	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 7299 A	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_543	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 817	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_579	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 819	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_599	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 821	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_537	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 9429	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_602	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 9430	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_535	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 9433	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_598	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 9436	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+clat_125	paris bibliothèque nationale de france	Paris, Bibliothèque Nationale de France, 9517	8	archive_org	medium	archive.org	https://archive.org/details/noticesetextrai01goog	
+wellcome_103	provenance-conflicted local wellcome 103 asset	Provenance-conflicted local Wellcome 103 asset	1	catalogue_or_other	medium	portail.biblissima.fr	https://portail.biblissima.fr/ark:/43093/mdata550bef2824d796b93a85f82f82790fd011dda40f	
+clat_613	rochester n.y. sibley music library	Rochester N.Y., Sibley Music Library, 1	3	archive_org	low	archive.org	https://archive.org/details/unenouvellecolle00olsc	
+ROME_BC_641_COD	rome biblioteca casanatense	Rome, Biblioteca Casanatense, 641	1	catalogue_or_other	medium	www.mirabileweb.it	https://www.mirabileweb.it/manuscript/roma-biblioteca-casanatense-ms-641-manuscript/8311	
+clat_209	rome biblioteca nazionale centrale	Rome, Biblioteca Nazionale Centrale, 33	8	archive_org	low	archive.org	https://archive.org/details/ita-bnc-mag-00001363-001	
+ROME_BV_E_26_COD	rome biblioteca vallicelliana	Rome, Biblioteca Vallicelliana, E 26	5	archive_org	low	archive.org	https://archive.org/details/archivio11patrgoog	RemoteProtocolError: Server disconnected without sending a response.
+clat_603	salisbury cathedral library	Salisbury, Cathedral Library, 150	2	archive_org	medium	archive.org	https://archive.org/details/b24864274	
+sb_110_cod	sb 110 cod	sb 110 cod	8	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp65-00756r000500020002-3	
+sb_184_cod	sb 184 cod	sb 184 cod	5	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp82-00039r000300050001-3	
+sb_248_cod	sb 248 cod	sb 248 cod	1	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp82-00039r000300050001-3	
+sb_250_cod	sb 250 cod	sb 250 cod	6	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp80s01540r003000050012-6	
+sb_732_cod	sb 732 cod	sb 732 cod	2	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp84-00581r000300820054-6	
+sb_878_cod	sb 878 cod	sb 878 cod	1	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp82-00039r000300050001-3	
+sb_913_cod	sb 913 cod	sb 913 cod	1	archive_org	low	archive.org	https://archive.org/details/cia-readingroom-document-cia-rdp84-00581r000401250058-3	
+clat_220	schaffhausen stadtbibliothek	Schaffhausen, Stadtbibliothek, 61	1	catalogue_search	low	www.e-codices.unifr.ch	https://www.e-codices.unifr.ch/en/search/all?query=Schaffhausen%2C+Stadtbibliothek%2C+61	
+sb_251_1	st. gall stiftsbibliothek 251	St. Gall, Stiftsbibliothek 251, codicological unit 1	2	catalogue_or_other	medium	computus.huma-num.fr	https://computus.huma-num.fr/mss/SB_251_1	
+clat_597	stockholm kungliga biblioteket	Stockholm, Kungliga biblioteket, A 136	2	archive_org	low	archive.org	https://archive.org/details/urn-nbn-se-kb-digark-5999819	
+clat_256	vatican biblioteca apostolica vaticana	Vatican, Biblioteca Apostolica Vaticana, 1577	2	catalogue_or_other	medium	bibliotheca-laureshamensis-digital.de	https://bibliotheca-laureshamensis-digital.de/bav/bav_pal_lat_1577	
+clat_17	vatican biblioteca apostolica vaticana	Vatican, Biblioteca Apostolica Vaticana, 1939	4	archive_org	low	archive.org	https://archive.org/details/librariesguestso0000bibl	
+bav_pal_lat_1354	vatican biblioteca apostolica vaticana pal. lat. 1354	Vatican, Biblioteca Apostolica Vaticana Pal. lat. 1354	7	catalogue_or_other	medium	digi.ub.uni-heidelberg.de	https://digi.ub.uni-heidelberg.de/diglit/bav_pal_lat_1354	
+bav_reg_lat_123	vatican biblioteca apostolica vaticana reg. lat. 123	Vatican, Biblioteca Apostolica Vaticana Reg. lat. 123	9	archive_org	medium	archive.org	https://archive.org/details/missalegothicumg02cath	http_403
+bav_reg_lat_141_cu1	vatican biblioteca apostolica vaticana reg. lat. 141	Vatican, Biblioteca Apostolica Vaticana Reg. lat. 141, codicological unit 1	9	catalogue_or_other	medium	computus.huma-num.fr	https://computus.huma-num.fr/mss/BAV_REG_LAT_141_CU1	
+VATICAN_BAV_PAL_LAT_1447_CU1	vatican city biblioteca apostolica vaticana	Vatican City, Biblioteca Apostolica Vaticana, Pal. Lat. 1447	6	catalogue_api	low	gallica.bnf.fr	https://gallica.bnf.fr/services/engine/search/sru?operation=searchRetrieve&version=1.2&query=%28gallica%20all%20%22Latin%201447%22%29&maximumRecords=5	
+clat_237	vienna österreichische nationalbibliothek	Vienna, Österreichische Nationalbibliothek, 387	1	catalogue_or_other	medium	data.onb.ac.at	https://search.onb.ac.at/primo-explore/fulldisplay?docid=ONB_alma21303539350003338&context=L&adaptor=Local%20Search%20Engine&vid=ONB&lang=de_DE&search_scope=ONB_gesamtbestand&tab=default_tab&query=addsrcrid,exact,AC13961630	
+clat_522	wolfenbüttel herzog august bibliothek	Wolfenbüttel, Herzog August Bibliothek, 81	1	catalogue_or_other	medium	diglib.hab.de	https://diglib.hab.de/mss/81-weiss/start.htm	
+clat_247	wolfenbüttel herzog august bibliothek	Wolfenbüttel, Herzog August Bibliothek, 91	1	catalogue_or_other	medium	diglib.hab.de	https://diglib.hab.de/show_image.php?dir=mss/91-weiss	
+HABCODGUELF_91_WEISS_COD	wolfenbüttel herzog august bibliothek	Wolfenbüttel, Herzog August Bibliothek, Cod. Guelf. 91 Weiss.	1	catalogue_or_other	medium	diglib.hab.de	http://diglib.hab.de/mss/91-weiss/start.htm	

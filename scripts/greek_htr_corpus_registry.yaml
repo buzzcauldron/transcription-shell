@@ -1,0 +1,198 @@
+# Registry for Greek (ancient + medieval / Byzantine) HTR ground truth.
+# Companion to latin_htr_corpus_registry.yaml.
+#
+# Used with:
+#   scripts/download_greek_htr_corpora.sh
+#   scripts/regularize_latin_htr_corpus.py --registry scripts/greek_htr_corpus_registry.yaml \
+#       --corpora-root ~/src/htr-corpora-greek --out-dir ~/src/greek-corpus-gt
+#
+# split_mode:
+#   upstream — respect train/val/test directory names
+#   holdout  — per-corpus 95/5 split with --seed
+#
+# languages:
+#   ancient_greek  — classical / Hellenistic / papyri (grc; polytonic)
+#   medieval_greek — Byzantine / post-Byzantine book hands (grc)
+#   greek          — mixed or unspecified Greek
+
+corpora:
+  # ── Ancient Greek (priority) ───────────────────────────────────────────
+
+  zenon-papyri:
+    languages: [ancient_greek]
+    era: "3rd c. BCE"
+    script: papyrus
+    split_mode: holdout
+    url: https://zenodo.org/records/6565706
+    zenodo_record: "6565706"
+    citation: zenon_papyri_htr
+    license: CC-BY-4.0
+    notes: >
+      D-Scribes Zenon archive papyri (diplomatic PAGE-XML + JPG). True ancient Greek
+      documentary/literary papyri — primary ancient-Greek HTR seed.
+
+  ancient-greek-transcriboquest-2025:
+    languages: [ancient_greek]
+    era: "4th–1st c. BCE"
+    script: papyrus
+    split_mode: holdout
+    url: https://zenodo.org/records/17062972
+    zenodo_record: "17062972"
+    citation: transcriboquest_2025_ancient_greek
+    license: CC-BY-4.0
+    notes: >
+      TranscriboQuest 2025 Ancient Greek team (~20 pages): Homeric fragment, Menander,
+      medical, Timotheus, P.Eleph. 1 marriage contract. eScriptorium PAGE/ALTO in data.zip.
+
+  ljs380-sextus:
+    languages: [ancient_greek]
+    era: "15th c. copy of classical author"
+    script: minuscule
+    split_mode: holdout
+    format: line_pairs
+    url: https://huggingface.co/datasets/evndttr/LJS380_excerpts-Sextus_Empiricus_Pros_Mathematikous
+    citation: ljs380_sextus
+    license: CC-BY-NC-4.0
+    notes: >
+      Line crops + diplomatic Greek labels (Sextus Empiricus, LJS 380). Classical *text*
+      in a late medieval book hand; NC license — exclude from commercial redistributions.
+      HF download yields PNG + .gt.txt (convert via hf_pairs_to_pagexml.py).
+
+  # ── Medieval / Byzantine book hands (primary open PAGE-XML packs) ───────
+
+  eparchos:
+    languages: [medieval_greek, ancient_greek]
+    era: "1500–1530"
+    script: minuscule
+    split_mode: holdout
+    url: https://zenodo.org/records/4095301
+    zenodo_record: "4095301"
+    citation: eparchos
+    license: CC-BY-4.0
+    notes: >
+      EPARCHOS — BL Add. 6791 (Antonius Eparchos / Camillos Zanettus). Hierocles, Blastares,
+      Psellos. ~120 pages, ~2.2k–9k lines depending on counting (word- vs line-level).
+      Classical and Byzantine content under late minuscule.
+
+  stavronikita-53:
+    languages: [medieval_greek]
+    era: "1301–1350"
+    script: minuscule
+    split_mode: holdout
+    url: https://zenodo.org/records/5595669
+    zenodo_record: "5595669"
+    citation: stavronikita_53
+    license: CC-BY-4.0
+    notes: "Mount Athos Stavronikita ΧΦ53 four-gospel MS; ~1,038 lines / 54 pages."
+
+  stavronikita-79:
+    languages: [medieval_greek]
+    era: "16th c"
+    script: minuscule
+    split_mode: holdout
+    url: https://zenodo.org/records/5578136
+    zenodo_record: "5578136"
+    citation: stavronikita_79
+    license: CC-BY-4.0
+    notes: "Stavronikita ΧΦ79; ~803 lines / 40 pages."
+
+  stavronikita-114:
+    languages: [medieval_greek]
+    era: "medieval"
+    script: minuscule
+    split_mode: holdout
+    url: https://zenodo.org/records/5578251
+    zenodo_record: "5578251"
+    citation: stavronikita_114
+    license: CC-BY-4.0
+    notes: "Stavronikita ΧΦ114 (Zenodo full pack)."
+
+  palatine-anthology-cpgr23:
+    languages: [medieval_greek, ancient_greek]
+    era: "10th c"
+    script: minuscule
+    split_mode: holdout
+    url: https://gitlab.huma-num.fr/ecrinum/anthologia/htr_cpgr23
+    citation: palatine_anthology_htr
+    license: CC-BY-4.0
+    notes: >
+      Codex Palatinus graecus 23 (Palatine Anthology) eScriptorium GT —
+      classical epigrams in a 10th-c Byzantine hand. ~3,374 lines / 70 files.
+
+  hpgtr:
+    languages: [medieval_greek, ancient_greek]
+    era: "10th–16th c"
+    script: minuscule
+    split_mode: holdout
+    format: alto
+    url: https://github.com/vivianpl/hpgtr
+    citation: hpgtr2022
+    license: CC-BY-NC-SA-3.0
+    notes: >
+      Bodleian Barocci paleographic Greek (77 folios + alto.zip, ~1.7–1.9k segmented
+      lines). Polytonic; NC-SA — keep out of commercial/relicense trees.
+
+  vat-gr-2228-phil-gr-130:
+    languages: [medieval_greek]
+    era: "14th c"
+    script: minuscule
+    split_mode: holdout
+    url: https://zenodo.org/records/20705757
+    zenodo_record: "20705757"
+    citation: vat_gr_2228_phil_gr_130
+    license: open_check_zenodo
+    notes: >
+      PAGE-XML + train/val/test splits for Vat. gr. 2228 and Phil. gr. 130 (HTR + TLD).
+      **Images not redistributed** (library rights). Pair XML with DigiVatLib / ONB
+      IIIF yourself; zip is annotation-only until images are acquired separately.
+
+  eutyches:
+    languages: [latin, ancient_greek]
+    era: "late 9th c"
+    script: caroline
+    split_mode: holdout
+    url: https://github.com/malamatenia/Eutyches
+    citation: eutyches
+    license: Apache-2.0
+    notes: >
+      De uerbo (caroline); mainly Latin with **brief Greek glosses** preserved.
+      Also registered in the Latin corpus list — do not double-count pages when merging.
+
+  # ── Epigraphy / hard (optional train; good stress tests) ────────────────
+
+  bessarion:
+    languages: [medieval_greek]
+    era: byzantine
+    script: inscription
+    split_mode: holdout
+    url: https://github.com/Archaeocomputers/Bessarion
+    citation: bessarion2024
+    license: see_repo
+    notes: >
+      Byzantine monumental inscriptions (DAS 2024). PageXML under dataset/image_resources.
+      Large (~1+ GB repo); domain shift vs book hands — optional fine-tune / eval only.
+
+  # ── Models / catalogs without redistributable page GT ──────────────────
+
+  greekhtr-pta-model:
+    languages: [medieval_greek]
+    era: "9th–12th c"
+    script: minuscule
+    split_mode: holdout
+    url: https://github.com/PatristicTextArchive/GreekHTR
+    citation: greekhtr_pta
+    license: mixed
+    notes: >
+      PTA GreekHTR — Kraken model (Zenodo 15838142) + IIIF/manuscript list.
+      **No full GT dump in the git repo**; images via library IIIF. Catalog for routing /
+      base model only, not unsupervised GT download.
+
+# Corpora present on disk but exclude from supervised manifests:
+exclude:
+  - greekhtr-pta-model     # model + IIIF list, not training pairs
+  - .git
+  - guidelines.pdf
+  - "*.yml"
+  - "*.md"
+  - "*.docx"
+  - "*.mlmodel"

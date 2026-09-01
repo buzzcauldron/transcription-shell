@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
 import shutil
+import sys
 import tempfile
 import warnings
 from pathlib import Path
@@ -117,8 +117,31 @@ def _get_model(model_path: Path, device: str):
         raise KrakenLineationError(
             "Kraken is not installed. Install with: pip install 'transcriber-shell[kraken]'"
         ) from e
+    # Releasing the outgoing model matters on a GPU shared with Ollama: without
+    # this, switching segmentation models leaves the previous weights resident and
+    # the next large page OOMs.
+    if _model is not None:
+        _model = None
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
     model = TorchVGSLModel.load_model(str(mp))
     model.to(device)
+    # kraken's blla.segment does NOT put the net in eval mode itself (checked
+    # against 7.0.2), so any dropout/batchnorm layers would otherwise run in
+    # training mode and make segmentation non-deterministic between calls.
+    try:
+        model.eval()
+    except AttributeError:
+        # TorchVGSLModel is a wrapper; fall back to the inner nn.Module.
+        inner = getattr(model, "nn", None)
+        if inner is not None and hasattr(inner, "eval"):
+            inner.eval()
+
     _model = model
     _model_path_loaded = mp
     _model_device_loaded = device
@@ -126,15 +149,6 @@ def _get_model(model_path: Path, device: str):
 
 
 # ── Image loading ─────────────────────────────────────────────────────────────
-
-def _checksum_image(path: Path) -> str:
-    try:
-        h = hashlib.sha256()
-        h.update(path.read_bytes())
-        return h.hexdigest()[:16]
-    except (OSError, TimeoutError):
-        return "unavailable"
-
 
 def _open_image(image_path: Path) -> Image.Image:
     """Open and fully load an image, falling back to a local tmp copy for cloud files."""
@@ -166,6 +180,34 @@ def _open_image(image_path: Path) -> Image.Image:
             tmp_path.unlink(missing_ok=True)
 
 
+_warned_ignored_settings = False
+
+
+def _warn_ignored_seg_settings(s: Settings, params: frozenset[str]) -> None:
+    """Warn once if a configured segmentation knob is not supported by kraken."""
+    global _warned_ignored_settings
+    if _warned_ignored_settings:
+        return
+    # Only complain about values the operator actually SET. Both fields carry
+    # non-None defaults, so testing against None would fire this warning on every
+    # run of every machine and train people to ignore it.
+    explicit = getattr(s, "model_fields_set", set()) or set()
+    ignored = []
+    if "threshold" not in params and "kraken_threshold" in explicit:
+        ignored.append(f"kraken_threshold={s.kraken_threshold}")
+    if "min_length" not in params and "kraken_min_length" in explicit:
+        ignored.append(f"kraken_min_length={s.kraken_min_length}")
+    if ignored:
+        warnings.warn(
+            "[transcriber-shell] installed kraken's blla.segment does not accept "
+            + ", ".join(ignored)
+            + " -- these settings have NO EFFECT on this version. Remove them or "
+            "pin a kraken that supports them.",
+            stacklevel=3,
+        )
+    _warned_ignored_settings = True
+
+
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def fetch_lines_xml_kraken(
@@ -189,6 +231,10 @@ def fetch_lines_xml_kraken(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     model_path = s.kraken_model_path.expanduser().resolve()
+    if sys.platform != "darwin" and "/Users/" in str(model_path):
+        raise KrakenLineationError(
+            f"refusing Mac Kraken path on {sys.platform}: {model_path}"
+        )
     if not model_path.is_file():
         raise KrakenLineationError(f"Kraken model not found: {model_path}")
 
@@ -210,9 +256,38 @@ def fetch_lines_xml_kraken(
         seg_kwargs["threshold"] = s.kraken_threshold
     if "min_length" in params:
         seg_kwargs["min_length"] = s.kraken_min_length
+    else:
+        # kraken 7.x dropped `threshold` and `min_length` from blla.segment. The
+        # conditionals above correctly avoid a TypeError, but silently dropping a
+        # configured value is worse than failing: the operator sets
+        # kraken_min_length, sees no error, and believes it took effect. Say so.
+        _warn_ignored_seg_settings(s, params)
+
+    # Surface segmentation failures instead of logging and returning a degraded
+    # result. kraken defaults raise_on_error=False, which is why a page could
+    # previously yield a near-empty lines.xml with nothing in our logs to explain
+    # it -- the error went to kraken's logger and the pipeline carried on.
+    if "raise_on_error" in params:
+        seg_kwargs["raise_on_error"] = True
+
+    # Mixed precision, but only on CUDA. kraken threads `autocast` down to
+    # compute_segmentation_map; it is a real speed/VRAM win on the 4090 and a
+    # loss (or unsupported) on CPU, and MPS autocast is still unreliable.
+    if "autocast" in params and device.startswith("cuda") and s.kraken_autocast:
+        seg_kwargs["autocast"] = True
 
     with _inference_lock:
-        res = blla.segment(im, **seg_kwargs)
+        # blla.segment does not wrap its forward pass, so without this every
+        # segmentation builds an autograd graph it never uses -- wasted time and
+        # VRAM on a GPU we already share with Ollama.
+        try:
+            import torch
+            ctx = torch.inference_mode()
+        except Exception:
+            from contextlib import nullcontext
+            ctx = nullcontext()
+        with ctx:
+            res = blla.segment(im, **seg_kwargs)
     model_fn = model_path.name
     credit = s.lineation_credit_repo_url
     xml_contents = serialization.serialize(
@@ -237,6 +312,13 @@ def fetch_lines_xml_kraken(
     out_xml.write_text(xml_contents, encoding="utf-8")
     if not out_xml.stat().st_size:
         raise KrakenLineationError("Kraken produced empty lines.xml")
+
+    # A batch run segments tens of thousands of pages in one process; an
+    # unclosed PIL image per page holds its decoded buffer until GC notices.
+    try:
+        im.close()
+    except Exception:
+        pass
 
     from transcriber_shell.xml_tools.tag_margins import tag_margin_lines
     tag_margin_lines(out_xml)

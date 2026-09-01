@@ -26,35 +26,15 @@ if [[ ! -s "$GT/metadata.jsonl" ]]; then
 fi
 echo "[anglicana] using corpus $GT/metadata.jsonl"
 
-# Filter metadata.jsonl to Anglicana-only manifests (clean python, no kraken env).
+# Build / normalize Anglicana PAGE GT from gt-mss (JUST1 + Done-lines + Coroners + holdout).
 # shellcheck disable=SC1091
 source "$SRC/scripts/bridges_prep_env.sh"
-"$PY_RUN" - <<'PYEOF'
-import json, os, pathlib, sys
-
-gt = pathlib.Path(os.environ["GT"])
-meta = gt / "metadata.jsonl"
-if not meta.is_file():
-    sys.exit("metadata.jsonl not found")
-
-train, val = [], []
-for line in meta.read_text().splitlines():
-    if not line.strip():
-        continue
-    row = json.loads(line)
-    if row.get("script") != "anglicana":
-        continue
-    if row["split"] == "train":
-        train.append(row["xml"])
-    elif row["split"] == "val":
-        val.append(row["xml"])
-
-(gt / "anglicana_train_manifest.txt").write_text("\n".join(train) + "\n")
-(gt / "anglicana_val_manifest.txt").write_text("\n".join(val) + "\n")
-print(f"[anglicana] train={len(train)} val={len(val)}")
-if len(train) < 100:
-    sys.exit(f"Too few training lines ({len(train)}) — check GT rsync")
-PYEOF
+GT_MSS="${GT_MSS:-$SRC/../gt-mss}"
+export GT GT_MSS
+"$PY_RUN" "$SRC/scripts/build_anglicana_gt.py" \
+  --gt-mss-root "$GT_MSS" \
+  --gt-dir "$GT" \
+  --min-train 40
 
 bash "$SRC/scripts/bridges_fix_kraken_numpy.sh"
 # shellcheck disable=SC1091
@@ -65,13 +45,15 @@ python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 
 [[ -f "$BASE" ]] || { echo "Missing base model: $BASE"; exit 1; }
 [[ -s "$GT/anglicana_train_manifest.txt" ]] || { echo "Anglicana manifest empty"; exit 1; }
+[[ -s "$GT/anglicana_val_manifest.txt" ]] || { echo "Anglicana val manifest empty"; exit 1; }
 
 echo "[anglicana] base=$BASE"
 echo "[anglicana] train=$(wc -l < "$GT/anglicana_train_manifest.txt") val=$(wc -l < "$GT/anglicana_val_manifest.txt")"
 
-ketos -d cuda:0 --workers 5 --precision bf16-mixed train \
+# Smaller batch for modest legal GT; workers 2 avoids empty-set edge cases on tiny corpora.
+ketos -d cuda:0 --workers 2 --precision bf16-mixed train \
   -i "$BASE" --resize union -f page \
-  -q early --lag 20 --min-epochs 10 -N 150 -B 16 \
+  -q early --lag 20 --min-epochs 10 -N 150 -B 8 \
   -r 0.00005 --schedule cosine --augment \
   -t "$GT/anglicana_train_manifest.txt" -e "$GT/anglicana_val_manifest.txt" \
   -o "$OUT"

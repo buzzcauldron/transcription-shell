@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Start watch_transcribe + watch_partial_stylo detached (safe under ssh).
-# Required env: STREAM_JOB_DIR (and any STREAM_* the watchers need).
+# Start watch_transcribe detached (safe under ssh).
+# Stylo runs after expand when the transcribe watcher finishes the manuscript.
+# Required env: STREAM_JOB_DIR (and any STREAM_* the watcher needs).
 
 set -euo pipefail
 
@@ -35,5 +36,4 @@ def spawn(name: str, script: Path) -> int:
     return p.pid
 
 spawn("watch_transcribe", scripts / "remote_stream_watch_transcribe.py")
-spawn("watch_partial_stylo", scripts / "remote_stream_watch_partial_stylo.py")
 PY

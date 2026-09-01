@@ -24,6 +24,9 @@ test-results/
 
 # Strigil downloads from scripts/computus/acquire_library.sh
 references/computus-library/images/
+# Control-miscellany harvest caches (IIIF metadata + search HTML)
+references/control-miscellany/cache/
+
 *.pyc
 .cursor/
 .tdad/
